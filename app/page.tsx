@@ -1,65 +1,198 @@
-import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, ChevronRight, Shield } from "lucide-react";
+import RadarMap from "@/components/radar/RadarMap";
+import BriefingCard from "@/components/threat/BriefingCard";
+import NewsSection from "@/components/news/NewsSection";
+import type { Briefing } from "@/data/briefings";
 
-export default function Home() {
+async function getFeaturedBriefings(): Promise<Briefing[]> {
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    const rows = await prisma.briefing.findMany({
+      where: { status: "published" },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+      select: {
+        id: true, slug: true, title: true, summary: true,
+        severity: true, category: true, tags: true,
+        readingTime: true, createdAt: true, affectedRegions: true,
+      },
+    });
+    return rows.map((b) => ({
+      id: b.id,
+      slug: b.slug,
+      title: b.title,
+      summary: b.summary,
+      severity: b.severity as Briefing["severity"],
+      category: b.category as Briefing["category"],
+      region: (b.affectedRegions[0] ?? "Global") as Briefing["region"],
+      date: b.createdAt.toISOString(),
+      readingTime: b.readingTime,
+      author: "IA Statecraft",
+      tags: b.tags,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export default async function HomePage() {
+  const featuredBriefings = await getFeaturedBriefings();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen bg-[#050505]">
+      {/* Hero Section */}
+      <section className="relative min-h-screen overflow-hidden">
+        <div className="absolute inset-0 bg-grid opacity-40" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-[#050505]/80 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#050505] to-transparent" />
+
+        <div className="absolute right-0 top-0 bottom-0 w-1/2 flex items-center justify-end opacity-70">
+          <div className="w-full max-w-[600px] pr-8">
+            <RadarMap />
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-36 pb-24 w-full">
+          <div className="max-w-2xl">
+            <Link href="/threat-briefings" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-red-600/30 bg-red-950/20 mb-8 hover:border-red-500/50 transition-colors">
+              <div className="w-2 h-2 rounded-full bg-red-600 blink" />
+              <span className="text-xs font-semibold text-red-400 tracking-wider uppercase">
+                Inteligência de ameaças ao vivo
+              </span>
+            </Link>
+
+            <h1 className="text-5xl md:text-6xl font-black text-white leading-tight tracking-tight mb-6">
+              Inteligência{" "}
+              <span className="text-red-600 text-glow-red">Cibernética</span>
+              <br />
+              para Proteger o{" "}
+              <br />
+              Território Digital
+            </h1>
+
+            <p className="text-[#A1A1AA] text-lg leading-relaxed mb-8 max-w-xl">
+              A Statecraft entrega inteligência de ameaças em tempo real a partir de fontes abertas
+              globais, para que sua equipe saiba o que está acontecendo antes de ser impactada.
+            </p>
+
+            <div className="flex items-center gap-4 flex-wrap">
+              <Link
+                href="/threat-briefings"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition-all duration-200 hover:shadow-[0_0_30px_rgba(229,9,20,0.35)] text-sm"
+              >
+                Ver Threat Briefings
+                <ArrowRight size={16} />
+              </Link>
+              <Link
+                href="/sobre"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-white/[0.05] hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-semibold rounded-lg transition-all duration-200 text-sm"
+              >
+                Sobre a Statecraft
+                <ChevronRight size={16} />
+              </Link>
+            </div>
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+
+      {/* Briefings em Destaque */}
+      <section className="py-16 border-t border-white/[0.04]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <div className="text-xs font-semibold text-red-500 uppercase tracking-widest mb-2">
+                Inteligência de Ameaças
+              </div>
+              <h2 className="text-2xl font-black text-white">Últimos Threat Briefings</h2>
+            </div>
+            <Link
+              href="/threat-briefings"
+              className="hidden sm:flex items-center gap-1 text-sm text-[#A1A1AA] hover:text-white transition-colors"
+            >
+              Ver todos <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          {featuredBriefings.length > 0 ? (
+            <div className="grid md:grid-cols-3 gap-4">
+              {featuredBriefings.map((briefing) => (
+                <BriefingCard key={briefing.id} briefing={briefing} variant="featured" />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-[#555] text-sm">
+              Nenhum briefing publicado ainda.{" "}
+              <Link href="/threat-briefings" className="text-red-600/70 hover:text-red-500 transition-colors">
+                Ver todos os briefings
+              </Link>
+            </div>
+          )}
+
+          <div className="mt-6 sm:hidden text-center">
+            <Link
+              href="/threat-briefings"
+              className="inline-flex items-center gap-1 text-sm text-[#A1A1AA] hover:text-white transition-colors"
+            >
+              Ver todos os briefings <ArrowRight size={14} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <NewsSection />
+
+      {/* O que é a Statecraft */}
+      <section className="py-16 border-t border-white/[0.04]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="text-xs font-semibold text-red-500 uppercase tracking-widest mb-4">
+                O que fazemos
+              </div>
+              <h2 className="text-3xl font-black text-white mb-5 leading-snug">
+                Threat intelligence acessível para times de segurança
+              </h2>
+              <p className="text-[#A1A1AA] text-sm leading-relaxed mb-4">
+                A Statecraft agrega inteligência de ameaças de fontes abertas e especializadas:
+                CISA KEV, OTX AlienVault, NVD e outros feeds globais, organizando tudo em briefings
+                legíveis, com contexto técnico e recomendações acionáveis.
+              </p>
+              <p className="text-[#A1A1AA] text-sm leading-relaxed mb-6">
+                Cada briefing inclui IOCs, técnicas MITRE ATT&CK, scores de severidade e links diretos
+                para as fontes primárias, para que analistas possam investigar sem perder tempo rastreando
+                fontes manualmente.
+              </p>
+              <Link
+                href="/sobre"
+                className="inline-flex items-center gap-1 text-sm text-red-500 hover:text-red-400 font-medium transition-colors"
+              >
+                Saiba mais sobre a Statecraft <ArrowRight size={14} />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { icon: Shield, title: "Fontes verificadas", desc: "CISA KEV, OTX, NVD e feeds globais atualizados continuamente." },
+                { icon: Shield, title: "Briefings em PT-BR", desc: "Conteúdo técnico em português, sem necessidade de tradução manual." },
+                { icon: Shield, title: "IOCs estruturados", desc: "IPs, domínios, hashes e URLs prontos para importar no seu SIEM." },
+                { icon: Shield, title: "MITRE ATT&CK", desc: "Técnicas mapeadas para que você saiba exatamente onde defender." },
+              ].map((item, i) => {
+                const Icon = item.icon;
+                return (
+                  <div key={i} className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-5 hover:border-red-600/20 transition-colors">
+                    <div className="w-8 h-8 rounded-lg bg-red-600/10 border border-red-600/20 flex items-center justify-center mb-3">
+                      <Icon size={15} className="text-red-500" />
+                    </div>
+                    <h3 className="text-sm font-bold text-white mb-1">{item.title}</h3>
+                    <p className="text-xs text-[#A1A1AA] leading-relaxed">{item.desc}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }

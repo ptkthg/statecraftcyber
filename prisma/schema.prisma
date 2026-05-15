@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Briefing {
+  id                String     @id @default(cuid())
+  title             String
+  slug              String     @unique
+  summary           String     @db.Text
+  content           String     @db.Text
+  severity          Severity
+  category          String
+  tags              String[]
+  affectedSectors   String[]
+  affectedRegions   String[]
+  sourceName        String
+  sourceUrl         String
+  sourcePublishedAt DateTime?
+  iocs              Json       @default("[]")
+  cves              String[]
+  mitreTechniques   String[]
+  epssScore         Float?
+  cvssScore         Float?
+  confidence        Confidence
+  status            Status     @default(draft)
+  contentHash       String     @unique
+  readingTime       Int        @default(5)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([status, severity])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([category])
+}
+
+model NewsCache {
+  slug        String   @id
+  title       String
+  summary     String   @db.Text
+  content     String   @db.Text
+  source      String
+  originalUrl String
+  enrichedAt  DateTime @default(now())
+}
+
+model CronLog {
+  id               String   @id @default(cuid())
+  runAt            DateTime @default(now())
+  success          Boolean
+  briefingsCreated Int      @default(0)
+  errors           String[]
+  sources          String[]
+  durationMs       Int      @default(0)
+}
+
+enum Severity {
+  critical
+  high
+  medium
+  low
+}
+
+enum Confidence {
+  high
+  medium
+  low
+}
+
+enum Status {
+  draft
+  published
+}

@@ -1,0 +1,350 @@
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { ExternalLink, Search, X, RefreshCw, ShieldAlert, AlertTriangle, Clock } from "lucide-react";
+import type { CveEntry, VulnType } from "@/app/api/cves/route";
+
+interface ApiResponse {
+  cves: CveEntry[];
+  total: number;
+  updatedAt: string;
+}
+
+const VULN_TYPES: VulnType[] = [
+  "Execução de Código", "Injeção", "Estouro de Buffer", "Autenticação",
+  "Exposição de Dados", "Travessia de Caminho", "Negação de Serviço",
+  "Escalada de Privilégio", "Criptografia", "Outro",
+];
+
+const VULN_TYPE_COLOR: Record<VulnType, string> = {
+  "Execução de Código":    "text-red-400 bg-red-600/10 border-red-600/20",
+  "Injeção":               "text-orange-400 bg-orange-600/10 border-orange-600/20",
+  "Estouro de Buffer":     "text-rose-400 bg-rose-600/10 border-rose-600/20",
+  "Autenticação":          "text-yellow-400 bg-yellow-600/10 border-yellow-600/20",
+  "Exposição de Dados":    "text-blue-400 bg-blue-600/10 border-blue-600/20",
+  "Travessia de Caminho":  "text-cyan-400 bg-cyan-600/10 border-cyan-600/20",
+  "Negação de Serviço":    "text-purple-400 bg-purple-600/10 border-purple-600/20",
+  "Escalada de Privilégio":"text-amber-400 bg-amber-600/10 border-amber-600/20",
+  "Criptografia":          "text-indigo-400 bg-indigo-600/10 border-indigo-600/20",
+  "Outro":                 "text-[#666] bg-white/[0.04] border-white/[0.08]",
+};
+
+const SEV_CONFIG = {
+  CRITICAL: { label: "Crítico",  cls: "text-red-400 bg-red-600/10 border-red-600/25",    dot: "bg-red-500" },
+  HIGH:     { label: "Alto",     cls: "text-orange-400 bg-orange-600/10 border-orange-600/25", dot: "bg-orange-500" },
+  MEDIUM:   { label: "Médio",    cls: "text-yellow-400 bg-yellow-600/10 border-yellow-600/25", dot: "bg-yellow-500" },
+  LOW:      { label: "Baixo",    cls: "text-green-400 bg-green-600/10 border-green-600/25",    dot: "bg-green-500" },
+};
+
+function cvssColor(score: number | null): string {
+  if (!score) return "text-[#555]";
+  if (score >= 9) return "text-red-400";
+  if (score >= 7) return "text-orange-400";
+  if (score >= 4) return "text-yellow-400";
+  return "text-green-400";
+}
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const h = Math.floor(diff / 3_600_000);
+  if (h < 1) return "< 1h atrás";
+  if (h < 24) return `${h}h atrás`;
+  return `${Math.floor(h / 24)}d atrás`;
+}
+
+function CveCard({ cve }: { cve: CveEntry }) {
+  const sev = cve.severity ? SEV_CONFIG[cve.severity] : null;
+
+  return (
+    <div className="group bg-[#0D0D0D] border border-white/[0.06] hover:border-white/[0.12] rounded-xl p-5 transition-all">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <a
+            href={cve.nvdUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono font-bold text-sm text-red-400 hover:text-red-300 transition-colors"
+          >
+            {cve.id}
+          </a>
+          {sev && (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-semibold ${sev.cls}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${sev.dot}`} />
+              {sev.label}
+            </span>
+          )}
+          <span className={`px-2 py-0.5 rounded border text-[10px] font-semibold ${VULN_TYPE_COLOR[cve.vulnType]}`}>
+            {cve.vulnType}
+          </span>
+          {cve.inCisaKev && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-bold text-red-300 bg-red-900/20 border-red-700/40">
+              <ShieldAlert size={9} />
+              CISA KEV
+            </span>
+          )}
+        </div>
+        <span className="flex items-center gap-1 text-[10px] text-[#555]">
+          <Clock size={9} />
+          {timeAgo(cve.published)}
+        </span>
+      </div>
+
+      {/* Scores */}
+      <div className="flex items-center gap-4 mb-3">
+        <div className="text-center">
+          <div className={`text-2xl font-black font-mono leading-none ${cvssColor(cve.cvssScore)}`}>
+            {cve.cvssScore?.toFixed(1) ?? "N/A"}
+          </div>
+          <div className="text-[9px] text-[#555] uppercase tracking-wider mt-0.5">CVSS {cve.cvssVersion}</div>
+        </div>
+        {cve.epss !== null && (
+          <>
+            <div className="w-px h-8 bg-white/[0.06]" />
+            <div className="text-center">
+              <div className="text-lg font-black font-mono leading-none text-purple-400">
+                {(cve.epss * 100).toFixed(1)}%
+              </div>
+              <div className="text-[9px] text-[#555] uppercase tracking-wider mt-0.5">EPSS</div>
+            </div>
+          </>
+        )}
+        {cve.epssPercentile !== null && (
+          <div className="text-[10px] text-[#555]">
+            Percentil {Math.round(cve.epssPercentile * 100)}°
+          </div>
+        )}
+      </div>
+
+      {/* Explicação simples do tipo */}
+      {cve.vulnType !== "Outro" && (
+        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-white/[0.025] border border-white/[0.05] mb-3">
+          <div className="min-w-0">
+            <span className="text-[9px] font-semibold text-[#555] uppercase tracking-wider">
+              {cve.cweId && `${cve.cweId} · `}O que é
+            </span>
+            <p className="text-[11px] text-[#888] leading-relaxed mt-0.5">{cve.vulnExplanation}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Descrição técnica */}
+      <p className="text-xs text-[#A1A1AA] leading-relaxed mb-3 line-clamp-3">
+        {cve.description || "Sem descrição disponível."}
+      </p>
+
+      {/* Produtos afetados */}
+      {cve.affectedProducts.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-3">
+          {cve.affectedProducts.map((p) => (
+            <span key={p} className="px-1.5 py-0.5 rounded text-[9px] text-[#666] bg-white/[0.04] border border-white/[0.06]">
+              {p}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-3 border-t border-white/[0.04]">
+        <span className="text-[10px] text-[#444]">
+          Modificado: {timeAgo(cve.lastModified)}
+        </span>
+        <a
+          href={cve.nvdUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[10px] text-[#555] hover:text-red-400 transition-colors"
+        >
+          Ver no NVD <ExternalLink size={9} />
+        </a>
+      </div>
+    </div>
+  );
+}
+
+export default function CvesPage() {
+  const [data, setData] = useState<ApiResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
+  const [severity, setSeverity] = useState<"" | "CRITICAL" | "HIGH" | "MEDIUM">("");
+  const [vulnType, setVulnType] = useState<VulnType | "">("");
+  const [kevOnly, setKevOnly] = useState(false);
+
+  const load = async (refresh = false) => {
+    if (refresh) setRefreshing(true); else setLoading(true);
+    try {
+      const res = await fetch("/api/cves");
+      if (res.ok) setData(await res.json());
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const filtered = useMemo(() => {
+    return (data?.cves ?? []).filter((c) => {
+      if (severity && c.severity !== severity) return false;
+      if (vulnType && c.vulnType !== vulnType) return false;
+      if (kevOnly && !c.inCisaKev) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        if (!c.id.toLowerCase().includes(q) && !c.description.toLowerCase().includes(q) &&
+            !c.affectedProducts.some((p) => p.toLowerCase().includes(q))) return false;
+      }
+      return true;
+    });
+  }, [data, severity, vulnType, kevOnly, search]);
+
+  const counts = useMemo(() => ({
+    CRITICAL: data?.cves.filter((c) => c.severity === "CRITICAL").length ?? 0,
+    HIGH:     data?.cves.filter((c) => c.severity === "HIGH").length ?? 0,
+    MEDIUM:   data?.cves.filter((c) => c.severity === "MEDIUM").length ?? 0,
+    kev:      data?.cves.filter((c) => c.inCisaKev).length ?? 0,
+  }), [data]);
+
+  return (
+    <main className="min-h-screen bg-[#050505] pt-16">
+      {/* Header */}
+      <section className="relative border-b border-white/[0.04] bg-[#050505]">
+        <div className="absolute inset-0 bg-grid opacity-20" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-red-600 blink" />
+            <span className="text-xs font-semibold text-red-400 uppercase tracking-widest">Ao Vivo</span>
+          </div>
+          <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
+            <div>
+              <h1 className="text-4xl md:text-5xl font-black text-white mb-2">CVEs</h1>
+              <p className="text-[#A1A1AA] text-sm max-w-xl leading-relaxed">
+                Vulnerabilidades publicadas nos últimos 7 dias com CVSS e EPSS. Entradas marcadas com{" "}
+                <span className="text-red-400 font-semibold">CISA KEV</span> têm exploração ativa confirmada.
+              </p>
+            </div>
+            <button
+              onClick={() => load(true)}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-[#A1A1AA] hover:text-white border border-white/[0.08] hover:border-white/[0.16] rounded-lg transition-all"
+            >
+              <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+              Atualizar
+            </button>
+          </div>
+
+          {/* Search */}
+          <div className="relative max-w-xl">
+            <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por CVE-ID, produto ou palavra-chave..."
+              className="w-full bg-[#0D0D0D] border border-white/[0.08] focus:border-red-600/40 rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder-[#444] outline-none transition-colors"
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#555] hover:text-[#A1A1AA]">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats + filtros */}
+        {data && !loading && (
+          <>
+            <div className="flex flex-wrap items-center gap-3 mb-4 text-xs text-[#555]">
+              <AlertTriangle size={11} className="text-red-500" />
+              <span><span className="font-mono font-bold text-white">{filtered.length}</span> vulnerabilidades</span>
+              {data.updatedAt && (
+                <span className="text-[#444]">· Atualizado {timeAgo(data.updatedAt)}</span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-8">
+              {/* Severity filters */}
+              {([["", "Todas"], ["CRITICAL", `Crítico (${counts.CRITICAL})`], ["HIGH", `Alto (${counts.HIGH})`], ["MEDIUM", `Médio (${counts.MEDIUM})`]] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setSeverity(val as typeof severity)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                    severity === val
+                      ? "bg-red-600/15 border-red-600/30 text-red-400"
+                      : "bg-[#0D0D0D] border-white/[0.06] text-[#666] hover:text-[#A1A1AA] hover:border-white/[0.12]"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+              <div className="w-px bg-white/[0.06] self-stretch mx-1 hidden sm:block" />
+              {/* Filtro por tipo */}
+              <select
+                value={vulnType}
+                onChange={(e) => setVulnType(e.target.value as VulnType | "")}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg border bg-[#0D0D0D] border-white/[0.06] text-[#666] hover:border-white/[0.12] outline-none cursor-pointer transition-all"
+              >
+                <option value="">Todos os tipos</option>
+                {VULN_TYPES.filter((t) => (data?.cves ?? []).some((c) => c.vulnType === t)).map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              <div className="w-px bg-white/[0.06] self-stretch mx-1 hidden sm:block" />
+              {/* KEV toggle */}
+              <button
+                onClick={() => setKevOnly(!kevOnly)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                  kevOnly
+                    ? "bg-red-900/20 border-red-700/40 text-red-300"
+                    : "bg-[#0D0D0D] border-white/[0.06] text-[#666] hover:text-[#A1A1AA] hover:border-white/[0.12]"
+                }`}
+              >
+                <ShieldAlert size={11} />
+                CISA KEV ({counts.kev})
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Loading */}
+        {loading && (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl h-52 animate-pulse" />
+            ))}
+          </div>
+        )}
+
+        {/* Resultados */}
+        {!loading && filtered.length === 0 && (
+          <div className="text-center py-20 text-[#555] text-sm">
+            {search || severity || kevOnly ? "Nenhum CVE encontrado com esses filtros." : "Nenhum CVE disponível no momento."}
+          </div>
+        )}
+
+        {!loading && filtered.length > 0 && (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filtered.map((cve) => <CveCard key={cve.id} cve={cve} />)}
+          </div>
+        )}
+
+        {/* Link para NVD */}
+        {!loading && (
+          <div className="mt-10 text-center">
+            <a
+              href="https://nvd.nist.gov/vuln/search"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-[#555] hover:text-[#A1A1AA] transition-colors"
+            >
+              Base completa no NVD/NIST <ExternalLink size={10} />
+            </a>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
