@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Statecraft Cyber Intelligence
 
-## Getting Started
+Plataforma de threat intelligence em português, construída do zero como projeto pessoal de Blue Team. Agrega dados de fontes abertas globais e os transforma em briefings técnicos, notícias classificadas, CVEs enriquecidos e IOCs estruturados — tudo em PT-BR, atualizado continuamente.
 
-First, run the development server:
+**Site:** [statecraftcyber.vercel.app](https://statecraftcyber.vercel.app)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## O que a plataforma oferece
+
+- **Threat Briefings** — fichas técnicas geradas por IA (Groq / LLaMA 3.3 70B) a cada hora, com severidade, IOCs, CVEs e recomendações diretas para o Blue Team
+- **CVEs** — vulnerabilidades das últimas 72h com CVSS, EPSS, CISA KEV e classificação por tipo (Execução de Código, Injeção, Estouro de Buffer etc.)
+- **Notícias** — 19 feeds RSS de fontes globais (CISA, Krebs, The Hacker News, CERT.br, SANS ISC e outras), classificadas por tipo de ameaça
+- **IOC Search** — busca de indicadores de comprometimento com lookup em fontes OSINT
+- **Sobre** — contexto técnico da plataforma e do pipeline de dados
+
+---
+
+## Stack
+
+| Camada | Tecnologia |
+|---|---|
+| Frontend / Backend | Next.js 15, TypeScript, Tailwind CSS |
+| Banco de dados | PostgreSQL + Prisma |
+| IA | Groq API (LLaMA 3.3 70B) |
+| Fontes de ameaça | NVD API, CISA KEV, OTX AlienVault, EPSS (FIRST.org) |
+| Feeds de notícias | 19 fontes RSS globais |
+| Deploy | Vercel (cron jobs para atualização automática) |
+
+---
+
+## Variáveis de ambiente
+
+Crie um arquivo `.env.local` na raiz com:
+
+```env
+DATABASE_URL=postgresql://usuario:senha@host:5432/statecraft
+GROQ_API_KEY=sua_chave_groq
+OTX_API_KEY=sua_chave_otx
+NVD_API_KEY=sua_chave_nvd
+CRON_SECRET=valor_secreto_para_proteger_o_cron
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Rodando localmente
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npx prisma migrate dev
+npm run dev
+```
 
-## Learn More
+Acesse [http://localhost:3000](http://localhost:3000).
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Desenvolvido por [Patrick Santos](https://portfolioptk.vercel.app) — Analista de Segurança, Blue Team.
