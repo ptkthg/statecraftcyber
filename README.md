@@ -29,17 +29,6 @@ Plataforma de threat intelligence em português, construída do zero como projet
 
 ---
 
-## Variáveis de ambiente
-
-Crie um arquivo `.env.local` na raiz com:
-
-```env
-DATABASE_URL=postgresql://usuario:senha@host:5432/statecraft
-GROQ_API_KEY=sua_chave_groq
-OTX_API_KEY=sua_chave_otx
-NVD_API_KEY=sua_chave_nvd
-CRON_SECRET=valor_secreto_para_proteger_o_cron
-```
 
 ---
 
