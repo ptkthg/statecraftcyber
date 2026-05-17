@@ -18,7 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }),
   ]);
 
-  const staticRoutes = ["/", "/threat-briefings", "/noticias", "/cves", "/iocs", "/sobre"].map(
+  const staticRoutes = ["/", "/threat-briefings", "/noticias", "/cves", "/iocs", "/sobre", "/metodologia"].map(
     (r) => ({
       url: `${base}${r}`,
       lastModified: new Date(),

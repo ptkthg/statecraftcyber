@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { EnrichedIoc } from "@/lib/types";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    req.headers.get("x-real-ip") ??
+    "unknown";
+
+  // 20 requests per minute per IP
+  const { allowed, retryAfterMs } = checkRateLimit(`ioc-export:${ip}`, 20, 60 * 1000);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Rate limit excedido. Tente novamente em breve." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+      }
+    );
+  }
+
   try {
     const { prisma } = await import("@/lib/prisma");
     const { searchParams } = req.nextUrl;
