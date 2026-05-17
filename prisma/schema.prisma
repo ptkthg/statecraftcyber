@@ -68,6 +68,29 @@ model NewsCache {
   enrichedAt  DateTime @default(now())
 }
 
+model CveCache {
+  id               String   @id
+  published        String
+  lastModified     String
+  description      String   @db.Text
+  cvssScore        Float?
+  cvssVersion      String   @default("")
+  severity         String?
+  epss             Float?
+  epssPercentile   Float?
+  inCisaKev        Boolean  @default(false)
+  affectedProducts String[]
+  nvdUrl           String
+  vulnType         String
+  cweId            String   @default("")
+  vulnExplanation  String
+  fetchedAt        DateTime @default(now())
+
+  @@index([severity])
+  @@index([inCisaKev])
+  @@index([fetchedAt])
+}
+
 model CronLog {
   id               String   @id @default(cuid())
   runAt            DateTime @default(now())

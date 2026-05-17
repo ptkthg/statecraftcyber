@@ -162,7 +162,17 @@ async function fetchEpss(cveIds: string[]): Promise<Record<string, { score: numb
   }
 }
 
-export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; updatedAt: string }> {
+function sortEntries(entries: CveEntry[]): CveEntry[] {
+  return entries.sort((a, b) => {
+    if (a.inCisaKev !== b.inCisaKev) return a.inCisaKev ? -1 : 1;
+    const sevOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3, null: 4 };
+    const sd = (sevOrder[a.severity ?? "null"] ?? 4) - (sevOrder[b.severity ?? "null"] ?? 4);
+    if (sd !== 0) return sd;
+    return (b.cvssScore ?? 0) - (a.cvssScore ?? 0);
+  });
+}
+
+async function fetchFromApis(): Promise<CveEntry[]> {
   const [vulns, kevIds] = await Promise.all([fetchNvd(7), fetchKevIds()]);
 
   const filtered = vulns.filter((v) => {
@@ -174,7 +184,7 @@ export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; up
   const cveIds = filtered.map((v) => v.cve.id);
   const epssMap = await fetchEpss(cveIds);
 
-  const entries: CveEntry[] = filtered.map((v) => {
+  return filtered.map((v) => {
     const { score, severity, version } = extractCvss(v.cve);
     const epss = epssMap[v.cve.id];
     const desc = v.cve.descriptions.find((d) => d.lang === "en")?.value ?? "";
@@ -194,14 +204,105 @@ export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; up
       ...extractVulnType(v.cve),
     };
   });
+}
 
-  entries.sort((a, b) => {
-    if (a.inCisaKev !== b.inCisaKev) return a.inCisaKev ? -1 : 1;
-    const sevOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3, null: 4 };
-    const sd = (sevOrder[a.severity ?? "null"] ?? 4) - (sevOrder[b.severity ?? "null"] ?? 4);
-    if (sd !== 0) return sd;
-    return (b.cvssScore ?? 0) - (a.cvssScore ?? 0);
-  });
+export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; updatedAt: string }> {
+  // ── 1. Try DB cache (fresh = fetched within last 6h) ─────────────────────
+  try {
+    const { prisma } = await import("../prisma");
+    const sixHoursAgo = new Date(Date.now() - 6 * 3_600_000);
 
-  return { cves: entries, total: entries.length, updatedAt: new Date().toISOString() };
+    const newest = await prisma.cveCache.findFirst({
+      where: { fetchedAt: { gte: sixHoursAgo } },
+      orderBy: { fetchedAt: "desc" },
+      select: { fetchedAt: true },
+    });
+
+    if (newest) {
+      const rows = await prisma.cveCache.findMany({
+        where: { fetchedAt: { gte: sixHoursAgo } },
+      });
+
+      if (rows.length > 0) {
+        const cves = sortEntries(
+          rows.map((r) => ({
+            id: r.id,
+            published: r.published,
+            lastModified: r.lastModified,
+            description: r.description,
+            cvssScore: r.cvssScore,
+            cvssVersion: r.cvssVersion,
+            severity: r.severity as CveEntry["severity"],
+            epss: r.epss,
+            epssPercentile: r.epssPercentile,
+            inCisaKev: r.inCisaKev,
+            affectedProducts: r.affectedProducts,
+            nvdUrl: r.nvdUrl,
+            vulnType: r.vulnType as VulnType,
+            cweId: r.cweId,
+            vulnExplanation: r.vulnExplanation,
+          }))
+        );
+        return { cves, total: cves.length, updatedAt: newest.fetchedAt.toISOString() };
+      }
+    }
+  } catch {
+    // DB unavailable — fall through to API fetch
+  }
+
+  // ── 2. Fetch fresh from APIs ──────────────────────────────────────────────
+  const entries = sortEntries(await fetchFromApis());
+  const now = new Date();
+
+  // ── 3. Persist to DB (non-blocking) ──────────────────────────────────────
+  (async () => {
+    try {
+      const { prisma } = await import("../prisma");
+      // Remove stale entries (older than 8h)
+      await prisma.cveCache.deleteMany({
+        where: { fetchedAt: { lt: new Date(Date.now() - 8 * 3_600_000) } },
+      });
+      for (const cve of entries) {
+        await prisma.cveCache.upsert({
+          where: { id: cve.id },
+          create: {
+            id: cve.id,
+            published: cve.published,
+            lastModified: cve.lastModified,
+            description: cve.description,
+            cvssScore: cve.cvssScore,
+            cvssVersion: cve.cvssVersion,
+            severity: cve.severity,
+            epss: cve.epss,
+            epssPercentile: cve.epssPercentile,
+            inCisaKev: cve.inCisaKev,
+            affectedProducts: cve.affectedProducts,
+            nvdUrl: cve.nvdUrl,
+            vulnType: cve.vulnType,
+            cweId: cve.cweId,
+            vulnExplanation: cve.vulnExplanation,
+            fetchedAt: now,
+          },
+          update: {
+            lastModified: cve.lastModified,
+            cvssScore: cve.cvssScore,
+            cvssVersion: cve.cvssVersion,
+            severity: cve.severity,
+            epss: cve.epss,
+            epssPercentile: cve.epssPercentile,
+            inCisaKev: cve.inCisaKev,
+            affectedProducts: cve.affectedProducts,
+            vulnType: cve.vulnType,
+            cweId: cve.cweId,
+            vulnExplanation: cve.vulnExplanation,
+            fetchedAt: now,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("[CveCache] Falha ao salvar:", (err as Error).message);
+    }
+  })().catch(() => {});
+
+  return { cves: entries, total: entries.length, updatedAt: now.toISOString() };
 }
