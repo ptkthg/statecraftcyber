@@ -1,9 +1,37 @@
 import Link from "next/link";
 import { ArrowRight, ChevronRight, Shield } from "lucide-react";
+import { unstable_cache } from "next/cache";
 import RadarMap from "@/components/radar/RadarMap";
 import BriefingCard from "@/components/threat/BriefingCard";
 import NewsSection from "@/components/news/NewsSection";
+import { fetchNewsArticles } from "@/lib/news-feeds";
 import type { Briefing } from "@/data/briefings";
+
+const getCachedHomeNews = unstable_cache(
+  async () => {
+    try {
+      const articles = await fetchNewsArticles(3);
+      try {
+        const { prisma } = await import("@/lib/prisma");
+        const slugs = articles.map((a) => a.slug);
+        const cached = await prisma.newsCache.findMany({
+          where: { slug: { in: slugs } },
+          select: { slug: true, title: true, summary: true },
+        });
+        const map = new Map(cached.map((c) => [c.slug, c]));
+        return articles
+          .map((a) => { const c = map.get(a.slug); return c ? { ...a, title: c.title, summary: c.summary } : a; })
+          .slice(0, 7);
+      } catch {
+        return articles.slice(0, 7);
+      }
+    } catch {
+      return [];
+    }
+  },
+  ["home-news"],
+  { revalidate: 120 }
+);
 
 async function getFeaturedBriefings(): Promise<Briefing[]> {
   try {
@@ -37,7 +65,10 @@ async function getFeaturedBriefings(): Promise<Briefing[]> {
 }
 
 export default async function HomePage() {
-  const featuredBriefings = await getFeaturedBriefings();
+  const [featuredBriefings, homeNews] = await Promise.all([
+    getFeaturedBriefings(),
+    getCachedHomeNews(),
+  ]);
 
   return (
     <main className="min-h-screen bg-[#050505]">
@@ -140,7 +171,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <NewsSection />
+      <NewsSection articles={homeNews} />
 
       {/* O que é a Statecraft */}
       <section className="py-16 border-t border-white/[0.04]">

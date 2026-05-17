@@ -21,6 +21,7 @@ model Briefing {
   sourceName        String
   sourceUrl         String
   sourcePublishedAt DateTime?
+  /// @deprecated Use the Ioc relation table instead. Kept for snapshot compatibility.
   iocs              Json       @default("[]")
   cves              String[]
   mitreTechniques   String[]

@@ -27,7 +27,7 @@ Plataforma de threat intelligence em português construída do zero como projeto
 | Sanitização | isomorphic-dompurify + marked |
 | Fontes de ameaça | NVD API, CISA KEV, OTX AlienVault, EPSS (FIRST.org) |
 | Feeds de notícias | 19 fontes RSS globais |
-| Deploy | Vercel + cron-job.org (scheduler externo para atualização horária) |
+| Deploy | Vercel (app) + cron-job.org (scheduler horário externo, plano Hobby) |
 
 ---
 
@@ -37,7 +37,8 @@ Plataforma de threat intelligence em português construída do zero como projeto
 Fontes externas (NVD, CISA KEV, OTX, RSS)
         │
         ▼
-  Cron Job (cron-job.org → Vercel) — executa a cada hora
+  cron-job.org → Vercel — executa a cada hora (Hobby plan)
+  vercel.json define o schedule para migração futura ao plano Pro
         │
         ├── Coleta notícias (RSS feeds) → NewsCache (PostgreSQL)
         │

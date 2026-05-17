@@ -1,6 +1,3 @@
-"use client";
-
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight, Clock, Flame, Globe, MapPin } from "lucide-react";
 import type { NewsArticle } from "@/lib/news-feeds";
@@ -62,33 +59,11 @@ function NewsCard({ article, featured = false }: { article: NewsArticle; feature
   );
 }
 
-export default function NewsSection() {
-  const [articles, setArticles] = useState<NewsArticle[]>([]);
-  const [loading, setLoading] = useState(true);
+interface Props {
+  articles: NewsArticle[];
+}
 
-  useEffect(() => {
-    fetch("/api/noticias")
-      .then((r) => r.json())
-      .then((d) => setArticles(d.articles?.slice(0, 7) ?? []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return (
-      <section className="py-16 border-t border-white/[0.04]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="h-6 w-32 bg-white/[0.04] rounded animate-pulse mb-8" />
-          <div className="grid md:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl h-36 animate-pulse" />
-            ))}
-          </div>
-        </div>
-      </section>
-    );
-  }
-
+export default function NewsSection({ articles }: Props) {
   if (articles.length === 0) return null;
 
   const [top, ...rest] = articles;
@@ -111,21 +86,15 @@ export default function NewsSection() {
         </div>
 
         <div className="grid md:grid-cols-[2fr_1fr_1fr] gap-4 mb-4">
-          {/* Destaque principal */}
           <NewsCard article={top} featured />
-
-          {/* Dois menores ao lado */}
           <div className="grid grid-rows-2 gap-4">
             {side.slice(0, 2).map((a) => <NewsCard key={a.slug} article={a} />)}
           </div>
-
-          {/* Mais dois */}
           <div className="grid grid-rows-2 gap-4">
             {side.slice(2, 4).map((a) => <NewsCard key={a.slug} article={a} />)}
           </div>
         </div>
 
-        {/* Fila de notícias restantes */}
         {side.slice(4).length > 0 && (
           <div className="grid md:grid-cols-3 gap-4">
             {side.slice(4).map((a) => <NewsCard key={a.slug} article={a} />)}
