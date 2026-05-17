@@ -81,6 +81,7 @@ async function enrichAndSave(entries: CveEntry[]): Promise<void> {
             ptBrDescription: r.ptBrDescription,
             mitigation: r.mitigation ?? null,
             aiPriority: r.aiPriority ?? null,
+            enrichedAt: new Date(),
           },
         });
       }
@@ -322,8 +323,8 @@ export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; up
         const cves = sortEntries(
           rows.map((r) => ({
             id: r.id,
-            published: r.published,
-            lastModified: r.lastModified,
+            published: r.published.toISOString(),
+            lastModified: r.lastModified.toISOString(),
             description: r.description,
             cvssScore: r.cvssScore,
             cvssVersion: r.cvssVersion,
@@ -369,8 +370,8 @@ export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; up
           where: { id: cve.id },
           create: {
             id: cve.id,
-            published: cve.published,
-            lastModified: cve.lastModified,
+            published: new Date(cve.published),
+            lastModified: new Date(cve.lastModified),
             description: cve.description,
             cvssScore: cve.cvssScore,
             cvssVersion: cve.cvssVersion,
@@ -386,7 +387,7 @@ export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; up
             fetchedAt: now,
           },
           update: {
-            lastModified: cve.lastModified,
+            lastModified: new Date(cve.lastModified),
             cvssScore: cve.cvssScore,
             cvssVersion: cve.cvssVersion,
             severity: cve.severity,

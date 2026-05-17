@@ -69,29 +69,31 @@ model NewsCache {
 }
 
 model CveCache {
-  id               String   @id
-  published        String
-  lastModified     String
-  description      String   @db.Text
+  id               String    @id
+  published        DateTime
+  lastModified     DateTime
+  description      String    @db.Text
   cvssScore        Float?
-  cvssVersion      String   @default("")
+  cvssVersion      String    @default("")
   severity         String?
   epss             Float?
   epssPercentile   Float?
-  inCisaKev        Boolean  @default(false)
+  inCisaKev        Boolean   @default(false)
   affectedProducts String[]
   nvdUrl           String
   vulnType         String
-  cweId            String   @default("")
+  cweId            String    @default("")
   vulnExplanation  String
-  fetchedAt        DateTime @default(now())
-  ptBrDescription  String?  @db.Text
-  mitigation       String?  @db.Text
+  fetchedAt        DateTime  @default(now())
+  ptBrDescription  String?   @db.Text
+  mitigation       String?   @db.Text
   aiPriority       String?
+  enrichedAt       DateTime?
 
   @@index([severity])
   @@index([inCisaKev])
   @@index([fetchedAt])
+  @@index([enrichedAt])
 }
 
 model CronLog {

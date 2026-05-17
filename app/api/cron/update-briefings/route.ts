@@ -24,9 +24,9 @@ async function handleCron(req: NextRequest) {
   // ── Autenticação ────────────────────────────────────────────────────────
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.get("authorization");
-  const providedSecret =
-    authHeader?.replace("Bearer ", "") ??
-    req.nextUrl.searchParams.get("secret");
+  const providedSecret = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : null;
 
   if (!cronSecret || providedSecret !== cronSecret) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
