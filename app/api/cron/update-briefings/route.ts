@@ -125,7 +125,6 @@ async function handleCron(req: NextRequest) {
             sourceName: briefing.sourceName,
             sourceUrl: briefing.sourceUrl,
             sourcePublishedAt: briefing.sourcePublishedAt,
-            iocs: briefing.iocs as object[],
             cves: briefing.cves,
             mitreTechniques: briefing.mitreTechniques,
             epssScore: briefing.epssScore,

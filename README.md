@@ -10,7 +10,7 @@ Plataforma de threat intelligence em português construída do zero como projeto
 
 - **Threat Briefings** — fichas técnicas geradas por IA (Groq / LLaMA 3.3 70B) a cada hora, com severidade, IOCs, CVEs e recomendações diretas para o Blue Team
 - **CVEs** — vulnerabilidades das últimas 72h com CVSS, EPSS, CISA KEV e classificação por tipo (Execução de Código, Injeção, Estouro de Buffer etc.)
-- **Notícias** — 19 feeds RSS de fontes globais (CISA, Krebs, The Hacker News, CERT.br, SANS ISC e outras), classificadas por tipo de ameaça
+- **Notícias** — 19 feeds RSS de fontes globais (CISA, Krebs, The Hacker News, CERT.br, SANS ISC e outras), classificadas por tipo de ameaça e região. Quando o usuário abre um artigo, a IA Statecraft enriquece o conteúdo sob demanda, gerando uma matéria jornalística completa em PT-BR. O resultado é cacheado em `NewsCache` para servir leituras subsequentes sem nova chamada ao LLM
 - **IOC Search** — busca de indicadores de comprometimento extraídos dos briefings, com suporte a IP, domínio, hash, URL e e-mail
 - **Health Endpoint** — `/api/health` para monitoramento de disponibilidade e integridade do banco
 - **Sobre** — contexto técnico da plataforma e do pipeline de dados

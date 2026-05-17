@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
 
+// 'unsafe-inline' in script-src is required by Next.js App Router for hydration
+// inline scripts (__NEXT_DATA__, server action manifests). Migration path: adopt
+// Next.js experimental nonce support when stable, then remove 'unsafe-inline'.
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
