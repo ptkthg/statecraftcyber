@@ -27,89 +27,6 @@ interface ApiResponse {
   latestIocs: LiveIoc[];
 }
 
-// ── Mock fallback (usado quando o banco não está configurado) ──────────────
-
-const MOCK_BRIEFINGS: Briefing[] = [
-  {
-    id: "1",
-    slug: "fintr-phishing-brasil-2026",
-    title: "FINTR mira instituições financeiras no Brasil com novo vetor de phishing",
-    summary: "O grupo FINTR intensificou campanhas contra bancos e fintechs brasileiras utilizando páginas falsas de portais bancários com coleta avançada de credenciais e bypass de autenticação multifator via AiTM.",
-    severity: "critical",
-    category: "Phishing & Identidade",
-    tags: ["phishing", "aitm", "brasil", "financeiro"],
-    sourceName: "Statecraft Labs",
-    sourceUrl: "#",
-    cves: [],
-    iocs: [
-      { type: "ip", value: "185.220.101.45", confidence: "high" },
-      { type: "domain", value: "phish-secure-banco[.]com", confidence: "high" },
-      { type: "hash", value: "7a3f9c2d4e...", confidence: "medium" },
-    ],
-    createdAt: new Date().toISOString(),
-    readingTime: 8,
-  },
-  {
-    id: "2",
-    slug: "unc3884-espionagem-pacifico",
-    title: "Operação de Espionagem UNC3884: Atividade Migratória para o Pacífico",
-    summary: "Mandiant reportou nova atividade do cluster UNC3884 com foco em infraestrutura crítica no Indo-Pacífico. Utilizam exploits de VPN e técnicas de living-off-the-land.",
-    severity: "high",
-    category: "APT & Espionagem",
-    tags: ["apt", "unc3884", "espionagem", "indo-pacifico"],
-    sourceName: "Google Mandiant",
-    sourceUrl: "#",
-    cves: ["CVE-2024-21893", "CVE-2024-21888"],
-    iocs: [],
-    createdAt: new Date(Date.now() - 3_600_000).toISOString(),
-    readingTime: 12,
-  },
-  {
-    id: "3",
-    slug: "qlin-ransomware-saude",
-    title: "Alerta: Ransomware Qlin move para o Setor de Saúde",
-    summary: "A operação Qlin expandiu seus alvos para hospitais e operadoras de saúde. Exigências médias de resgate: USD 2,4M. IOCs e TTPs documentados.",
-    severity: "critical",
-    category: "Ransomware",
-    tags: ["ransomware", "qlin", "saude"],
-    sourceName: "CrowdStrike Blog",
-    sourceUrl: "#",
-    cves: [],
-    iocs: [],
-    createdAt: new Date(Date.now() - 7_200_000).toISOString(),
-    readingTime: 7,
-  },
-  {
-    id: "4",
-    slug: "cve-2026-1337-fortinet",
-    title: "CVE-2026-1337: Exploração Ativa em Dispositivos Fortinet",
-    summary: "Vulnerabilidade de execução remota de código sem autenticação afeta FortiOS 7.x. CVSS 9.8. Incluída no catálogo CISA KEV com prazo de remediação de 3 dias.",
-    severity: "critical",
-    category: "Vulnerabilidade",
-    tags: ["cve", "fortinet", "rce", "cisa-kev"],
-    sourceName: "CISA KEV",
-    sourceUrl: "#",
-    cves: ["CVE-2026-1337"],
-    iocs: [],
-    createdAt: new Date(Date.now() - 10_800_000).toISOString(),
-    readingTime: 5,
-  },
-];
-
-const MOCK_TRENDING = [
-  { title: "Ransomware Qlin", delta: "+34%" },
-  { title: "FINTR Phishing Kit", delta: "+28%" },
-  { title: "DarkSky RAT v3", delta: "+19%" },
-  { title: "CVE-2026-1337", delta: "+45%" },
-  { title: "Supply Chain npm", delta: "+12%" },
-];
-
-const MOCK_IOCS = [
-  { type: "ip", value: "185.220.101.45", label: "C2" },
-  { type: "domain", value: "update-win32[.]net", label: "Malware Distribution" },
-  { type: "hash", value: "a3f7c9d2e4b8...", label: "Payload" },
-];
-
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 const SEVERITY_STYLES: Record<string, string> = {
@@ -253,25 +170,27 @@ const CATEGORY_FILTERS = [
 export default function ThreatBriefingsPage() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("Todos");
-  const [briefings, setBriefings] = useState<Briefing[]>(MOCK_BRIEFINGS);
+  const [briefings, setBriefings] = useState<Briefing[]>([]);
   const [trending, setTrending] = useState<Briefing[]>([]);
   const [latestIocs, setLatestIocs] = useState<LiveIoc[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [usingLive, setUsingLive] = useState(false);
   const [visibleCount, setVisibleCount] = useState(6);
 
   useEffect(() => {
     fetch("/api/briefings")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: ApiResponse | null) => {
-        if (data?.briefings?.length) {
-          setBriefings(data.briefings);
-          if (data.trending?.length) setTrending(data.trending);
-          if (data.latestIocs?.length) setLatestIocs(data.latestIocs);
-          setUsingLive(true);
-        }
+      .then((r) => {
+        if (!r.ok) throw new Error("Erro na resposta");
+        return r.json();
       })
-      .catch(() => {})
+      .then((data: ApiResponse) => {
+        setBriefings(data.briefings ?? []);
+        if (data.trending?.length) setTrending(data.trending);
+        if (data.latestIocs?.length) setLatestIocs(data.latestIocs);
+        setUsingLive(true);
+      })
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -414,8 +333,32 @@ export default function ThreatBriefingsPage() {
               </div>
             </div>
 
+            {/* Loading skeleton */}
+            {loading && (
+              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-5 animate-pulse">
+                    <div className="h-3 bg-white/[0.06] rounded w-1/3 mb-3" />
+                    <div className="h-4 bg-white/[0.06] rounded w-full mb-2" />
+                    <div className="h-4 bg-white/[0.06] rounded w-4/5 mb-4" />
+                    <div className="h-3 bg-white/[0.04] rounded w-full mb-1" />
+                    <div className="h-3 bg-white/[0.04] rounded w-3/4" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Error state */}
+            {!loading && error && (
+              <div className="text-center py-20 border border-red-600/15 rounded-xl bg-red-600/5">
+                <AlertTriangle size={32} className="text-red-500 mx-auto mb-3" />
+                <div className="text-sm font-bold text-white mb-1">Erro ao carregar briefings</div>
+                <div className="text-xs text-[#666]">Não foi possível conectar ao servidor. Tente novamente mais tarde.</div>
+              </div>
+            )}
+
             {/* Featured */}
-            {!search && activeFilter === "Todos" && featured && (
+            {!loading && !error && !search && activeFilter === "Todos" && featured && (
               <div className="mb-8">
                 <div className="text-xs font-bold text-red-500 uppercase tracking-widest mb-3">
                   Briefing em Destaque
@@ -425,32 +368,40 @@ export default function ThreatBriefingsPage() {
             )}
 
             {/* Grid */}
-            <div>
-              <div className="text-xs font-bold text-[#666] uppercase tracking-widest mb-4 flex items-center gap-2">
-                Briefings Recentes
-                {loading && <span className="text-[#444] normal-case font-normal text-[10px]">atualizando...</span>}
-              </div>
-              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filtered.slice(0, visibleCount).map((b) => (
-                  <BriefingCard key={b.id} briefing={b} />
-                ))}
-              </div>
-              {filtered.length === 0 && (
-                <div className="text-center py-16 text-[#666] text-sm">
-                  Nenhum briefing encontrado.
+            {!loading && !error && (
+              <div>
+                <div className="text-xs font-bold text-[#666] uppercase tracking-widest mb-4 flex items-center gap-2">
+                  Briefings Recentes
                 </div>
-              )}
-              {filtered.length > visibleCount && (
-                <div className="mt-8 flex justify-center">
-                  <button
-                    onClick={() => setVisibleCount((v) => v + 6)}
-                    className="px-6 py-2.5 bg-[#0D0D0D] border border-white/[0.08] hover:border-red-600/30 text-sm text-[#A1A1AA] hover:text-white rounded-lg transition-all"
-                  >
-                    Carregar mais ({filtered.length - visibleCount} restantes)
-                  </button>
+                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filtered.slice(0, visibleCount).map((b) => (
+                    <BriefingCard key={b.id} briefing={b} />
+                  ))}
                 </div>
-              )}
-            </div>
+                {filtered.length === 0 && briefings.length === 0 && (
+                  <div className="text-center py-20 border border-white/[0.06] rounded-xl">
+                    <Shield size={32} className="text-[#333] mx-auto mb-3" />
+                    <div className="text-sm font-bold text-[#666] mb-1">Nenhum briefing publicado</div>
+                    <div className="text-xs text-[#444]">Os briefings são gerados automaticamente a cada hora.</div>
+                  </div>
+                )}
+                {filtered.length === 0 && briefings.length > 0 && (
+                  <div className="text-center py-16 text-[#666] text-sm">
+                    Nenhum briefing corresponde ao filtro selecionado.
+                  </div>
+                )}
+                {filtered.length > visibleCount && (
+                  <div className="mt-8 flex justify-center">
+                    <button
+                      onClick={() => setVisibleCount((v) => v + 6)}
+                      className="px-6 py-2.5 bg-[#0D0D0D] border border-white/[0.08] hover:border-red-600/30 text-sm text-[#A1A1AA] hover:text-white rounded-lg transition-all"
+                    >
+                      Carregar mais ({filtered.length - visibleCount} restantes)
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* ── Sidebar ────────────────────────────────────────────────── */}
@@ -459,18 +410,14 @@ export default function ThreatBriefingsPage() {
             <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-xs font-bold text-white uppercase tracking-wider">Ameaças em Alta</span>
-                {usingLive ? (
+                {usingLive && (
                   <span className="flex items-center gap-1 text-[10px] text-green-400 bg-green-600/10 border border-green-600/20 px-2 py-0.5 rounded-full">
                     <Wifi size={8} /> AO VIVO
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-[10px] text-red-400 bg-red-600/10 border border-red-600/20 px-2 py-0.5 rounded-full">
-                    <AlertTriangle size={8} /> DEMO
                   </span>
                 )}
               </div>
               <div className="space-y-1">
-                {usingLive && trending.length > 0 ? (
+                {trending.length > 0 ? (
                   trending.map((b) => (
                     <Link
                       key={b.id}
@@ -489,15 +436,9 @@ export default function ThreatBriefingsPage() {
                     </Link>
                   ))
                 ) : (
-                  MOCK_TRENDING.map((t, i) => (
-                    <div key={i} className="flex items-center justify-between py-2 px-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-1.5 h-1.5 rounded-full bg-red-600 flex-shrink-0" />
-                        <span className="text-xs text-[#A1A1AA] truncate">{t.title}</span>
-                      </div>
-                      <span className="text-[10px] font-bold text-red-400 flex-shrink-0 ml-2">{t.delta}</span>
-                    </div>
-                  ))
+                  <div className="text-xs text-[#444] py-4 text-center">
+                    {loading ? "Carregando..." : "Nenhuma ameaça em alta no momento."}
+                  </div>
                 )}
               </div>
             </div>
@@ -513,26 +454,32 @@ export default function ThreatBriefingsPage() {
                 )}
               </div>
               <div className="space-y-3">
-                {(usingLive && latestIocs.length > 0 ? latestIocs : MOCK_IOCS.map(i => ({ ...i, confidence: i.label, briefingSlug: "", sourceName: "", severity: "medium" }))).map((ioc, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <span className="text-[9px] font-bold bg-red-600/10 border border-red-600/20 text-red-400 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 font-mono uppercase">
-                      {ioc.type}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-mono text-[10px] text-[#A1A1AA] truncate">{ioc.value}</div>
-                      {"briefingSlug" in ioc && ioc.briefingSlug ? (
-                        <Link
-                          href={`/threat-briefings/${ioc.briefingSlug}`}
-                          className="text-[9px] text-red-500 hover:text-red-400 transition-colors flex items-center gap-0.5 mt-0.5"
-                        >
-                          {ioc.sourceName} <ArrowRight size={8} />
-                        </Link>
-                      ) : (
-                        <div className="text-[9px] text-[#555]">{"label" in ioc ? (ioc as {label: string}).label : ioc.confidence}</div>
-                      )}
+                {latestIocs.length > 0 ? (
+                  latestIocs.map((ioc, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="text-[9px] font-bold bg-red-600/10 border border-red-600/20 text-red-400 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 font-mono uppercase">
+                        {ioc.type}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono text-[10px] text-[#A1A1AA] truncate">{ioc.value}</div>
+                        {ioc.briefingSlug ? (
+                          <Link
+                            href={`/threat-briefings/${ioc.briefingSlug}`}
+                            className="text-[9px] text-red-500 hover:text-red-400 transition-colors flex items-center gap-0.5 mt-0.5"
+                          >
+                            {ioc.sourceName} <ArrowRight size={8} />
+                          </Link>
+                        ) : (
+                          <div className="text-[9px] text-[#555]">{ioc.confidence}</div>
+                        )}
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-[#444] py-4 text-center">
+                    {loading ? "Carregando..." : "Nenhum IOC disponível."}
                   </div>
-                ))}
+                )}
               </div>
             </div>
 

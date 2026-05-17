@@ -32,10 +32,30 @@ model Briefing {
   readingTime       Int        @default(5)
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
+  iocsRel           Ioc[]
 
   @@index([status, severity])
   @@index([status, createdAt(sort: Desc)])
   @@index([category])
+}
+
+model Ioc {
+  id          String     @id @default(cuid())
+  type        String
+  value       String
+  normalized  String
+  confidence  Confidence
+  sourceName  String?
+  briefingId  String
+  briefing    Briefing   @relation(fields: [briefingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+
+  @@index([type])
+  @@index([normalized])
+  @@index([confidence])
+  @@index([createdAt])
+  @@index([briefingId])
+  @@unique([type, normalized, briefingId])
 }
 
 model NewsCache {

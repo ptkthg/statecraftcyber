@@ -28,11 +28,16 @@ const lora = Lora({
 
 export const metadata: Metadata = {
   title: {
-    default: "Statecraft",
-    template: "%s | Statecraft",
+    default: "Statecraft Cyber",
+    template: "%s | Statecraft Cyber",
   },
   description:
-    "Inteligência cibernética em tempo real e SIEM de próxima geração para detectar, investigar e neutralizar ameaças.",
+    "Plataforma de threat intelligence em PT-BR. CVEs, briefings operacionais, IOCs e notícias de segurança atualizados em tempo real.",
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    siteName: "Statecraft Cyber",
+  },
 };
 
 export default function RootLayout({

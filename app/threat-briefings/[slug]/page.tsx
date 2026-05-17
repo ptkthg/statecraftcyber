@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowLeft, Shield, ExternalLink, Clock, AlertTriangle,
   Tag, Globe, Building2, ChevronRight
 } from "lucide-react";
 import type { Ioc } from "@/lib/types";
+import { renderSafeMarkdown } from "@/lib/security/sanitize-markdown";
 
 interface Briefing {
   id: string;
@@ -76,28 +78,6 @@ function formatDate(dateStr: string): string {
   });
 }
 
-/** Renderiza o conteúdo Markdown como HTML simples (sem lib externa). */
-function renderMarkdown(md: string): string {
-  return md
-    // Headers
-    .replace(/^## (.+)$/gm, '<h2 class="text-lg font-black text-white mt-8 mb-4">$1</h2>')
-    .replace(/^### (.+)$/gm, '<h3 class="text-base font-bold text-white mt-6 mb-3">$1</h3>')
-    // Bold
-    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')
-    // Code
-    .replace(/`([^`]+)`/g, '<code class="font-mono text-[11px] bg-[#0A0A0A] border border-white/[0.08] px-1.5 py-0.5 rounded text-[#A1A1AA]">$1</code>')
-    // Horizontal rule
-    .replace(/^---$/gm, '<hr class="border-white/[0.06] my-6" />')
-    // Bullet lists
-    .replace(/^- (.+)$/gm, '<li class="flex items-start gap-2 text-[#A1A1AA] text-sm leading-relaxed mb-1"><span class="text-red-500 mt-1 flex-shrink-0">›</span><span>$1</span></li>')
-    // Links
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-red-400 hover:text-red-300 underline underline-offset-2">$1</a>')
-    // Paragraphs (exclui tags de bloco, mas permite linhas com <strong> inline)
-    .replace(/^(?!<[h23li]|<hr|<ul)(.+)$/gm, '<p class="text-[#A1A1AA] text-sm leading-relaxed mb-3">$1</p>')
-    // Wrap lists
-    .replace(/(<li[^>]*>.*?<\/li>\n?)+/g, '<ul class="space-y-1 mb-4">$&</ul>');
-}
-
 // ── Data fetching ─────────────────────────────────────────────────────────
 
 async function getBriefing(slug: string): Promise<Briefing | null> {
@@ -117,6 +97,33 @@ async function getBriefing(slug: string): Promise<Briefing | null> {
   } catch {
     return null;
   }
+}
+
+// ── Metadata ──────────────────────────────────────────────────────────────
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const briefing = await getBriefing(slug);
+  if (!briefing) return { title: "Briefing não encontrado" };
+
+  const description = briefing.summary.replace(/[#*`_\[\]]/g, "").slice(0, 160);
+
+  return {
+    title: briefing.title,
+    description,
+    openGraph: {
+      title: briefing.title,
+      description,
+      type: "article",
+      locale: "pt_BR",
+      siteName: "Statecraft Cyber",
+      publishedTime: briefing.createdAt,
+    },
+  };
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────
@@ -215,7 +222,7 @@ export default async function BriefingPage({
               </div>
               <div
                 className="text-sm text-[#C0C0C0] leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: renderMarkdown(briefing.summary) }}
+                dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(briefing.summary) }}
               />
             </div>
 
@@ -251,7 +258,7 @@ export default async function BriefingPage({
             {/* Main content */}
             <div
               className="prose-like"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(briefing.content) }}
+              dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(briefing.content) }}
             />
 
             {/* CVEs Relacionadas */}

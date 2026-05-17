@@ -15,11 +15,12 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = req.nextUrl;
     const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 50);
-    const status = searchParams.get("status") ?? "published";
+    // Always force "published" — never expose drafts via public endpoint
+    const status = "published";
 
     const [briefings, latestIocsRaw] = await Promise.all([
       prisma.briefing.findMany({
-        where: { status: status as "published" | "draft" },
+        where: { status },
         orderBy: [{ severity: "desc" }, { createdAt: "desc" }],
         take: limit,
         select: {
