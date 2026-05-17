@@ -21,13 +21,13 @@ Plataforma de threat intelligence em português construída do zero como projeto
 
 | Camada | Tecnologia |
 |---|---|
-| Frontend / Backend | Next.js 15 (App Router), TypeScript, Tailwind CSS v4 |
+| Frontend / Backend | Next.js 16.2.6 (App Router), TypeScript, Tailwind CSS v4 |
 | Banco de dados | PostgreSQL (Neon) + Prisma 6 |
 | IA | Groq API (LLaMA 3.3 70B) |
 | Sanitização | isomorphic-dompurify + marked |
 | Fontes de ameaça | NVD API, CISA KEV, OTX AlienVault, EPSS (FIRST.org) |
 | Feeds de notícias | 19 fontes RSS globais |
-| Deploy | Vercel (cron jobs para atualização automática) |
+| Deploy | Vercel + cron-job.org (scheduler externo para atualização horária) |
 
 ---
 
@@ -37,7 +37,7 @@ Plataforma de threat intelligence em português construída do zero como projeto
 Fontes externas (NVD, CISA KEV, OTX, RSS)
         │
         ▼
-  Cron Job (Vercel) — executa a cada hora
+  Cron Job (cron-job.org → Vercel) — executa a cada hora
         │
         ├── Coleta notícias (RSS feeds) → NewsCache (PostgreSQL)
         │

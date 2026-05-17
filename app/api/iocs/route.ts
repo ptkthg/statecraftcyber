@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
       ]);
 
       const enriched: EnrichedIoc[] = results.map((ioc) => ({
-        type: ioc.type,
+        type: ioc.type as EnrichedIoc["type"],
         value: ioc.value,
         confidence: ioc.confidence,
         source: ioc.sourceName ?? undefined,

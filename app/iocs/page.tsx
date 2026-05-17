@@ -35,7 +35,7 @@ async function fetchInitialIocs(): Promise<{ results: EnrichedIoc[]; total: numb
       ]);
 
       const results: EnrichedIoc[] = rows.map((ioc) => ({
-        type: ioc.type,
+        type: ioc.type as EnrichedIoc["type"],
         value: ioc.value,
         confidence: ioc.confidence,
         source: ioc.sourceName ?? undefined,
