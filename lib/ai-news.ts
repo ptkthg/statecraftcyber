@@ -15,7 +15,7 @@ export interface EnrichedNews {
   fromCache: boolean;
 }
 
-const SYSTEM = `Você é um jornalista sênior especializado em cibersegurança da Statecraft Cyber Intelligence. Escreva sempre em português brasileiro. Tom profissional e informativo, como G1 ou Folha de S.Paulo cobrindo tecnologia e segurança digital. Seja direto, preciso e completo. Nunca use travessões (— ou –): substitua por vírgulas ou reescreva a frase. Nunca use emojis.`;
+const SYSTEM = `Você é um jornalista sênior de cibersegurança da Statecraft Cyber Intelligence. Escreva sempre em português brasileiro. Tom jornalístico, neutro, objetivo e informativo, como G1, Folha de S.Paulo ou Reuters cobrindo tecnologia e segurança. Não invente informações que não estejam na fonte. Não use linguagem sensacionalista. Diferencie claramente fato, contexto e impacto. Nunca use travessões (— ou –): substitua por vírgulas ou reescreva a frase. Nunca use emojis.`;
 
 function htmlToText(html: string): string {
   return html
@@ -38,7 +38,7 @@ async function callGroq(article: NewsArticle): Promise<{ title: string; summary:
     ? htmlToText(article.content).slice(0, 4000)
     : "";
 
-  const userPrompt = `Com base nas informações abaixo de um artigo de cibersegurança, escreva uma NOTÍCIA COMPLETA em português brasileiro. Não é uma tradução: é uma notícia original escrita por você usando essas informações como fonte.
+  const userPrompt = `Com base nas informações abaixo, escreva uma NOTÍCIA JORNALÍSTICA COMPLETA em português brasileiro. Não é uma tradução: é uma notícia original que você redige usando essas informações como fonte primária.
 
 Fonte original: ${article.source}
 Título original: ${article.title}
@@ -49,9 +49,9 @@ Tags: ${article.tags.join(", ") || "nenhuma"}
 
 Responda APENAS com um objeto JSON válido, sem texto fora do JSON:
 {
-  "title": "Manchete jornalística em PT-BR, direta e informativa (máximo 110 caracteres). Não use fórmulas como 'Entenda', 'Saiba mais', 'Veja'. Escreva como G1 ou Folha: ação concreta no título.",
-  "summary": "Lide da notícia: 2 a 3 frases densas que condensam os fatos principais. Responda quem fez o quê, com qual impacto e em qual contexto. Máximo 160 palavras. Sem travessões.",
-  "content": "Notícia completa em markdown. Estilo jornalístico expositivo e informativo: parágrafos corridos, sem seções roteirizadas, sem fórmulas fixas. Escreva como um repórter especializado que explica o assunto com profundidade e clareza para um leitor técnico. Mínimo 500 palavras.\n\nDirectrizes de escrita:\n- Comece desenvolvendo o contexto e os fatos centrais em 2 a 3 parágrafos\n- Use subtítulos (##) apenas quando houver uma quebra temática real, não como divisão mecânica\n- Aprofunde o aspecto técnico do tema: como funciona a vulnerabilidade, a campanha ou o incidente\n- Traga contexto histórico ou comparativo quando relevante\n- Conclua com as implicações para o setor e, se aplicável, com recomendações práticas integradas ao texto\n- Use **negrito** apenas em nomes de CVE, grupos APT, ferramentas maliciosas e produtos afetados\n- Sem listas de bullet no corpo principal\n- Sem travessões"
+  "title": "Manchete jornalística em PT-BR. Máximo 110 caracteres. Use verbo de ação no presente ou passado recente. Não use 'Entenda', 'Saiba mais', 'Veja', 'Conheça'. Escreva como manchete do G1 ou Folha: o fato principal de forma clara e direta.",
+  "summary": "Lide jornalístico: 2 a 3 frases que respondem quem, o quê, quando, onde e por que importa. Coloque o fato mais relevante na primeira frase. Seja denso, direto e informativo. Máximo 160 palavras. Sem travessões.",
+  "content": "Notícia completa em markdown. Mínimo 500 palavras. Siga esta estrutura editorial:\n\n1. Parágrafo de abertura: o fato principal com contexto imediato. Quem está envolvido, o que aconteceu, qual o impacto direto.\n2. Contexto: por que esse evento aconteceu, qual o histórico do ator, da organização ou da vulnerabilidade envolvida. Situe o leitor no cenário mais amplo.\n3. Impacto: quem foi afetado, em que escala, quais os riscos para empresas, usuários ou infraestruturas. Dados e estimativas quando disponíveis na fonte.\n4. Detalhes técnicos: como a vulnerabilidade funciona, qual o vetor de ataque, quais sistemas ou versões estão expostos. Use linguagem técnica mas acessível.\n5. Encerramento: desdobramentos esperados, medidas recomendadas ou ações já tomadas. Cite a fonte original.\n\nRegras de escrita:\n- Parágrafos corridos. Sem listas de bullet no corpo principal.\n- Use subtítulos (##) apenas quando houver quebra temática real, não como divisão mecânica.\n- **Negrito** apenas em: nomes de CVE, grupos APT, ferramentas maliciosas e produtos afetados.\n- Tom neutro e objetivo. Sem exageros, sem alarmismo, sem julgamentos editoriais.\n- Não invente dados. Só use o que está na fonte.\n- Sem travessões."
 }`;
 
   try {

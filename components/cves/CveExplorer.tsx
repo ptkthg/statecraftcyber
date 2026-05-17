@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ExternalLink, Search, X, RefreshCw, ShieldAlert, AlertTriangle, Clock } from "lucide-react";
+import { ExternalLink, Search, X, RefreshCw, ShieldAlert, AlertTriangle, Clock, Shield } from "lucide-react";
 import type { CveEntry, VulnType } from "@/lib/cves/fetch-cves";
 
 interface Props {
@@ -35,6 +35,13 @@ const SEV_CONFIG = {
   LOW:      { label: "Baixo",    cls: "text-green-400 bg-green-600/10 border-green-600/25",    dot: "bg-green-500" },
 };
 
+const PRIORITY_CONFIG: Record<string, { cls: string }> = {
+  "Crítica": { cls: "text-red-400 bg-red-600/10 border-red-600/25" },
+  "Alta":    { cls: "text-orange-400 bg-orange-600/10 border-orange-600/25" },
+  "Média":   { cls: "text-yellow-400 bg-yellow-600/10 border-yellow-600/25" },
+  "Baixa":   { cls: "text-green-400 bg-green-600/10 border-green-600/25" },
+};
+
 function cvssColor(score: number | null): string {
   if (!score) return "text-[#555]";
   if (score >= 9) return "text-red-400";
@@ -53,43 +60,69 @@ function timeAgo(iso: string): string {
 
 function CveCard({ cve }: { cve: CveEntry }) {
   const sev = cve.severity ? SEV_CONFIG[cve.severity] : null;
+  const priority = cve.aiPriority ? PRIORITY_CONFIG[cve.aiPriority] : null;
+  const hasAI = Boolean(cve.ptBrDescription);
 
   return (
-    <div className="group bg-[#0D0D0D] border border-white/[0.06] hover:border-white/[0.12] rounded-xl p-5 transition-all">
-      <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
-          <a
-            href={cve.nvdUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-mono font-bold text-sm text-red-400 hover:text-red-300 transition-colors"
-          >
-            {cve.id}
-          </a>
-          {sev && (
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-semibold ${sev.cls}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${sev.dot}`} />
-              {sev.label}
-            </span>
-          )}
+    <div className="group bg-[#0D0D0D] border border-white/[0.06] hover:border-white/[0.12] rounded-xl p-5 transition-all flex flex-col gap-4">
+      {/* ── Identificação ── */}
+      <div>
+        <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <a
+              href={cve.nvdUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono font-bold text-sm text-red-400 hover:text-red-300 transition-colors"
+            >
+              {cve.id}
+            </a>
+            {sev && (
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-semibold ${sev.cls}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${sev.dot}`} />
+                {sev.label}
+              </span>
+            )}
+            {cve.inCisaKev && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-bold text-red-300 bg-red-900/20 border-red-700/40">
+                <ShieldAlert size={9} />
+                CISA KEV
+              </span>
+            )}
+          </div>
+          <span className="flex items-center gap-1 text-[10px] text-[#555] flex-shrink-0">
+            <Clock size={9} />
+            {timeAgo(cve.published)}
+          </span>
+        </div>
+
+        {/* Tipo + produtos afetados */}
+        <div className="flex flex-wrap items-center gap-1.5">
           <span className={`px-2 py-0.5 rounded border text-[10px] font-semibold ${VULN_TYPE_COLOR[cve.vulnType]}`}>
             {cve.vulnType}
           </span>
-          {cve.inCisaKev && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-bold text-red-300 bg-red-900/20 border-red-700/40">
-              <ShieldAlert size={9} />
-              CISA KEV
-            </span>
+          {cve.cweId && (
+            <span className="text-[10px] text-[#555] font-mono">{cve.cweId}</span>
+          )}
+          {cve.affectedProducts.length > 0 && (
+            <>
+              <span className="text-[#333] text-[10px]">·</span>
+              {cve.affectedProducts.slice(0, 2).map((p) => (
+                <span key={p} className="px-1.5 py-0.5 rounded text-[9px] text-[#666] bg-white/[0.04] border border-white/[0.06]">
+                  {p}
+                </span>
+              ))}
+              {cve.affectedProducts.length > 2 && (
+                <span className="text-[9px] text-[#444]">+{cve.affectedProducts.length - 2}</span>
+              )}
+            </>
           )}
         </div>
-        <span className="flex items-center gap-1 text-[10px] text-[#555]">
-          <Clock size={9} />
-          {timeAgo(cve.published)}
-        </span>
       </div>
 
-      <div className="flex items-center gap-4 mb-3">
-        <div className="text-center">
+      {/* ── Scores ── */}
+      <div className="flex items-center gap-5">
+        <div>
           <div className={`text-2xl font-black font-mono leading-none ${cvssColor(cve.cvssScore)}`}>
             {cve.cvssScore?.toFixed(1) ?? "N/A"}
           </div>
@@ -98,50 +131,56 @@ function CveCard({ cve }: { cve: CveEntry }) {
         {cve.epss !== null && (
           <>
             <div className="w-px h-8 bg-white/[0.06]" />
-            <div className="text-center">
+            <div>
               <div className="text-lg font-black font-mono leading-none text-purple-400">
                 {(cve.epss * 100).toFixed(1)}%
               </div>
-              <div className="text-[9px] text-[#555] uppercase tracking-wider mt-0.5">EPSS</div>
+              <div className="text-[9px] text-[#555] uppercase tracking-wider mt-0.5">
+                EPSS{cve.epssPercentile !== null ? ` · P${Math.round(cve.epssPercentile * 100)}` : ""}
+              </div>
             </div>
           </>
         )}
-        {cve.epssPercentile !== null && (
-          <div className="text-[10px] text-[#555]">
-            Percentil {Math.round(cve.epssPercentile * 100)}°
+      </div>
+
+      {/* ── Descrição (PT-BR se disponível, inglês caso contrário) ── */}
+      <div>
+        {hasAI && (
+          <p className="text-[10px] text-[#555] uppercase tracking-wider font-semibold mb-1.5">Descrição técnica</p>
+        )}
+        <p className="text-xs text-[#A1A1AA] leading-relaxed">
+          {hasAI ? cve.ptBrDescription : (cve.description || "Sem descrição disponível.")}
+        </p>
+        {!hasAI && cve.vulnType !== "Outro" && (
+          <div className="mt-2 p-2.5 rounded-lg bg-white/[0.025] border border-white/[0.05]">
+            <p className="text-[11px] text-[#777] leading-relaxed">{cve.vulnExplanation}</p>
           </div>
         )}
       </div>
 
-      {cve.vulnType !== "Outro" && (
-        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-white/[0.025] border border-white/[0.05] mb-3">
+      {/* ── Mitigação (quando disponível) ── */}
+      {cve.mitigation && (
+        <div className="flex gap-2.5 p-3 rounded-lg bg-green-600/[0.05] border border-green-600/[0.15]">
+          <Shield size={11} className="text-green-500 flex-shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <span className="text-[9px] font-semibold text-[#555] uppercase tracking-wider">
-              {cve.cweId && `${cve.cweId} · `}O que é
-            </span>
-            <p className="text-[11px] text-[#888] leading-relaxed mt-0.5">{cve.vulnExplanation}</p>
+            <p className="text-[9px] font-semibold text-[#555] uppercase tracking-wider mb-1">Mitigação</p>
+            <p className="text-[11px] text-[#888] leading-relaxed">{cve.mitigation}</p>
           </div>
         </div>
       )}
 
-      <p className="text-xs text-[#A1A1AA] leading-relaxed mb-3 line-clamp-3">
-        {cve.description || "Sem descrição disponível."}
-      </p>
-
-      {cve.affectedProducts.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-3">
-          {cve.affectedProducts.map((p) => (
-            <span key={p} className="px-1.5 py-0.5 rounded text-[9px] text-[#666] bg-white/[0.04] border border-white/[0.06]">
-              {p}
+      {/* ── Rodapé: prioridade + datas + NVD ── */}
+      <div className="flex items-center justify-between pt-3 border-t border-white/[0.04] flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          {priority && cve.aiPriority && (
+            <span className={`px-2 py-0.5 rounded border text-[10px] font-bold ${priority.cls}`}>
+              Prioridade {cve.aiPriority}
             </span>
-          ))}
+          )}
+          <span className="text-[10px] text-[#444]">
+            Mod. {timeAgo(cve.lastModified)}
+          </span>
         </div>
-      )}
-
-      <div className="flex items-center justify-between pt-3 border-t border-white/[0.04]">
-        <span className="text-[10px] text-[#444]">
-          Modificado: {timeAgo(cve.lastModified)}
-        </span>
         <a
           href={cve.nvdUrl}
           target="_blank"

@@ -1,3 +1,95 @@
+import Groq from "groq-sdk";
+
+let _groq: Groq | null = null;
+function getGroq(): Groq | null {
+  if (!process.env.GROQ_API_KEY) return null;
+  if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  return _groq;
+}
+
+const CVE_SYSTEM = `Você é um analista sênior de segurança cibernética da Statecraft. Escreva sempre em português brasileiro. Tom técnico, objetivo e didático. Nunca use travessões (— ou –). Sem emojis.`;
+
+interface CveAiResult {
+  id: string;
+  ptBrDescription: string;
+  mitigation: string;
+  aiPriority: "Crítica" | "Alta" | "Média" | "Baixa";
+}
+
+async function enrichBatch(batch: CveEntry[]): Promise<CveAiResult[]> {
+  const groq = getGroq();
+  if (!groq || batch.length === 0) return [];
+
+  const input = batch.map((c) => ({
+    id: c.id,
+    description: c.description.slice(0, 500),
+    severity: c.severity,
+    cvssScore: c.cvssScore,
+    epss: c.epss ? Math.round(c.epss * 100 * 10) / 10 : null,
+    inCisaKev: c.inCisaKev,
+    vulnType: c.vulnType,
+    cweId: c.cweId,
+    affectedProducts: c.affectedProducts.slice(0, 3),
+  }));
+
+  const userPrompt = `Para cada vulnerabilidade abaixo, gere uma ficha técnica em português brasileiro.
+
+- "ptBrDescription": Explicação didática em 3 a 5 frases. Explique o que é a falha, como funciona tecnicamente e em quais condições pode ser explorada. Linguagem técnica mas acessível para analistas, gestores e times de SecOps.
+- "mitigation": Ação de mitigação ou correção em 1 a 2 frases. Se há patch disponível, mencione. Se não, sugira medidas de contorno concretas.
+- "aiPriority": Use exatamente um destes valores: "Crítica", "Alta", "Média" ou "Baixa". Considere CVSS, EPSS e presença no CISA KEV.
+
+Responda APENAS com um objeto JSON válido:
+{"cves": [{"id": "CVE-XXXX", "ptBrDescription": "...", "mitigation": "...", "aiPriority": "..."}]}
+
+Vulnerabilidades:
+${JSON.stringify(input)}`;
+
+  try {
+    const res = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      response_format: { type: "json_object" },
+      max_tokens: 4000,
+      temperature: 0.2,
+      messages: [
+        { role: "system", content: CVE_SYSTEM },
+        { role: "user", content: userPrompt },
+      ],
+    });
+    const raw = JSON.parse(res.choices[0]?.message?.content ?? "{}") as { cves?: CveAiResult[] };
+    return Array.isArray(raw.cves) ? raw.cves : [];
+  } catch (err) {
+    console.error("[CVE AI] Falha no batch:", (err as Error).message);
+    return [];
+  }
+}
+
+async function enrichAndSave(entries: CveEntry[]): Promise<void> {
+  try {
+    const { prisma } = await import("../prisma");
+    const unenriched = entries.filter((e) => !e.ptBrDescription);
+    if (unenriched.length === 0) return;
+
+    const BATCH = 15;
+    for (let i = 0; i < unenriched.length && i < 60; i += BATCH) {
+      const batch = unenriched.slice(i, i + BATCH);
+      const results = await enrichBatch(batch);
+      for (const r of results) {
+        if (!r.id || !r.ptBrDescription) continue;
+        await prisma.cveCache.updateMany({
+          where: { id: r.id },
+          data: {
+            ptBrDescription: r.ptBrDescription,
+            mitigation: r.mitigation ?? null,
+            aiPriority: r.aiPriority ?? null,
+          },
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[CVE AI] Falha ao salvar enriquecimento:", (err as Error).message);
+  }
+}
+
 export type VulnType =
   | "Execução de Código"
   | "Injeção"
@@ -61,6 +153,9 @@ export interface CveEntry {
   vulnType: VulnType;
   cweId: string;
   vulnExplanation: string;
+  ptBrDescription?: string | null;
+  mitigation?: string | null;
+  aiPriority?: string | null;
 }
 
 interface NvdVuln {
@@ -241,8 +336,15 @@ export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; up
             vulnType: r.vulnType as VulnType,
             cweId: r.cweId,
             vulnExplanation: r.vulnExplanation,
+            ptBrDescription: r.ptBrDescription,
+            mitigation: r.mitigation,
+            aiPriority: r.aiPriority,
           }))
         );
+        // Kick off enrichment for any entries still missing AI fields
+        if (cves.some((c) => !c.ptBrDescription)) {
+          enrichAndSave(cves).catch(() => {});
+        }
         return { cves, total: cves.length, updatedAt: newest.fetchedAt.toISOString() };
       }
     }
@@ -254,7 +356,7 @@ export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; up
   const entries = sortEntries(await fetchFromApis());
   const now = new Date();
 
-  // ── 3. Persist to DB (non-blocking) ──────────────────────────────────────
+  // ── 3. Persist to DB + enrich with AI (non-blocking) ────────────────────
   (async () => {
     try {
       const { prisma } = await import("../prisma");
@@ -299,6 +401,8 @@ export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; up
           },
         });
       }
+      // Fire AI enrichment after raw data is saved
+      await enrichAndSave(entries);
     } catch (err) {
       console.error("[CveCache] Falha ao salvar:", (err as Error).message);
     }

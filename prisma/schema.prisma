@@ -85,6 +85,9 @@ model CveCache {
   cweId            String   @default("")
   vulnExplanation  String
   fetchedAt        DateTime @default(now())
+  ptBrDescription  String?  @db.Text
+  mitigation       String?  @db.Text
+  aiPriority       String?
 
   @@index([severity])
   @@index([inCisaKev])
