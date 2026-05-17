@@ -99,7 +99,8 @@ cp .env.example .env
 | `GROQ_API_KEY` | Chave da API Groq (groq.com) |
 | `NVD_API_KEY` | Chave da API NVD — opcional, sem chave o rate limit é mais baixo |
 | `OTX_API_KEY` | Chave AlienVault OTX — opcional |
-| `CRON_SECRET` | Token secreto para autenticar chamadas de cron |
+| `CRON_SECRET` | Token secreto para autenticar chamadas de cron (header `Authorization: Bearer`) |
+| `ADMIN_SECRET` | Senha de acesso ao painel `/admin/status` |
 | `AUTO_PUBLISH` | `true` para publicar briefings automaticamente |
 | `MAX_HOURLY_BRIEFINGS` | Limite de briefings por hora (padrão: 3) |
 
