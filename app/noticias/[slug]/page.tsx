@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Suspense } from "react";
 import { unstable_cache } from "next/cache";
 import { renderSafeMarkdown } from "@/lib/security/sanitize-markdown";
@@ -349,8 +350,9 @@ function RelatedCard({ article }: { article: NewsArticle }) {
       className="group block bg-[#0D0D0D] border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/[0.12] transition-all"
     >
       {article.imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={article.imageUrl} alt="" className="w-full h-28 object-cover" loading="lazy" />
+        <div className="relative w-full h-28 overflow-hidden">
+          <Image src={article.imageUrl} alt="" fill sizes="(max-width: 640px) 100vw, 320px" className="object-cover" />
+        </div>
       )}
       <div className="p-4">
         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-semibold mb-2 ${c.badge}`}>

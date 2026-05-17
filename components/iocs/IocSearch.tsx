@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import * as Dialog from "@radix-ui/react-dialog";
 import {
   Search, Copy, Check, ExternalLink, AlertTriangle,
   Globe, Hash, Link2, Mail, Shield, X,
   Download, FileCode, FileJson, FileText,
+  CheckCircle, XCircle, Info,
 } from "lucide-react";
 import type { EnrichedIoc } from "@/lib/types";
 
@@ -192,10 +194,39 @@ function IocRow({ ioc }: { ioc: EnrichedIoc }) {
   );
 }
 
-// ── KQL Modal ─────────────────────────────────────────────────────────────────
+// ── Toast ─────────────────────────────────────────────────────────────────────
 
-function KqlModal({ kql, onClose }: { kql: string; onClose: () => void }) {
+type ToastType = "success" | "error" | "info";
+interface Toast { msg: string; type: ToastType }
+
+function ToastNotice({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
+  const icons = { success: CheckCircle, error: XCircle, info: Info };
+  const colors = {
+    success: "text-green-400 bg-green-600/10 border-green-600/20",
+    error:   "text-red-400 bg-red-600/10 border-red-600/20",
+    info:    "text-[#A1A1AA] bg-white/[0.04] border-white/[0.08]",
+  };
+  const Icon = icons[toast.type];
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs ${colors[toast.type]}`}
+    >
+      <Icon size={11} aria-hidden />
+      <span>{toast.msg}</span>
+      <button onClick={onDismiss} aria-label="Fechar notificação" className="ml-1 opacity-60 hover:opacity-100 transition-opacity">
+        <X size={10} aria-hidden />
+      </button>
+    </div>
+  );
+}
+
+// ── KQL Modal (Radix Dialog) ──────────────────────────────────────────────────
+
+function KqlModal({ kql, open, onClose }: { kql: string; open: boolean; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
+  const hasKqlIocs = kql.includes("let ioc_");
 
   const copy = () => {
     navigator.clipboard.writeText(kql).then(() => {
@@ -204,82 +235,106 @@ function KqlModal({ kql, onClose }: { kql: string; onClose: () => void }) {
     });
   };
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Bloco KQL gerado"
-      className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-[#0D0D0D] border border-white/[0.12] rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.06]">
-          <div>
-            <p className="text-sm font-bold text-white">KQL — Microsoft Defender / Sentinel</p>
-            <p className="text-[10px] text-[#555]">Cole no Advanced Hunting ou Sentinel Analytics</p>
+    <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/80 z-50 animate-in fade-in-0" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#0D0D0D] border border-white/[0.12] rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col shadow-2xl focus-visible:outline-none animate-in fade-in-0 zoom-in-95">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.06]">
+            <div>
+              <Dialog.Title className="text-sm font-bold text-white">
+                KQL — Microsoft Defender / Sentinel
+              </Dialog.Title>
+              <Dialog.Description className="text-[10px] text-[#555]">
+                Cole no Advanced Hunting ou Sentinel Analytics
+              </Dialog.Description>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={copy}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#A1A1AA] hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
+              >
+                {copied ? <Check size={11} className="text-green-400" aria-hidden /> : <Copy size={11} aria-hidden />}
+                {copied ? "Copiado!" : "Copiar"}
+              </button>
+              <Dialog.Close asChild>
+                <button
+                  aria-label="Fechar modal KQL"
+                  className="px-3 py-1.5 text-xs text-[#555] hover:text-white border border-white/[0.06] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
+                >
+                  Fechar
+                </button>
+              </Dialog.Close>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={copy}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#A1A1AA] hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
-            >
-              {copied ? <Check size={11} className="text-green-400" aria-hidden /> : <Copy size={11} aria-hidden />}
-              {copied ? "Copiado!" : "Copiar"}
-            </button>
-            <button
-              onClick={onClose}
-              aria-label="Fechar modal"
-              className="px-3 py-1.5 text-xs text-[#555] hover:text-white border border-white/[0.06] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
-            >
-              Fechar
-            </button>
-          </div>
-        </div>
-        <pre className="flex-1 overflow-auto p-5 text-[11px] font-mono text-[#D4D4D8] leading-relaxed bg-[#080808] rounded-b-2xl whitespace-pre-wrap">
-          {kql}
-        </pre>
-      </div>
-    </div>
+          {!hasKqlIocs && (
+            <div className="px-5 pt-4 flex items-start gap-2 text-xs text-yellow-300 bg-yellow-600/[0.06] border-b border-yellow-600/10">
+              <Info size={12} className="flex-shrink-0 mt-0.5" aria-hidden />
+              <p className="pb-3 leading-relaxed">
+                KQL requer IOCs dos tipos IP, domínio, URL ou hash. Nenhum desses tipos está presente nos resultados atuais.
+              </p>
+            </div>
+          )}
+          <pre className="flex-1 overflow-auto p-5 text-[11px] font-mono text-[#D4D4D8] leading-relaxed bg-[#080808] rounded-b-2xl whitespace-pre-wrap">
+            {kql}
+          </pre>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
 // ── Export Toolbar ────────────────────────────────────────────────────────────
 
 function ExportToolbar({ query, typeFilter }: { query: string; typeFilter: string }) {
-  const [exporting, setExporting] = useState(false);
-  const [kqlModal, setKqlModal] = useState<string | null>(null);
+  const [loadingFormat, setLoadingFormat] = useState<string | null>(null);
+  const [kqlState, setKqlState] = useState<{ open: boolean; kql: string }>({ open: false, kql: "" });
+  const [toast, setToast] = useState<Toast | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const fetchAll = async (): Promise<EnrichedIoc[]> => {
+  const showToast = (msg: string, type: ToastType = "info") => {
+    clearTimeout(toastTimerRef.current);
+    setToast({ msg, type });
+    toastTimerRef.current = setTimeout(() => setToast(null), 3500);
+  };
+
+  const fetchAll = async (): Promise<EnrichedIoc[] | null> => {
     const params = new URLSearchParams();
     if (query) params.set("q", query);
     if (typeFilter) params.set("type", typeFilter);
     const res = await fetch(`/api/iocs/export?${params}`);
-    if (!res.ok) return [];
+    if (!res.ok) return null;
     const data = await res.json() as { results: EnrichedIoc[] };
     return data.results ?? [];
   };
 
   const handle = async (format: "csv" | "json" | "txt" | "kql") => {
-    setExporting(true);
+    setLoadingFormat(format);
     try {
       const iocs = await fetchAll();
-      if (!iocs.length) return;
+      if (iocs === null) {
+        showToast("Erro ao buscar IOCs. Tente novamente.", "error");
+        return;
+      }
+      if (!iocs.length) {
+        showToast("Nenhum IOC encontrado com os filtros atuais.", "info");
+        return;
+      }
       const date = new Date().toISOString().split("T")[0];
-      if (format === "csv") downloadFile(toCsv(iocs), `statecraft-iocs-${date}.csv`, "text/csv");
-      else if (format === "json") downloadFile(JSON.stringify(iocs, null, 2), `statecraft-iocs-${date}.json`, "application/json");
-      else if (format === "txt") downloadFile(toTxt(iocs), `statecraft-iocs-${date}.txt`, "text/plain");
-      else if (format === "kql") setKqlModal(generateKql(iocs));
+      if (format === "csv") {
+        downloadFile(toCsv(iocs), `statecraft-iocs-${date}.csv`, "text/csv");
+        showToast(`CSV exportado — ${iocs.length} IOCs`, "success");
+      } else if (format === "json") {
+        downloadFile(JSON.stringify(iocs, null, 2), `statecraft-iocs-${date}.json`, "application/json");
+        showToast(`JSON exportado — ${iocs.length} IOCs`, "success");
+      } else if (format === "txt") {
+        downloadFile(toTxt(iocs), `statecraft-iocs-${date}.txt`, "text/plain");
+        showToast(`TXT exportado — ${iocs.length} IOCs`, "success");
+      } else if (format === "kql") {
+        setKqlState({ open: true, kql: generateKql(iocs) });
+      }
     } finally {
-      setExporting(false);
+      setLoadingFormat(null);
     }
   };
 
@@ -292,23 +347,31 @@ function ExportToolbar({ query, typeFilter }: { query: string; typeFilter: strin
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <span className="text-[10px] text-[#555] uppercase tracking-widest mr-1">Exportar</span>
         {exportButtons.map(({ format, label, icon: Icon }) => (
           <button
             key={format}
             onClick={() => handle(format)}
-            disabled={exporting}
+            disabled={loadingFormat !== null}
             aria-label={`Exportar IOCs em ${label}`}
+            aria-busy={loadingFormat === format}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#666] hover:text-[#A1A1AA] bg-[#0D0D0D] hover:bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all disabled:opacity-40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
           >
             <Icon size={11} aria-hidden />
-            {exporting ? "..." : label}
+            {loadingFormat === format ? "..." : label}
           </button>
         ))}
+        {toast && (
+          <ToastNotice toast={toast} onDismiss={() => setToast(null)} />
+        )}
       </div>
 
-      {kqlModal && <KqlModal kql={kqlModal} onClose={() => setKqlModal(null)} />}
+      <KqlModal
+        open={kqlState.open}
+        kql={kqlState.kql}
+        onClose={() => setKqlState((s) => ({ ...s, open: false }))}
+      />
     </>
   );
 }

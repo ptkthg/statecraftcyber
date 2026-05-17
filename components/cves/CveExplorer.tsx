@@ -245,7 +245,7 @@ export default function CveExplorer({ initialCves, initialUpdatedAt }: Props) {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-1.5 h-1.5 rounded-full bg-red-600 blink" />
-            <span className="text-xs font-semibold text-red-400 uppercase tracking-widest">Ao Vivo</span>
+            <span className="text-xs font-semibold text-red-400 uppercase tracking-widest">Monitoramento Ativo</span>
           </div>
           <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
             <div>

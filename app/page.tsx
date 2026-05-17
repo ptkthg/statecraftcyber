@@ -89,7 +89,7 @@ export default async function HomePage() {
             <Link href="/threat-briefings" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-red-600/30 bg-red-950/20 mb-8 hover:border-red-500/50 transition-colors">
               <div className="w-2 h-2 rounded-full bg-red-600 blink" />
               <span className="text-xs font-semibold text-red-400 tracking-wider uppercase">
-                Inteligência de ameaças ao vivo
+                Monitoramento contínuo de ameaças
               </span>
             </Link>
 
@@ -103,8 +103,8 @@ export default async function HomePage() {
             </h1>
 
             <p className="text-[#A1A1AA] text-lg leading-relaxed mb-8 max-w-xl">
-              A Statecraft entrega inteligência de ameaças em tempo real a partir de fontes abertas
-              globais, para que sua equipe saiba o que está acontecendo antes de ser impactada.
+              A Statecraft agrega inteligência de ameaças de fontes abertas globais e entrega
+              briefings operacionais em PT-BR, para que sua equipe saiba o que está acontecendo antes de ser impactada.
             </p>
 
             <div className="flex items-center gap-4 flex-wrap">

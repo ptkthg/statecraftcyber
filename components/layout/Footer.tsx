@@ -24,7 +24,7 @@ export default function Footer() {
               </div>
             </Link>
             <p className="text-sm text-[#A1A1AA] leading-relaxed">
-              Plataforma de inteligência de ameaças com dados em tempo real de fontes abertas e feeds especializados.
+              Plataforma de inteligência de ameaças com dados atualizados continuamente de fontes abertas e feeds especializados.
             </p>
           </div>
 
@@ -56,6 +56,11 @@ export default function Footer() {
                 <li>
                   <Link href="/sobre" className="text-sm text-[#A1A1AA] hover:text-white transition-colors">
                     Sobre a Statecraft
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/metodologia" className="text-sm text-[#A1A1AA] hover:text-white transition-colors">
+                    Metodologia
                   </Link>
                 </li>
                 <li>

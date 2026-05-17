@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ExternalLink, Globe, MapPin, Clock, RefreshCw, AlertCircle } from "lucide-react";
 import type { NewsArticle, ArticleType } from "@/lib/news-feeds";
 import { getSourceColor } from "@/lib/source-colors";
@@ -49,13 +50,15 @@ function ArticleRow({ article }: { article: NewsArticle }) {
       className="group flex gap-4 p-4 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.015] transition-colors"
     >
       {article.imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={article.imageUrl}
-          alt=""
-          className="flex-shrink-0 w-20 h-16 object-cover rounded-lg hidden sm:block"
-          loading="lazy"
-        />
+        <div className="relative flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden hidden sm:block">
+          <Image
+            src={article.imageUrl}
+            alt=""
+            fill
+            sizes="80px"
+            className="object-cover"
+          />
+        </div>
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1.5 flex-wrap">

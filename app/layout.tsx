@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     template: "%s | Statecraft Cyber",
   },
   description:
-    "Plataforma de threat intelligence em PT-BR. CVEs, briefings operacionais, IOCs e notícias de segurança atualizados em tempo real.",
+    "Plataforma de threat intelligence em PT-BR. CVEs, briefings operacionais, IOCs e notícias de segurança de fontes abertas e feeds especializados.",
   openGraph: {
     type: "website",
     locale: "pt_BR",
@@ -51,8 +51,14 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} ${lora.variable} h-full antialiased`}
     >
       <body className="min-h-screen flex flex-col" style={{ backgroundColor: "#050505", color: "#F5F5F5" }}>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:bg-red-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg text-sm font-semibold"
+        >
+          Pular para conteúdo
+        </a>
         <Header />
-        <div className="flex-1 flex flex-col">{children}</div>
+        <div id="main-content" className="flex-1 flex flex-col">{children}</div>
         <Footer />
       </body>
     </html>

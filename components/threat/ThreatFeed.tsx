@@ -40,10 +40,10 @@ export default function ThreatFeed() {
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-red-600 blink" />
           <span className="text-xs font-semibold tracking-widest text-white uppercase">
-            Feed de Ameaças ao Vivo
+            Feed de Ameaças
           </span>
         </div>
-        <span className="text-xs text-[#A1A1AA] font-mono">ATUALIZADO EM TEMPO REAL</span>
+        <span className="text-xs text-[#A1A1AA] font-mono">ATUALIZADO A CADA HORA</span>
       </div>
 
       {/* Items */}

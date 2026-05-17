@@ -252,7 +252,7 @@ export default function BriefingExplorer({ initialBriefings, initialTrending, in
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-bold text-white uppercase tracking-wider">Ameaças em Alta</span>
               <span className="flex items-center gap-1 text-[10px] text-green-400 bg-green-600/10 border border-green-600/20 px-2 py-0.5 rounded-full">
-                <Wifi size={8} /> AO VIVO
+                <Wifi size={8} /> PIPELINE ATIVO
               </span>
             </div>
             <div className="space-y-1">
@@ -275,7 +275,7 @@ export default function BriefingExplorer({ initialBriefings, initialTrending, in
               <span className="text-xs font-bold text-white uppercase tracking-wider">Últimos Indicadores</span>
               {latestIocs.length > 0 && (
                 <span className="flex items-center gap-1 text-[10px] text-green-400 bg-green-600/10 border border-green-600/20 px-2 py-0.5 rounded-full">
-                  <Wifi size={8} /> AO VIVO
+                  <Wifi size={8} /> PIPELINE ATIVO
                 </span>
               )}
             </div>

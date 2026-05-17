@@ -44,7 +44,7 @@ export default async function NoticiasPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-1.5 rounded-full bg-red-600 blink" />
-            <span className="text-xs font-semibold text-red-400 uppercase tracking-widest">Ao Vivo</span>
+            <span className="text-xs font-semibold text-red-400 uppercase tracking-widest">Monitoramento Ativo</span>
           </div>
           <div>
             <h1 className="text-4xl md:text-5xl font-black text-white mb-2">Notícias</h1>
