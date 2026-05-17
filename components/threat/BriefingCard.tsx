@@ -34,7 +34,7 @@ export default function BriefingCard({ briefing, variant = "default" }: Briefing
           </p>
           <div className="flex items-center gap-2 mt-1">
             <span className={cn("text-[10px] font-medium", sev.color)}>{sev.label}</span>
-            <span className="text-[10px] text-[#666]">{formatDate(briefing.date)}</span>
+            <span className="text-[10px] text-[#A1A1AA]">{formatDate(briefing.date)}</span>
           </div>
         </div>
       </Link>
@@ -59,7 +59,7 @@ export default function BriefingCard({ briefing, variant = "default" }: Briefing
               </span>
             )}
           </div>
-          <span className="text-xs text-[#666] font-mono whitespace-nowrap">{formatDate(briefing.date)}</span>
+          <span className="text-xs text-[#A1A1AA] font-mono whitespace-nowrap">{formatDate(briefing.date)}</span>
         </div>
 
         <h3 className="text-lg font-bold text-white mb-3 leading-snug group-hover:text-red-400 transition-colors">
@@ -70,7 +70,7 @@ export default function BriefingCard({ briefing, variant = "default" }: Briefing
         </p>
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 text-xs text-[#666]">
+          <div className="flex items-center gap-3 text-xs text-[#A1A1AA]">
             <span className="flex items-center gap-1">
               <Clock size={11} />
               {briefing.readingTime} min
@@ -92,7 +92,7 @@ export default function BriefingCard({ briefing, variant = "default" }: Briefing
           <AlertTriangle size={9} />
           {sev.label}
         </span>
-        <span className="text-[10px] font-medium text-[#666] bg-white/5 px-2 py-0.5 rounded border border-white/10">
+        <span className="text-[10px] font-medium text-[#A1A1AA] bg-white/5 px-2 py-0.5 rounded border border-white/10">
           {briefing.category}
         </span>
       </div>
@@ -104,7 +104,7 @@ export default function BriefingCard({ briefing, variant = "default" }: Briefing
         {briefing.summary}
       </p>
 
-      <div className="flex items-center justify-between text-[10px] text-[#666]">
+      <div className="flex items-center justify-between text-[10px] text-[#A1A1AA]">
         <div className="flex items-center gap-2">
           <Clock size={10} />
           <span>{briefing.readingTime} min de leitura</span>

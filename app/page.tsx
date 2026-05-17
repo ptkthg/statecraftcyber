@@ -152,7 +152,7 @@ export default async function HomePage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 text-[#555] text-sm">
+            <div className="text-center py-12 text-[#A1A1AA] text-sm">
               Nenhum briefing publicado ainda.{" "}
               <Link href="/threat-briefings" className="text-red-600/70 hover:text-red-500 transition-colors">
                 Ver todos os briefings

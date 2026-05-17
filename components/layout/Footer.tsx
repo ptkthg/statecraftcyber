@@ -31,7 +31,7 @@ export default function Footer() {
           {/* Nav columns */}
           <div className="flex gap-16">
             <div>
-              <h4 className="text-xs font-semibold tracking-widest text-white uppercase mb-4">Plataforma</h4>
+              <h3 className="text-xs font-semibold tracking-widest text-white uppercase mb-4">Plataforma</h3>
               <ul className="space-y-2">
                 <li>
                   <Link href="/threat-briefings" className="text-sm text-[#A1A1AA] hover:text-white transition-colors">
@@ -51,7 +51,7 @@ export default function Footer() {
               </ul>
             </div>
             <div>
-              <h4 className="text-xs font-semibold tracking-widest text-white uppercase mb-4">Empresa</h4>
+              <h3 className="text-xs font-semibold tracking-widest text-white uppercase mb-4">Empresa</h3>
               <ul className="space-y-2">
                 <li>
                   <Link href="/sobre" className="text-sm text-[#A1A1AA] hover:text-white transition-colors">
@@ -75,13 +75,13 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="py-5 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-[#666]">
+          <p className="text-xs text-[#888]">
             © 2026 Statecraft Cyber Intelligence. Todos os direitos reservados.
           </p>
-          <div className="flex items-center gap-2 text-xs text-[#666]">
+          <div className="flex items-center gap-2 text-xs text-[#888]">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
             <span>Plataforma operacional</span>
-            <span className="text-[#333]">·</span>
+            <span className="text-[#555]">·</span>
             <span>Brasil</span>
           </div>
         </div>

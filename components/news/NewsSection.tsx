@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Clock, Flame, Globe, MapPin } from "lucide-react";
 import type { NewsArticle } from "@/lib/news-feeds";
 import { getSourceColor } from "@/lib/source-colors";
@@ -19,26 +20,28 @@ function NewsCard({ article, featured = false }: { article: NewsArticle; feature
       className="group block bg-[#0D0D0D] border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/[0.14] hover:bg-[#111] transition-all"
     >
       {article.imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={article.imageUrl}
-          alt=""
-          className={`w-full object-cover ${featured ? "h-40" : "h-28"} opacity-70 group-hover:opacity-80 transition-opacity`}
-          loading="lazy"
-        />
+        <div className={`relative w-full overflow-hidden ${featured ? "h-40" : "h-28"}`}>
+          <Image
+            src={article.imageUrl}
+            alt=""
+            fill
+            sizes="(max-width: 768px) 100vw, 33vw"
+            className="object-cover opacity-70 group-hover:opacity-80 transition-opacity"
+          />
+        </div>
       )}
       <div className="p-4">
         <div className="flex items-center gap-2 mb-2">
-          <span className="flex items-center gap-1 text-[10px] text-[#555]">
+          <span className="flex items-center gap-1 text-[10px] text-[#888]">
             <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
             {article.source.split(" ")[0]}
           </span>
           {article.sourceRegion === "Brasil" ? (
             <span className="flex items-center gap-0.5 text-[10px] text-green-600"><MapPin size={8} />BR</span>
           ) : (
-            <span className="flex items-center gap-0.5 text-[10px] text-[#444]"><Globe size={8} /></span>
+            <span className="flex items-center gap-0.5 text-[10px] text-[#777]"><Globe size={8} /></span>
           )}
-          <span className="ml-auto flex items-center gap-1 text-[10px] text-[#444]">
+          <span className="ml-auto flex items-center gap-1 text-[10px] text-[#777]">
             <Clock size={8} />{timeAgo(article.publishedAt)}
           </span>
         </div>

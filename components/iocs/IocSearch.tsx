@@ -65,7 +65,7 @@ const SEVERITY_LABELS: Record<string, string> = {
 const CONFIDENCE_CONFIG: Record<string, { label: string; color: string }> = {
   high:   { label: "Alta",  color: "text-green-400" },
   medium: { label: "Média", color: "text-yellow-400" },
-  low:    { label: "Baixa", color: "text-[#666]" },
+  low:    { label: "Baixa", color: "text-[#A1A1AA]" },
 };
 
 function timeAgo(dateStr: string): string {
@@ -146,7 +146,7 @@ function CopyButton({ value }: { value: string }) {
     <button
       onClick={copy}
       aria-label={`Copiar IOC: ${value}`}
-      className="ml-1.5 flex-shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-[#555] hover:text-[#A1A1AA] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 rounded"
+      className="ml-1.5 flex-shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-[#888] hover:text-[#A1A1AA] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 rounded"
     >
       {copied ? <Check size={11} className="text-green-400" aria-hidden /> : <Copy size={11} aria-hidden />}
     </button>
@@ -162,7 +162,7 @@ function IocRow({ ioc }: { ioc: EnrichedIoc }) {
     border: "border-white/[0.08]",
   };
   const Icon = cfg.icon;
-  const conf = CONFIDENCE_CONFIG[ioc.confidence] ?? { label: ioc.confidence, color: "text-[#666]" };
+  const conf = CONFIDENCE_CONFIG[ioc.confidence] ?? { label: ioc.confidence, color: "text-[#A1A1AA]" };
 
   return (
     <div className="group flex items-center gap-3 px-4 py-3 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors">
@@ -179,17 +179,17 @@ function IocRow({ ioc }: { ioc: EnrichedIoc }) {
       </div>
       <div className="flex-shrink-0 hidden md:flex items-center gap-1.5">
         <div className={`w-1.5 h-1.5 rounded-full ${SEVERITY_DOT[ioc.briefingSeverity] ?? "bg-[#555]"}`} aria-hidden />
-        <span className="text-[10px] text-[#666]">{SEVERITY_LABELS[ioc.briefingSeverity] ?? ioc.briefingSeverity}</span>
+        <span className="text-[10px] text-[#A1A1AA]">{SEVERITY_LABELS[ioc.briefingSeverity] ?? ioc.briefingSeverity}</span>
       </div>
       <Link
         href={`/threat-briefings/${ioc.briefingSlug}`}
-        className="flex-shrink-0 flex items-center gap-1 text-[10px] text-[#555] hover:text-red-400 transition-colors max-w-[180px] hidden lg:flex focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 rounded"
+        className="flex-shrink-0 flex items-center gap-1 text-[10px] text-[#888] hover:text-red-400 transition-colors max-w-[180px] hidden lg:flex focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 rounded"
         title={ioc.briefingTitle}
       >
         <span className="truncate">{ioc.briefingTitle}</span>
         <ExternalLink size={9} className="flex-shrink-0" aria-hidden />
       </Link>
-      <span className="flex-shrink-0 text-[10px] text-[#444] font-mono">{timeAgo(ioc.briefingDate)}</span>
+      <span className="flex-shrink-0 text-[10px] text-[#777] font-mono">{timeAgo(ioc.briefingDate)}</span>
     </div>
   );
 }
@@ -245,7 +245,7 @@ function KqlModal({ kql, open, onClose }: { kql: string; open: boolean; onClose:
               <Dialog.Title className="text-sm font-bold text-white">
                 KQL — Microsoft Defender / Sentinel
               </Dialog.Title>
-              <Dialog.Description className="text-[10px] text-[#555]">
+              <Dialog.Description className="text-[10px] text-[#888]">
                 Cole no Advanced Hunting ou Sentinel Analytics
               </Dialog.Description>
             </div>
@@ -260,7 +260,7 @@ function KqlModal({ kql, open, onClose }: { kql: string; open: boolean; onClose:
               <Dialog.Close asChild>
                 <button
                   aria-label="Fechar modal KQL"
-                  className="px-3 py-1.5 text-xs text-[#555] hover:text-white border border-white/[0.06] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
+                  className="px-3 py-1.5 text-xs text-[#888] hover:text-white border border-white/[0.06] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
                 >
                   Fechar
                 </button>
@@ -348,7 +348,7 @@ function ExportToolbar({ query, typeFilter }: { query: string; typeFilter: strin
   return (
     <>
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <span className="text-[10px] text-[#555] uppercase tracking-widest mr-1">Exportar</span>
+        <span className="text-[10px] text-[#888] uppercase tracking-widest mr-1">Exportar</span>
         {exportButtons.map(({ format, label, icon: Icon }) => (
           <button
             key={format}
@@ -356,7 +356,7 @@ function ExportToolbar({ query, typeFilter }: { query: string; typeFilter: strin
             disabled={loadingFormat !== null}
             aria-label={`Exportar IOCs em ${label}`}
             aria-busy={loadingFormat === format}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#666] hover:text-[#A1A1AA] bg-[#0D0D0D] hover:bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all disabled:opacity-40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#A1A1AA] hover:text-[#A1A1AA] bg-[#0D0D0D] hover:bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all disabled:opacity-40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
           >
             <Icon size={11} aria-hidden />
             {loadingFormat === format ? "..." : label}
@@ -455,7 +455,7 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
           </p>
 
           <div className="relative max-w-2xl">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#555]" aria-hidden />
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#888]" aria-hidden />
             <label htmlFor="ioc-search" className="sr-only">Buscar IOCs</label>
             <input
               id="ioc-search"
@@ -465,13 +465,13 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
               onChange={(e) => setQuery(e.target.value)}
               placeholder="185.220.101.45, update-win32[.]net, a3f7c9d2..."
               autoComplete="off"
-              className="w-full bg-[#0D0D0D] border border-white/[0.10] focus:border-red-600/40 focus-visible:outline-none rounded-xl pl-10 pr-10 py-3.5 text-sm text-white placeholder-[#444] transition-colors font-mono"
+              className="w-full bg-[#0D0D0D] border border-white/[0.10] focus:border-red-600/40 focus-visible:outline-none rounded-xl pl-10 pr-10 py-3.5 text-sm text-white placeholder-[#666] transition-colors font-mono"
             />
             {query && (
               <button
                 onClick={clearSearch}
                 aria-label="Limpar busca"
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#555] hover:text-[#A1A1AA] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 rounded"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#888] hover:text-[#A1A1AA] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 rounded"
               >
                 <X size={14} aria-hidden />
               </button>
@@ -483,7 +483,7 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
         <div className="flex flex-wrap items-center gap-4 mb-6" role="status" aria-live="polite" aria-label="Estatísticas de IOCs">
-          <div className="flex items-center gap-2 text-xs text-[#666]">
+          <div className="flex items-center gap-2 text-xs text-[#A1A1AA]">
             <AlertTriangle size={11} className="text-red-500" aria-hidden />
             <span className="font-mono font-bold text-white">{stats.total.toLocaleString("pt-BR")}</span>
             <span>IOCs coletados</span>
@@ -516,7 +516,7 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
               className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 ${
                 typeFilter === f.key
                   ? "bg-red-600/15 border-red-600/30 text-red-400"
-                  : "bg-[#0D0D0D] border-white/[0.06] text-[#666] hover:text-[#A1A1AA] hover:border-white/[0.12]"
+                  : "bg-[#0D0D0D] border-white/[0.06] text-[#A1A1AA] hover:text-[#A1A1AA] hover:border-white/[0.12]"
               }`}
             >
               {f.label}
@@ -533,25 +533,25 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
         {/* Table */}
         <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl overflow-hidden" role="region" aria-label="Lista de IOCs">
           <div className="hidden sm:flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.02]" role="row" aria-hidden>
-            <span className="w-14 text-[9px] font-bold text-[#555] uppercase tracking-wider">Tipo</span>
-            <span className="flex-1 text-[9px] font-bold text-[#555] uppercase tracking-wider">Indicador</span>
-            <span className="w-16 text-[9px] font-bold text-[#555] uppercase tracking-wider hidden sm:block">Conf.</span>
-            <span className="w-20 text-[9px] font-bold text-[#555] uppercase tracking-wider hidden md:block">Sev.</span>
-            <span className="flex-shrink-0 text-[9px] font-bold text-[#555] uppercase tracking-wider hidden lg:block w-[180px]">Briefing</span>
-            <span className="w-16 text-[9px] font-bold text-[#555] uppercase tracking-wider text-right">Quando</span>
+            <span className="w-14 text-[9px] font-bold text-[#888] uppercase tracking-wider">Tipo</span>
+            <span className="flex-1 text-[9px] font-bold text-[#888] uppercase tracking-wider">Indicador</span>
+            <span className="w-16 text-[9px] font-bold text-[#888] uppercase tracking-wider hidden sm:block">Conf.</span>
+            <span className="w-20 text-[9px] font-bold text-[#888] uppercase tracking-wider hidden md:block">Sev.</span>
+            <span className="flex-shrink-0 text-[9px] font-bold text-[#888] uppercase tracking-wider hidden lg:block w-[180px]">Briefing</span>
+            <span className="w-16 text-[9px] font-bold text-[#888] uppercase tracking-wider text-right">Quando</span>
           </div>
 
           {loading && results.length === 0 ? (
             <div className="py-16 text-center" aria-live="polite">
-              <div className="text-[#444] text-sm">Carregando...</div>
+              <div className="text-[#777] text-sm">Carregando...</div>
             </div>
           ) : results.length === 0 ? (
             <div className="py-16 text-center" aria-live="polite">
-              <div className="text-[#555] text-sm mb-1">
+              <div className="text-[#888] text-sm mb-1">
                 {query ? `Nenhum IOC encontrado para "${query}"` : "Nenhum IOC disponível."}
               </div>
               {query && (
-                <div className="text-[#444] text-xs">
+                <div className="text-[#777] text-xs">
                   Tente um termo diferente ou verifique a formatação do indicador.
                 </div>
               )}
@@ -573,10 +573,10 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
         )}
 
         {loading && results.length > 0 && (
-          <div className="mt-4 text-center text-xs text-[#555]" aria-live="polite">Carregando...</div>
+          <div className="mt-4 text-center text-xs text-[#888]" aria-live="polite">Carregando...</div>
         )}
 
-        <p className="mt-8 text-center text-[10px] text-[#444] leading-relaxed max-w-lg mx-auto">
+        <p className="mt-8 text-center text-[10px] text-[#777] leading-relaxed max-w-lg mx-auto">
           IOCs extraídos dos briefings publicados na plataforma. Para investigação aprofundada, consulte
           a fonte original de cada indicador. Dados atualizados a cada atualização do pipeline.
         </p>

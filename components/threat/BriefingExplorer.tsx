@@ -75,13 +75,13 @@ function FeaturedCard({ briefing }: { briefing: BriefingItem }) {
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${SEVERITY_STYLES[briefing.severity]}`}>
             {SEVERITY_LABELS[briefing.severity]}
           </span>
-          <span className="text-[10px] text-[#555] bg-white/[0.04] px-2 py-0.5 rounded border border-white/[0.06]">
+          <span className="text-[10px] text-[#888] bg-white/[0.04] px-2 py-0.5 rounded border border-white/[0.06]">
             {briefing.category}
           </span>
           {briefing.cves.slice(0, 2).map((cve) => (
             <span key={cve} className="text-[10px] font-mono text-[#888] bg-[#0A0A0A] px-2 py-0.5 rounded">{cve}</span>
           ))}
-          <span className="ml-auto text-[10px] text-[#555]">{timeAgo(briefing.createdAt)}</span>
+          <span className="ml-auto text-[10px] text-[#888]">{timeAgo(briefing.createdAt)}</span>
         </div>
         <h2 className="text-lg font-black text-white mb-3 leading-snug group-hover:text-red-400 transition-colors">
           {briefing.title}
@@ -89,7 +89,7 @@ function FeaturedCard({ briefing }: { briefing: BriefingItem }) {
         <p className="text-sm text-[#A1A1AA] leading-relaxed mb-4 line-clamp-3">{stripMarkdown(briefing.summary)}</p>
         {briefing.iocs.length > 0 && (
           <div className="mb-4">
-            <div className="text-[10px] font-bold text-[#666] uppercase tracking-wider mb-2">IOCs</div>
+            <div className="text-[10px] font-bold text-[#A1A1AA] uppercase tracking-wider mb-2">IOCs</div>
             <div className="flex flex-wrap gap-2">
               {briefing.iocs.slice(0, 3).map((ioc, i) => (
                 <span key={i} className="font-mono text-[10px] bg-[#0A0A0A] border border-white/[0.06] text-[#999] px-2 py-1 rounded">
@@ -100,7 +100,7 @@ function FeaturedCard({ briefing }: { briefing: BriefingItem }) {
           </div>
         )}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 text-[11px] text-[#555]">
+          <div className="flex items-center gap-3 text-[11px] text-[#888]">
             <span className="flex items-center gap-1"><Clock size={10} /> {briefing.readingTime ?? 5} min</span>
             <span>{briefing.sourceName}</span>
           </div>
@@ -121,17 +121,17 @@ function BriefingCard({ briefing }: { briefing: BriefingItem }) {
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${SEVERITY_STYLES[briefing.severity]}`}>
             {SEVERITY_LABELS[briefing.severity]}
           </span>
-          <span className="text-[10px] text-[#555] truncate">{briefing.category}</span>
-          <span className="ml-auto text-[10px] text-[#555] flex-shrink-0">{timeAgo(briefing.createdAt)}</span>
+          <span className="text-[10px] text-[#888] truncate">{briefing.category}</span>
+          <span className="ml-auto text-[10px] text-[#888] flex-shrink-0">{timeAgo(briefing.createdAt)}</span>
         </div>
         <h3 className="text-sm font-bold text-white mb-2 leading-snug group-hover:text-red-400 transition-colors line-clamp-2 flex-1">
           {briefing.title}
         </h3>
         <p className="text-xs text-[#A1A1AA] leading-relaxed line-clamp-2 mb-3">{stripMarkdown(briefing.summary)}</p>
         <div className="flex items-center justify-between mt-auto">
-          <span className="text-[10px] text-[#555]">{briefing.sourceName}</span>
+          <span className="text-[10px] text-[#888]">{briefing.sourceName}</span>
           {briefing.cves.length > 0 && (
-            <span className="font-mono text-[9px] text-[#666] bg-[#0A0A0A] px-1.5 py-0.5 rounded">{briefing.cves[0]}</span>
+            <span className="font-mono text-[9px] text-[#A1A1AA] bg-[#0A0A0A] px-1.5 py-0.5 rounded">{briefing.cves[0]}</span>
           )}
         </div>
       </div>
@@ -168,27 +168,30 @@ export default function BriefingExplorer({ initialBriefings, initialTrending, in
           {/* Toolbar */}
           <div className="bg-[#0A0A0A] border border-white/[0.07] rounded-xl mb-8 overflow-hidden">
             <div className="relative">
-              <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444] pointer-events-none" />
+              <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#777] pointer-events-none" />
+              <label htmlFor="briefing-search" className="sr-only">Buscar briefings</label>
               <input
-                type="text"
+                id="briefing-search"
+                type="search"
                 placeholder="Buscar por título, CVE, tag ou conteúdo..."
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setVisibleCount(6); }}
-                className="w-full bg-transparent border-b border-white/[0.06] pl-11 pr-10 py-3.5 text-sm text-white placeholder-[#444] outline-none focus:placeholder-[#666] transition-colors"
+                autoComplete="off"
+                className="w-full bg-transparent border-b border-white/[0.06] pl-11 pr-10 py-3.5 text-sm text-white placeholder-[#666] outline-none focus:placeholder-[#888] transition-colors focus-visible:outline-none"
               />
               {search && (
-                <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#555] hover:text-[#A1A1AA] transition-colors">
-                  <X size={13} />
+                <button onClick={() => setSearch("")} aria-label="Limpar busca" className="absolute right-4 top-1/2 -translate-y-1/2 text-[#888] hover:text-[#A1A1AA] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 rounded">
+                  <X size={13} aria-hidden />
                 </button>
               )}
             </div>
             <div className="px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-              <button onClick={() => { setActiveFilter("Todos"); setVisibleCount(6); }} className={`text-xs font-medium px-2.5 py-1 rounded-md border transition-all ${activeFilter === "Todos" ? "bg-white/[0.08] border-white/20 text-white" : "border-transparent text-[#555] hover:text-[#A1A1AA]"}`}>
+              <button onClick={() => { setActiveFilter("Todos"); setVisibleCount(6); }} className={`text-xs font-medium px-2.5 py-1 rounded-md border transition-all ${activeFilter === "Todos" ? "bg-white/[0.08] border-white/20 text-white" : "border-transparent text-[#888] hover:text-[#A1A1AA]"}`}>
                 Todos
               </button>
               <div className="w-px h-4 bg-white/[0.06] flex-shrink-0" />
               <div className="flex items-center gap-1.5">
-                <span className="text-[9px] font-bold text-[#333] uppercase tracking-wider">Sev.</span>
+                <span className="text-[9px] font-bold text-[#555] uppercase tracking-wider">Sev.</span>
                 {SEVERITY_FILTERS.map((f) => (
                   <button key={f.key} onClick={() => { setActiveFilter(f.key); setVisibleCount(6); }} className={`text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-all ${activeFilter === f.key ? f.active : f.style + " hover:opacity-90"}`}>
                     {f.label}
@@ -197,15 +200,15 @@ export default function BriefingExplorer({ initialBriefings, initialTrending, in
               </div>
               <div className="w-px h-4 bg-white/[0.06] flex-shrink-0" />
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[9px] font-bold text-[#333] uppercase tracking-wider">Cat.</span>
+                <span className="text-[9px] font-bold text-[#555] uppercase tracking-wider">Cat.</span>
                 {CATEGORY_FILTERS.map((cat) => (
-                  <button key={cat} onClick={() => { setActiveFilter(cat); setVisibleCount(6); }} className={`text-[11px] font-medium px-2.5 py-1 rounded-md border transition-all ${activeFilter === cat ? "bg-white/[0.08] border-white/20 text-white" : "border-white/[0.06] text-[#666] hover:text-[#A1A1AA] hover:border-white/[0.12]"}`}>
+                  <button key={cat} onClick={() => { setActiveFilter(cat); setVisibleCount(6); }} className={`text-[11px] font-medium px-2.5 py-1 rounded-md border transition-all ${activeFilter === cat ? "bg-white/[0.08] border-white/20 text-white" : "border-white/[0.06] text-[#A1A1AA] hover:text-[#A1A1AA] hover:border-white/[0.12]"}`}>
                     {cat}
                   </button>
                 ))}
               </div>
               {activeFilter !== "Todos" && (
-                <button onClick={() => { setActiveFilter("Todos"); setVisibleCount(6); }} className="ml-auto flex items-center gap-1 text-[10px] text-[#555] hover:text-[#A1A1AA] transition-colors">
+                <button onClick={() => { setActiveFilter("Todos"); setVisibleCount(6); }} className="ml-auto flex items-center gap-1 text-[10px] text-[#888] hover:text-[#A1A1AA] transition-colors">
                   <X size={10} /> Limpar
                 </button>
               )}
@@ -222,19 +225,19 @@ export default function BriefingExplorer({ initialBriefings, initialTrending, in
 
           {/* Grid */}
           <div>
-            <div className="text-xs font-bold text-[#666] uppercase tracking-widest mb-4">Briefings Recentes</div>
+            <h2 className="text-xs font-bold text-[#A1A1AA] uppercase tracking-widest mb-4">Briefings Recentes</h2>
             <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {filtered.slice(0, visibleCount).map((b) => <BriefingCard key={b.id} briefing={b} />)}
             </div>
             {filtered.length === 0 && briefings.length === 0 && (
               <div className="text-center py-20 border border-white/[0.06] rounded-xl">
-                <Shield size={32} className="text-[#333] mx-auto mb-3" />
-                <div className="text-sm font-bold text-[#666] mb-1">Nenhum briefing publicado</div>
-                <div className="text-xs text-[#444]">Os briefings são gerados automaticamente a cada hora.</div>
+                <Shield size={32} className="text-[#555] mx-auto mb-3" />
+                <div className="text-sm font-bold text-[#A1A1AA] mb-1">Nenhum briefing publicado</div>
+                <div className="text-xs text-[#777]">Os briefings são gerados automaticamente a cada hora.</div>
               </div>
             )}
             {filtered.length === 0 && briefings.length > 0 && (
-              <div className="text-center py-16 text-[#666] text-sm">Nenhum briefing corresponde ao filtro selecionado.</div>
+              <div className="text-center py-16 text-[#A1A1AA] text-sm">Nenhum briefing corresponde ao filtro selecionado.</div>
             )}
             {filtered.length > visibleCount && (
               <div className="mt-8 flex justify-center">
@@ -265,7 +268,7 @@ export default function BriefingExplorer({ initialBriefings, initialTrending, in
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 uppercase ${SEVERITY_STYLES[b.severity]}`}>{SEVERITY_LABELS[b.severity]}</span>
                 </Link>
               )) : (
-                <div className="text-xs text-[#444] py-4 text-center">Nenhuma ameaça em alta no momento.</div>
+                <div className="text-xs text-[#777] py-4 text-center">Nenhuma ameaça em alta no momento.</div>
               )}
             </div>
           </div>
@@ -290,12 +293,12 @@ export default function BriefingExplorer({ initialBriefings, initialTrending, in
                         {ioc.sourceName} <ArrowRight size={8} />
                       </Link>
                     ) : (
-                      <div className="text-[9px] text-[#555]">{ioc.confidence}</div>
+                      <div className="text-[9px] text-[#888]">{ioc.confidence}</div>
                     )}
                   </div>
                 </div>
               )) : (
-                <div className="text-xs text-[#444] py-4 text-center">Nenhum IOC disponível.</div>
+                <div className="text-xs text-[#777] py-4 text-center">Nenhum IOC disponível.</div>
               )}
             </div>
           </div>

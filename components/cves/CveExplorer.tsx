@@ -25,7 +25,7 @@ const VULN_TYPE_COLOR: Record<VulnType, string> = {
   "Negação de Serviço":    "text-purple-400 bg-purple-600/10 border-purple-600/20",
   "Escalada de Privilégio":"text-amber-400 bg-amber-600/10 border-amber-600/20",
   "Criptografia":          "text-indigo-400 bg-indigo-600/10 border-indigo-600/20",
-  "Outro":                 "text-[#666] bg-white/[0.04] border-white/[0.08]",
+  "Outro":                 "text-[#A1A1AA] bg-white/[0.04] border-white/[0.08]",
 };
 
 const SEV_CONFIG = {
@@ -43,7 +43,7 @@ const PRIORITY_CONFIG: Record<string, { cls: string }> = {
 };
 
 function cvssColor(score: number | null): string {
-  if (!score) return "text-[#555]";
+  if (!score) return "text-[#888]";
   if (score >= 9) return "text-red-400";
   if (score >= 7) return "text-orange-400";
   if (score >= 4) return "text-yellow-400";
@@ -90,7 +90,7 @@ function CveCard({ cve }: { cve: CveEntry }) {
               </span>
             )}
           </div>
-          <span className="flex items-center gap-1 text-[10px] text-[#555] flex-shrink-0">
+          <span className="flex items-center gap-1 text-[10px] text-[#888] flex-shrink-0">
             <Clock size={9} />
             {timeAgo(cve.published)}
           </span>
@@ -102,18 +102,18 @@ function CveCard({ cve }: { cve: CveEntry }) {
             {cve.vulnType}
           </span>
           {cve.cweId && (
-            <span className="text-[10px] text-[#555] font-mono">{cve.cweId}</span>
+            <span className="text-[10px] text-[#888] font-mono">{cve.cweId}</span>
           )}
           {cve.affectedProducts.length > 0 && (
             <>
-              <span className="text-[#333] text-[10px]">·</span>
+              <span className="text-[#555] text-[10px]">·</span>
               {cve.affectedProducts.slice(0, 2).map((p) => (
-                <span key={p} className="px-1.5 py-0.5 rounded text-[9px] text-[#666] bg-white/[0.04] border border-white/[0.06]">
+                <span key={p} className="px-1.5 py-0.5 rounded text-[9px] text-[#A1A1AA] bg-white/[0.04] border border-white/[0.06]">
                   {p}
                 </span>
               ))}
               {cve.affectedProducts.length > 2 && (
-                <span className="text-[9px] text-[#444]">+{cve.affectedProducts.length - 2}</span>
+                <span className="text-[9px] text-[#777]">+{cve.affectedProducts.length - 2}</span>
               )}
             </>
           )}
@@ -126,7 +126,7 @@ function CveCard({ cve }: { cve: CveEntry }) {
           <div className={`text-2xl font-black font-mono leading-none ${cvssColor(cve.cvssScore)}`}>
             {cve.cvssScore?.toFixed(1) ?? "N/A"}
           </div>
-          <div className="text-[9px] text-[#555] uppercase tracking-wider mt-0.5">CVSS {cve.cvssVersion}</div>
+          <div className="text-[9px] text-[#888] uppercase tracking-wider mt-0.5">CVSS {cve.cvssVersion}</div>
         </div>
         {cve.epss !== null && (
           <>
@@ -135,7 +135,7 @@ function CveCard({ cve }: { cve: CveEntry }) {
               <div className="text-lg font-black font-mono leading-none text-purple-400">
                 {(cve.epss * 100).toFixed(1)}%
               </div>
-              <div className="text-[9px] text-[#555] uppercase tracking-wider mt-0.5">
+              <div className="text-[9px] text-[#888] uppercase tracking-wider mt-0.5">
                 EPSS{cve.epssPercentile !== null ? ` · P${Math.round(cve.epssPercentile * 100)}` : ""}
               </div>
             </div>
@@ -146,7 +146,7 @@ function CveCard({ cve }: { cve: CveEntry }) {
       {/* ── Descrição (PT-BR se disponível, inglês caso contrário) ── */}
       <div>
         {hasAI && (
-          <p className="text-[10px] text-[#555] uppercase tracking-wider font-semibold mb-1.5">Descrição técnica</p>
+          <p className="text-[10px] text-[#888] uppercase tracking-wider font-semibold mb-1.5">Descrição técnica</p>
         )}
         <p className="text-xs text-[#A1A1AA] leading-relaxed">
           {hasAI ? cve.ptBrDescription : (cve.description || "Sem descrição disponível.")}
@@ -163,7 +163,7 @@ function CveCard({ cve }: { cve: CveEntry }) {
         <div className="flex gap-2.5 p-3 rounded-lg bg-green-600/[0.05] border border-green-600/[0.15]">
           <Shield size={11} className="text-green-500 flex-shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <p className="text-[9px] font-semibold text-[#555] uppercase tracking-wider mb-1">Mitigação</p>
+            <p className="text-[9px] font-semibold text-[#888] uppercase tracking-wider mb-1">Mitigação</p>
             <p className="text-[11px] text-[#888] leading-relaxed">{cve.mitigation}</p>
           </div>
         </div>
@@ -177,7 +177,7 @@ function CveCard({ cve }: { cve: CveEntry }) {
               Prioridade {cve.aiPriority}
             </span>
           )}
-          <span className="text-[10px] text-[#444]">
+          <span className="text-[10px] text-[#777]">
             Mod. {timeAgo(cve.lastModified)}
           </span>
         </div>
@@ -185,7 +185,7 @@ function CveCard({ cve }: { cve: CveEntry }) {
           href={cve.nvdUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[10px] text-[#555] hover:text-red-400 transition-colors"
+          className="inline-flex items-center gap-1 text-[10px] text-[#888] hover:text-red-400 transition-colors"
         >
           Ver no NVD <ExternalLink size={9} />
         </a>
@@ -266,17 +266,20 @@ export default function CveExplorer({ initialCves, initialUpdatedAt }: Props) {
           </div>
 
           <div className="relative max-w-xl">
-            <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" />
+            <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#777]" aria-hidden />
+            <label htmlFor="cve-search" className="sr-only">Buscar CVEs</label>
             <input
-              type="text"
+              id="cve-search"
+              type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por CVE-ID, produto ou palavra-chave..."
-              className="w-full bg-[#0D0D0D] border border-white/[0.08] focus:border-red-600/40 rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder-[#444] outline-none transition-colors"
+              autoComplete="off"
+              className="w-full bg-[#0D0D0D] border border-white/[0.08] focus:border-red-600/40 focus-visible:outline-none rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder-[#666] transition-colors"
             />
             {search && (
-              <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#555] hover:text-[#A1A1AA]">
-                <X size={14} />
+              <button onClick={() => setSearch("")} aria-label="Limpar busca" className="absolute right-4 top-1/2 -translate-y-1/2 text-[#888] hover:text-[#A1A1AA] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 rounded">
+                <X size={14} aria-hidden />
               </button>
             )}
           </div>
@@ -284,11 +287,11 @@ export default function CveExplorer({ initialCves, initialUpdatedAt }: Props) {
       </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-wrap items-center gap-3 mb-4 text-xs text-[#555]">
+        <div className="flex flex-wrap items-center gap-3 mb-4 text-xs text-[#888]">
           <AlertTriangle size={11} className="text-red-500" />
           <span><span className="font-mono font-bold text-white">{filtered.length}</span> vulnerabilidades</span>
           {updatedAt && (
-            <span className="text-[#444]">· Atualizado {timeAgo(updatedAt)}</span>
+            <span className="text-[#777]">· Atualizado {timeAgo(updatedAt)}</span>
           )}
         </div>
 
@@ -300,7 +303,7 @@ export default function CveExplorer({ initialCves, initialUpdatedAt }: Props) {
               className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
                 severity === val
                   ? "bg-red-600/15 border-red-600/30 text-red-400"
-                  : "bg-[#0D0D0D] border-white/[0.06] text-[#666] hover:text-[#A1A1AA] hover:border-white/[0.12]"
+                  : "bg-[#0D0D0D] border-white/[0.06] text-[#A1A1AA] hover:text-[#A1A1AA] hover:border-white/[0.12]"
               }`}
             >
               {label}
@@ -310,7 +313,7 @@ export default function CveExplorer({ initialCves, initialUpdatedAt }: Props) {
           <select
             value={vulnType}
             onChange={(e) => setVulnType(e.target.value as VulnType | "")}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border bg-[#0D0D0D] border-white/[0.06] text-[#666] hover:border-white/[0.12] outline-none cursor-pointer transition-all"
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border bg-[#0D0D0D] border-white/[0.06] text-[#A1A1AA] hover:border-white/[0.12] outline-none cursor-pointer transition-all"
           >
             <option value="">Todos os tipos</option>
             {VULN_TYPES.filter((t) => cves.some((c) => c.vulnType === t)).map((t) => (
@@ -323,7 +326,7 @@ export default function CveExplorer({ initialCves, initialUpdatedAt }: Props) {
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
               kevOnly
                 ? "bg-red-900/20 border-red-700/40 text-red-300"
-                : "bg-[#0D0D0D] border-white/[0.06] text-[#666] hover:text-[#A1A1AA] hover:border-white/[0.12]"
+                : "bg-[#0D0D0D] border-white/[0.06] text-[#A1A1AA] hover:text-[#A1A1AA] hover:border-white/[0.12]"
             }`}
           >
             <ShieldAlert size={11} />
@@ -332,7 +335,7 @@ export default function CveExplorer({ initialCves, initialUpdatedAt }: Props) {
         </div>
 
         {filtered.length === 0 ? (
-          <div className="text-center py-20 text-[#555] text-sm">
+          <div className="text-center py-20 text-[#888] text-sm">
             {search || severity || kevOnly ? "Nenhum CVE encontrado com esses filtros." : "Nenhum CVE disponível no momento."}
           </div>
         ) : (
@@ -346,7 +349,7 @@ export default function CveExplorer({ initialCves, initialUpdatedAt }: Props) {
             href="https://nvd.nist.gov/vuln/search"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-[#555] hover:text-[#A1A1AA] transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-[#888] hover:text-[#A1A1AA] transition-colors"
           >
             Base completa no NVD/NIST <ExternalLink size={10} />
           </a>

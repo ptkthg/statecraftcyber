@@ -76,7 +76,7 @@ function ArticleRow({ article }: { article: NewsArticle }) {
               <MapPin size={9} />BR
             </span>
           )}
-          <span className="flex items-center gap-0.5 text-[10px] text-[#555]">
+          <span className="flex items-center gap-0.5 text-[10px] text-[#888]">
             <Clock size={9} />{timeAgo(article.publishedAt)}
           </span>
         </div>
@@ -90,13 +90,13 @@ function ArticleRow({ article }: { article: NewsArticle }) {
             </span>
           ))}
           {article.tags.slice(0, 2).map((tag) => (
-            <span key={tag} className="px-1.5 py-0.5 rounded text-[9px] text-[#555] bg-white/[0.04] border border-white/[0.06]">
+            <span key={tag} className="px-1.5 py-0.5 rounded text-[9px] text-[#888] bg-white/[0.04] border border-white/[0.06]">
               #{tag}
             </span>
           ))}
         </div>
       </div>
-      <ExternalLink size={12} className="flex-shrink-0 text-[#333] group-hover:text-red-400 transition-colors self-start mt-1" />
+      <ExternalLink size={12} className="flex-shrink-0 text-[#666] group-hover:text-red-400 transition-colors self-start mt-1" />
     </Link>
   );
 }
@@ -107,7 +107,7 @@ function DateGroup({ label, articles }: { label: string; articles: NewsArticle[]
       <div className="flex items-center gap-3 mb-3">
         <span className="text-xs font-bold text-[#A1A1AA] uppercase tracking-widest">{label}</span>
         <div className="h-px flex-1 bg-white/[0.06]" />
-        <span className="text-[10px] text-[#444] font-mono">{articles.length}</span>
+        <span className="text-[10px] text-[#777] font-mono">{articles.length}</span>
       </div>
       <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl overflow-hidden">
         {articles.map((article) => (
@@ -181,10 +181,11 @@ export default function NewsExplorer({ initialArticles }: Props) {
               <button
                 key={t || "all"}
                 onClick={() => setArticleType(t)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                aria-pressed={articleType === t}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 ${
                   articleType === t
                     ? "bg-red-600/15 border-red-600/30 text-red-400"
-                    : "bg-[#0D0D0D] border-white/[0.06] text-[#666] hover:text-[#A1A1AA] hover:border-white/[0.12]"
+                    : "bg-[#0D0D0D] border-white/[0.06] text-[#A1A1AA] hover:text-white hover:border-white/[0.12]"
                 }`}
               >
                 {getTypeLabel(t || "")}
@@ -203,10 +204,11 @@ export default function NewsExplorer({ initialArticles }: Props) {
               <button
                 key={r || "all-r"}
                 onClick={() => setRegion(r)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                aria-pressed={region === r}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 ${
                   region === r
                     ? "bg-red-600/15 border-red-600/30 text-red-400"
-                    : "bg-[#0D0D0D] border-white/[0.06] text-[#666] hover:text-[#A1A1AA] hover:border-white/[0.12]"
+                    : "bg-[#0D0D0D] border-white/[0.06] text-[#A1A1AA] hover:text-white hover:border-white/[0.12]"
                 }`}
               >
                 {r === "Global" && <Globe size={10} />}
@@ -220,13 +222,14 @@ export default function NewsExplorer({ initialArticles }: Props) {
           <button
             onClick={refresh}
             disabled={refreshing}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#666] hover:text-[#A1A1AA] border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all ml-auto"
+            aria-label={refreshing ? "Atualizando notícias..." : "Atualizar notícias"}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#A1A1AA] hover:text-white border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all ml-auto focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
           >
-            <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} />
+            <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} aria-hidden />
             Atualizar
           </button>
 
-          <div className="flex items-center gap-1.5 text-xs text-[#555]">
+          <div className="flex items-center gap-1.5 text-xs text-[#888]">
             <AlertCircle size={10} className="text-red-500" />
             <span className="font-mono font-bold text-white">{filtered.length}</span>
             <span>artigos</span>
@@ -235,7 +238,7 @@ export default function NewsExplorer({ initialArticles }: Props) {
       </div>
 
       {grouped.length === 0 ? (
-        <div className="py-20 text-center text-[#555] text-sm">
+        <div className="py-20 text-center text-[#888] text-sm">
           Nenhuma notícia disponível com esses filtros.
         </div>
       ) : (
@@ -244,7 +247,7 @@ export default function NewsExplorer({ initialArticles }: Props) {
         ))
       )}
 
-      <p className="mt-6 text-center text-[10px] text-[#444] leading-relaxed max-w-lg mx-auto">
+      <p className="mt-6 text-center text-[10px] text-[#777] leading-relaxed max-w-lg mx-auto">
         Artigos coletados de RSS feeds e reescritos em PT-BR por IA. Clique para ler a cobertura completa gerada pela Statecraft.
       </p>
     </div>

@@ -1,5 +1,3 @@
-"use client";
-
 interface ThreatPoint {
   x: number;
   y: number;
