@@ -87,8 +87,7 @@ Responda APENAS com um objeto JSON válido, sem texto fora do JSON:
 async function getFromCache(slug: string): Promise<{ title: string; summary: string; content: string } | null> {
   try {
     const { prisma } = await import("./prisma");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cached = await (prisma as any).newsCache.findUnique({ where: { slug } });
+    const cached = await prisma.newsCache.findUnique({ where: { slug } });
     if (!cached) return null;
     return { title: cached.title, summary: cached.summary, content: cached.content };
   } catch {
@@ -99,8 +98,7 @@ async function getFromCache(slug: string): Promise<{ title: string; summary: str
 async function saveToCache(slug: string, data: { title: string; summary: string; content: string }, article: NewsArticle): Promise<void> {
   try {
     const { prisma } = await import("./prisma");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (prisma as any).newsCache.upsert({
+    await prisma.newsCache.upsert({
       where: { slug },
       create: { slug, ...data, source: article.source, originalUrl: article.url },
       update: { ...data, enrichedAt: new Date() },

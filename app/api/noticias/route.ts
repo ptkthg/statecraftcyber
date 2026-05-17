@@ -12,8 +12,7 @@ export async function GET() {
     try {
       const { prisma } = await import("@/lib/prisma");
       const slugs = articles.map((a) => a.slug);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cached: { slug: string; title: string; summary: string }[] = await (prisma as any).newsCache.findMany({
+      const cached: { slug: string; title: string; summary: string }[] = await prisma.newsCache.findMany({
         where: { slug: { in: slugs } },
         select: { slug: true, title: true, summary: true },
       });

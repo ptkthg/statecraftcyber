@@ -387,7 +387,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   if (!article) {
     try {
       const { prisma } = await import("@/lib/prisma");
-      const cached = await (prisma as any).newsCache.findUnique({ where: { slug } });
+      const cached = await prisma.newsCache.findUnique({ where: { slug } });
       if (cached) {
         article = {
           id: cached.slug,

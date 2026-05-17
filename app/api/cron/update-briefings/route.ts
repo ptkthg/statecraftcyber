@@ -3,11 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { fetchAllSources, fetchEpssScores } from "@/lib/threat-sources";
 import { generateBriefingAsync } from "@/lib/briefing-generator";
 import { filterNewItems, generateContentHash } from "@/lib/deduplication";
+import { normalizeIoc } from "@/lib/threat-intel/normalize-ioc";
+import type { Ioc } from "@/lib/types";
 
 const MAX_HOURLY = parseInt(process.env.MAX_HOURLY_BRIEFINGS ?? "3", 10);
 const AUTO_PUBLISH = process.env.AUTO_PUBLISH === "true";
 
-export const maxDuration = 300; // 5 min (Vercel Pro / Hobby limit)
+export const maxDuration = 60; // Hobby plan limit
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
@@ -109,7 +111,7 @@ async function handleCron(req: NextRequest) {
         const briefing = await generateBriefingAsync(item, existingSlugs);
         const hash = generateContentHash(item);
 
-        await prisma.briefing.create({
+        const created = await prisma.briefing.create({
           data: {
             title: briefing.title,
             slug: briefing.slug,
@@ -135,8 +137,27 @@ async function handleCron(req: NextRequest) {
           },
         });
 
+        // Populate structured Ioc table
+        const iocList = (briefing.iocs ?? []) as Ioc[];
+        for (const ioc of iocList) {
+          if (!ioc.type || !ioc.value) continue;
+          const normalized = normalizeIoc(ioc.type, ioc.value);
+          await prisma.ioc.upsert({
+            where: { type_normalized_briefingId: { type: ioc.type, normalized, briefingId: created.id } },
+            update: {},
+            create: {
+              type: ioc.type,
+              value: ioc.value,
+              normalized,
+              confidence: (["high", "medium", "low"].includes(ioc.confidence) ? ioc.confidence : "medium") as "high" | "medium" | "low",
+              sourceName: ioc.source ?? briefing.sourceName,
+              briefingId: created.id,
+            },
+          });
+        }
+
         briefingsCreated++;
-        console.log(`[Cron] Briefing criado: ${briefing.title.slice(0, 60)}`);
+        console.log(`[Cron] Briefing criado: ${briefing.title.slice(0, 60)} (${iocList.length} IOCs)`);
       } catch (err) {
         const msg = `Erro ao salvar briefing "${item.title.slice(0, 40)}": ${(err as Error).message}`;
         console.error(`[Cron] ${msg}`);
