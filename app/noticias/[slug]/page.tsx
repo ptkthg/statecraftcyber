@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
 import { unstable_cache } from "next/cache";
-import { marked } from "marked";
+import { renderSafeMarkdown } from "@/lib/security/sanitize-markdown";
 import {
   ArrowLeft, ExternalLink, Globe, MapPin, Clock,
   Tag, AlertCircle, Loader2, Sparkles, BookOpen, Shield, ChevronRight,
@@ -106,7 +106,7 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
     if (enriched.content.trimStart().startsWith("<")) {
       html = sanitizeContent(enriched.content);
     } else {
-      html = await marked(enriched.content, { gfm: true, breaks: false }) as string;
+      html = renderSafeMarkdown(enriched.content);
     }
   } else if (article.content) {
     html = sanitizeContent(article.content);

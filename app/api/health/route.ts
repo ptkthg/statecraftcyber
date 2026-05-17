@@ -5,24 +5,31 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const [briefingCount, iocRaw, lastCron] = await Promise.all([
+    const [briefingCount, iocCount, cveCount, lastCron] = await Promise.all([
       prisma.briefing.count({ where: { status: "published" } }),
-      prisma.briefing.findMany({ select: { iocs: true } }),
+      prisma.ioc.count(),
+      prisma.cveCache.count(),
       prisma.cronLog.findFirst({ orderBy: { runAt: "desc" } }),
     ]);
-
-    const iocCount = iocRaw.reduce((acc, b) => {
-      return acc + (Array.isArray(b.iocs) ? (b.iocs as unknown[]).length : 0);
-    }, 0);
 
     return NextResponse.json({
       status: "ok",
       database: "ok",
-      publishedBriefings: briefingCount,
-      iocs: iocCount,
-      lastCronRun: lastCron?.runAt ?? null,
-      lastCronSuccess: lastCron?.success ?? null,
-      briefingsLastHour: lastCron?.briefingsCreated ?? null,
+      briefings: {
+        published: briefingCount,
+      },
+      iocs: {
+        total: iocCount,
+      },
+      cves: {
+        cached: cveCount,
+      },
+      cron: {
+        lastRun: lastCron?.runAt ?? null,
+        lastSuccess: lastCron?.success ?? null,
+        briefingsLastRun: lastCron?.briefingsCreated ?? null,
+        durationMs: lastCron?.durationMs ?? null,
+      },
       updatedAt: new Date().toISOString(),
     });
   } catch {

@@ -8,9 +8,12 @@ export async function GET(req: NextRequest) {
     const { prisma } = await import("@/lib/prisma");
     const { searchParams } = req.nextUrl;
 
+    const ALLOWED_TYPES = new Set(["ip", "domain", "hash", "url", "email", "file", "c2"]);
     const q = searchParams.get("q")?.toLowerCase().trim() ?? "";
-    const typeFilter = searchParams.get("type") ?? "";
-    const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+    const rawType = searchParams.get("type")?.toLowerCase() ?? "";
+    const typeFilter = ALLOWED_TYPES.has(rawType) ? rawType : "";
+    const rawPage = parseInt(searchParams.get("page") ?? "1", 10);
+    const page = Math.max(1, Number.isFinite(rawPage) ? rawPage : 1);
     const limit = 25;
     const skip = (page - 1) * limit;
 

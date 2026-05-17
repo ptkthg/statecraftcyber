@@ -14,7 +14,8 @@ export async function GET(req: NextRequest) {
     const { prisma } = await import("@/lib/prisma");
 
     const { searchParams } = req.nextUrl;
-    const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 50);
+    const rawLimit = parseInt(searchParams.get("limit") ?? "20", 10);
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 50) : 20;
     // Always force "published" — never expose drafts via public endpoint
     const status = "published";
 
@@ -34,35 +35,33 @@ export async function GET(req: NextRequest) {
           sourceName: true,
           sourceUrl: true,
           cves: true,
-          iocs: true,
           createdAt: true,
           readingTime: true,
         },
       }),
-      // Últimos IOCs dos briefings mais recentes (inclui slug para link)
-      prisma.briefing.findMany({
-        where: { status: "published", NOT: { iocs: { equals: [] } } },
+      // Últimos IOCs da tabela Ioc (inclui briefing para slug e severidade)
+      prisma.ioc.findMany({
         orderBy: { createdAt: "desc" },
-        take: 5,
-        select: { iocs: true, sourceName: true, slug: true, severity: true },
+        take: 8,
+        select: {
+          type: true,
+          value: true,
+          normalized: true,
+          confidence: true,
+          briefing: { select: { sourceName: true, slug: true, severity: true } },
+        },
       }),
     ]);
 
-    const flatIocs: LiveIoc[] = [];
-    for (const row of latestIocsRaw) {
-      const iocs = row.iocs as unknown as Ioc[];
-      if (Array.isArray(iocs)) {
-        flatIocs.push(
-          ...iocs.slice(0, 3).map((ioc) => ({
-            ...ioc,
-            sourceName: row.sourceName,
-            briefingSlug: row.slug,
-            severity: row.severity,
-          }))
-        );
-      }
-    }
-    const uniqueIocs = flatIocs.slice(0, 8);
+    const uniqueIocs: LiveIoc[] = latestIocsRaw.map((ioc) => ({
+      type: ioc.type as Ioc["type"],
+      value: ioc.value,
+      normalized: ioc.normalized,
+      confidence: ioc.confidence as Ioc["confidence"],
+      sourceName: ioc.briefing.sourceName,
+      briefingSlug: ioc.briefing.slug,
+      severity: ioc.briefing.severity,
+    }));
 
     // Trending = briefings mais críticos das últimas 48h
     const trending = briefings
