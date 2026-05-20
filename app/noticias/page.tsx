@@ -51,12 +51,17 @@ export default async function NoticiasPage() {
             <p className="text-[#A1A1AA] text-sm leading-relaxed max-w-xl mb-1">
               Cobertura jornalística do cenário global de segurança, reescrita em português pela IA Statecraft a partir de 19 fontes especializadas.
             </p>
-            <p className="text-xs text-[#555] max-w-xl leading-relaxed">
+            <p className="text-xs text-[#888] max-w-xl leading-relaxed">
               Para análises técnicas com IOCs e recomendações operacionais, veja os{" "}
-              <a href="/threat-briefings" className="text-red-600/70 hover:text-red-500 transition-colors">
+              <a href="/threat-briefings" className="text-red-400 hover:text-red-300 transition-colors">
                 Threat Briefings
               </a>.
             </p>
+            {initialArticles.length > 0 && (
+              <p className="text-xs text-[#666] mt-3">
+                <span className="font-mono font-bold text-[#A1A1AA]">{initialArticles.length}</span> artigos monitorados
+              </p>
+            )}
           </div>
         </div>
       </section>
