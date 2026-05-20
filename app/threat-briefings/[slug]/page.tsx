@@ -14,6 +14,7 @@ import { RecommendedActions } from "@/components/briefing/RecommendedActions";
 import { DetectionSuggestions } from "@/components/briefing/DetectionSuggestions";
 import { ConfidenceBlock } from "@/components/briefing/ConfidenceBlock";
 import { RichText } from "@/components/briefing/RichText";
+import { CopyButton } from "@/components/briefing/CopyButton";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -97,6 +98,13 @@ function epssLabel(score: number): string {
   if (score >= 0.4) return "Risco alto";
   if (score >= 0.1) return "Risco moderado";
   return "Risco baixo";
+}
+
+function epssColor(score: number): string {
+  if (score >= 0.7) return "text-red-500";
+  if (score >= 0.4) return "text-orange-400";
+  if (score >= 0.1) return "text-yellow-400";
+  return "text-[#888]";
 }
 
 // ── Data fetching ─────────────────────────────────────────────────────────
@@ -303,23 +311,21 @@ export default async function BriefingPage({
               </div>
             </div>
 
-            {/* Mobile metadata strip — visible only below lg */}
-            <div className="lg:hidden flex flex-wrap gap-2 mb-6">
-              <span className={`text-[10px] font-bold px-2.5 py-1 rounded border uppercase tracking-wider flex items-center gap-1.5 ${SEVERITY_STYLES[briefing.severity]}`}>
-                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${SEVERITY_DOT[briefing.severity]}`} />
-                {SEVERITY_LABELS[briefing.severity]}
-              </span>
-              {briefing.mitreTechniques.length > 0 && (
-                <span className="text-[10px] text-red-400 bg-red-600/5 border border-red-600/15 px-2.5 py-1 rounded font-mono">
-                  {briefing.mitreTechniques.length} MITRE TTP{briefing.mitreTechniques.length > 1 ? "s" : ""}
-                </span>
-              )}
-              {sidebarIocs.length > 0 && (
-                <span className="text-[10px] text-orange-400 bg-orange-600/5 border border-orange-600/15 px-2.5 py-1 rounded">
-                  {sidebarIocs.length} IOC{sidebarIocs.length > 1 ? "s" : ""}
-                </span>
-              )}
-            </div>
+            {/* Mobile metadata strip — visible only below lg (no severity, already in header) */}
+            {(briefing.mitreTechniques.length > 0 || sidebarIocs.length > 0) && (
+              <div className="lg:hidden flex flex-wrap gap-2 mb-6">
+                {briefing.mitreTechniques.length > 0 && (
+                  <span className="text-[10px] text-red-400 bg-red-600/5 border border-red-600/15 px-2.5 py-1 rounded font-mono">
+                    {briefing.mitreTechniques.length} MITRE TTP{briefing.mitreTechniques.length > 1 ? "s" : ""}
+                  </span>
+                )}
+                {sidebarIocs.length > 0 && (
+                  <span className="text-[10px] text-orange-400 bg-orange-600/5 border border-orange-600/15 px-2.5 py-1 rounded">
+                    {sidebarIocs.length} IOC{sidebarIocs.length > 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Executive summary */}
             <ExecutiveSummary
@@ -327,39 +333,37 @@ export default async function BriefingPage({
               severity={briefing.severity}
             />
 
-            {/* Scores + confidence row */}
-            {(briefing.cvssScore || briefing.epssScore) && (
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
-                {briefing.cvssScore && (
-                  <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-lg p-4 text-center">
-                    <div className="text-xs text-[#666] uppercase tracking-wider mb-1">CVSS v3</div>
-                    <div className={`text-3xl font-black ${briefing.cvssScore >= 9 ? "text-red-500" : briefing.cvssScore >= 7 ? "text-orange-400" : "text-yellow-400"}`}>
-                      {briefing.cvssScore.toFixed(1)}
-                    </div>
-                    <div className="text-xs text-[#888] mt-1">{cvssLabel(briefing.cvssScore)}</div>
+            {/* Scores + confidence row — always rendered (confidence alone if no CVSS/EPSS) */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+              {briefing.cvssScore && (
+                <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-lg p-4 text-center">
+                  <div className="text-xs text-[#666] uppercase tracking-wider mb-1">CVSS v3</div>
+                  <div className={`text-3xl font-black ${briefing.cvssScore >= 9 ? "text-red-500" : briefing.cvssScore >= 7 ? "text-orange-400" : "text-yellow-400"}`}>
+                    {briefing.cvssScore.toFixed(1)}
                   </div>
-                )}
-                {briefing.epssScore && (
-                  <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-lg p-4 text-center">
-                    <div className="text-xs text-[#666] uppercase tracking-wider mb-1">EPSS</div>
-                    <div className="text-3xl font-black text-yellow-400">
-                      {(briefing.epssScore * 100).toFixed(1)}%
-                    </div>
-                    <div className="text-xs text-[#888] mt-1">{epssLabel(briefing.epssScore)}</div>
-                  </div>
-                )}
-                {/* Confidence always shown */}
-                <div className={`bg-[#0D0D0D] border border-white/[0.06] rounded-lg p-4 text-center ${!briefing.cvssScore && !briefing.epssScore ? "col-span-2 lg:col-span-1" : ""}`}>
-                  <div className="text-xs text-[#666] uppercase tracking-wider mb-1">Confiança</div>
-                  <div className={`text-2xl font-black ${briefing.confidence === "high" ? "text-green-400" : briefing.confidence === "medium" ? "text-yellow-400" : "text-[#888]"}`}>
-                    {CONFIDENCE_LABELS[briefing.confidence]}
-                  </div>
-                  {confidenceReason && (
-                    <div className="text-[10px] text-[#666] mt-1 leading-tight line-clamp-2">{confidenceReason}</div>
-                  )}
+                  <div className="text-xs text-[#888] mt-1">{cvssLabel(briefing.cvssScore)}</div>
                 </div>
+              )}
+              {briefing.epssScore != null && (
+                <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-lg p-4 text-center">
+                  <div className="text-xs text-[#666] uppercase tracking-wider mb-1">EPSS</div>
+                  <div className={`text-3xl font-black ${epssColor(briefing.epssScore)}`}>
+                    {(briefing.epssScore * 100).toFixed(1)}%
+                  </div>
+                  <div className="text-xs text-[#888] mt-1">{epssLabel(briefing.epssScore)}</div>
+                </div>
+              )}
+              {/* Confidence always shown — spans full width when alone */}
+              <div className={`bg-[#0D0D0D] border border-white/[0.06] rounded-lg p-4 text-center ${!briefing.cvssScore && briefing.epssScore == null ? "col-span-2 lg:col-span-3" : ""}`}>
+                <div className="text-xs text-[#666] uppercase tracking-wider mb-1">Confiança</div>
+                <div className={`text-2xl font-black ${briefing.confidence === "high" ? "text-green-400" : briefing.confidence === "medium" ? "text-yellow-400" : "text-[#888]"}`}>
+                  {CONFIDENCE_LABELS[briefing.confidence]}
+                </div>
+                {confidenceReason && (
+                  <div className="text-[10px] text-[#666] mt-1 leading-tight line-clamp-2">{confidenceReason}</div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* ── Main content: structured or legacy ── */}
             {sc ? (
@@ -471,14 +475,20 @@ export default async function BriefingPage({
           <aside className="lg:w-72 flex-shrink-0 space-y-6">
             {/* IOCs */}
             {sidebarIocs.length > 0 && (
-              <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-5 sticky top-20">
-                <div className="flex items-center gap-2 mb-4">
-                  <AlertTriangle size={13} className="text-red-500" />
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">
-                    IOCs ({sidebarIocs.length})
-                  </span>
+              <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-5 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={13} className="text-red-500" />
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      IOCs ({sidebarIocs.length})
+                    </span>
+                  </div>
+                  <CopyButton
+                    text={sidebarIocs.map((i) => i.value).join("\n")}
+                    label="Copiar"
+                  />
                 </div>
-                <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
+                <div className="space-y-4">
                   {Object.entries(sidebarByType).map(([type, iocs]) => (
                     <div key={type}>
                       <div className="text-xs font-bold text-[#888] uppercase tracking-wider mb-2">
