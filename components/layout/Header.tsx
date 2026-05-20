@@ -53,7 +53,7 @@ export default function Header() {
             </div>
             <div className="leading-none">
               <div className="text-sm font-black tracking-widest text-white uppercase">
-                ST<span className="text-red-600">A</span>TECRAFT
+                <span className="text-red-600">S</span>TATECRAFT
               </div>
               <div className="text-[9px] font-medium tracking-[0.2em] text-[#A1A1AA] uppercase">
                 Cyber Intelligence

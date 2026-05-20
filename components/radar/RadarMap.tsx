@@ -61,22 +61,6 @@ export default function RadarMap({ className = "" }: { className?: string }) {
           <line x1="87"  y1="87"  x2="313" y2="313" stroke="rgba(229,9,20,0.12)" strokeWidth="1" />
           <line x1="313" y1="87"  x2="87"  y2="313" stroke="rgba(229,9,20,0.12)" strokeWidth="1" />
 
-          {/* Continent outlines (stroke only — no filled blobs) */}
-          <g fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2" strokeLinejoin="round">
-            {/* North America */}
-            <path d="M60,110 L95,105 L100,120 L110,125 L115,140 L100,150 L80,155 L65,145 L55,130 Z" />
-            {/* South America */}
-            <path d="M95,165 L115,160 L120,175 L118,195 L110,215 L100,220 L88,210 L85,195 L88,180 Z" />
-            {/* Europe */}
-            <path d="M175,90 L200,85 L215,92 L218,105 L205,115 L185,110 L170,102 Z" />
-            {/* Africa */}
-            <path d="M185,125 L215,120 L225,135 L222,165 L210,185 L195,190 L180,180 L175,160 L178,140 Z" />
-            {/* Asia */}
-            <path d="M225,85 L295,80 L320,95 L330,110 L320,130 L290,140 L255,135 L230,120 L225,105 Z" />
-            {/* Australia */}
-            <path d="M280,185 L315,180 L325,195 L320,215 L305,220 L285,215 L278,200 Z" />
-          </g>
-
           {/* Radar sweep */}
           <g style={{ transformOrigin: "200px 200px", animation: "radar-sweep 4s linear infinite" }}>
             <path
@@ -109,10 +93,6 @@ export default function RadarMap({ className = "" }: { className?: string }) {
             );
           })}
 
-          {/* Status label */}
-          <text x="200" y="388" textAnchor="middle" fill="rgba(229,9,20,0.6)" fontSize="8" fontFamily="monospace" letterSpacing="3">
-            NÍVEL DE AMEAÇA: ELEVADO
-          </text>
         </svg>
       </div>
     </div>
