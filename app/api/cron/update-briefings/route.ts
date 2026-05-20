@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { fetchAllSources, fetchEpssScores } from "@/lib/threat-sources";
 import { generateBriefingAsync } from "@/lib/briefing-generator";
 import { filterNewItems, generateContentHash } from "@/lib/deduplication";
@@ -40,8 +41,13 @@ async function handleCron(req: NextRequest) {
   try {
     // ── 0. Limpar briefings com mais de 7 dias ───────────────────────────
     const cutoff7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const deleted = await prisma.briefing.deleteMany({ where: { createdAt: { lt: cutoff7d } } });
-    if (deleted.count > 0) console.log(`[Cron] ${deleted.count} briefings com mais de 7 dias removidos`);
+    try {
+      const deleted = await prisma.briefing.deleteMany({ where: { createdAt: { lt: cutoff7d } } });
+      if (deleted.count > 0) console.log(`[Cron] ${deleted.count} briefings com mais de 7 dias removidos`);
+    } catch (err) {
+      console.error("[Cron] Erro ao limpar briefings antigos (não crítico):", (err as Error).message);
+      runErrors.push(`cleanup: ${(err as Error).message}`);
+    }
 
     // ── 1. Coletar dados de todas as fontes ─────────────────────────────
     console.log("[Cron] Iniciando coleta horária de threat intelligence...");
@@ -76,12 +82,19 @@ async function handleCron(req: NextRequest) {
 
     // ── 3. Deduplicar contra o banco ─────────────────────────────────────
     const hashes = items.map(generateContentHash);
-    const existingHashes = await prisma.briefing
-      .findMany({
-        where: { contentHash: { in: hashes } },
-        select: { contentHash: true },
-      })
-      .then((rows: { contentHash: string }[]) => new Set(rows.map((r) => r.contentHash)));
+    let existingHashes: Set<string>;
+    try {
+      existingHashes = await prisma.briefing
+        .findMany({
+          where: { contentHash: { in: hashes } },
+          select: { contentHash: true },
+        })
+        .then((rows: { contentHash: string }[]) => new Set(rows.map((r) => r.contentHash)));
+    } catch (err) {
+      console.error("[Cron] Erro ao buscar hashes existentes, assumindo todos novos:", (err as Error).message);
+      runErrors.push(`dedup: ${(err as Error).message}`);
+      existingHashes = new Set();
+    }
 
     const newItems = filterNewItems(items, existingHashes);
     console.log(`[Cron] ${newItems.length} itens novos após deduplicação`);
@@ -102,9 +115,16 @@ async function handleCron(req: NextRequest) {
     const prioritized = diversifyBySource(sorted, MAX_HOURLY);
 
     // ── 5. Gerar briefings e salvar no banco ─────────────────────────────
-    const existingSlugs = await prisma.briefing
-      .findMany({ select: { slug: true } })
-      .then((rows: { slug: string }[]) => new Set(rows.map((r) => r.slug)));
+    let existingSlugs: Set<string>;
+    try {
+      existingSlugs = await prisma.briefing
+        .findMany({ select: { slug: true } })
+        .then((rows: { slug: string }[]) => new Set(rows.map((r) => r.slug)));
+    } catch (err) {
+      console.error("[Cron] Erro ao buscar slugs existentes, assumindo nenhum:", (err as Error).message);
+      runErrors.push(`slugs: ${(err as Error).message}`);
+      existingSlugs = new Set();
+    }
 
     for (const item of prioritized) {
       try {
@@ -117,6 +137,9 @@ async function handleCron(req: NextRequest) {
             slug: briefing.slug,
             summary: briefing.summary,
             content: briefing.content,
+            ...(briefing.structuredContent
+              ? { structuredContent: briefing.structuredContent as unknown as Prisma.InputJsonValue }
+              : {}),
             severity: briefing.severity,
             category: briefing.category,
             tags: briefing.tags,
