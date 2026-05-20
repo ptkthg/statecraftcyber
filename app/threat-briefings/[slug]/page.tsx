@@ -13,6 +13,7 @@ import { IocTable, EmptyIocState } from "@/components/briefing/IocTable";
 import { RecommendedActions } from "@/components/briefing/RecommendedActions";
 import { DetectionSuggestions } from "@/components/briefing/DetectionSuggestions";
 import { ConfidenceBlock } from "@/components/briefing/ConfidenceBlock";
+import { RichText } from "@/components/briefing/RichText";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -133,23 +134,23 @@ function StructuredContent({ sc, briefing }: { sc: StructuredBriefing; briefing:
     <>
       {/* 1. O que aconteceu */}
       <BriefingSection title="O que aconteceu">
-        <p className="text-sm text-[#C0C0C0] leading-relaxed">{sc.whatHappened}</p>
+        <RichText text={sc.whatHappened} />
       </BriefingSection>
 
       {/* 2. Por que isso importa */}
       <BriefingSection title="Por que isso importa">
-        <p className="text-sm text-[#C0C0C0] leading-relaxed">{sc.whyItMatters}</p>
+        <RichText text={sc.whyItMatters} />
       </BriefingSection>
 
       {/* 3. Quem está em risco */}
       <BriefingSection title="Quem está em risco">
-        <p className="text-sm text-[#C0C0C0] leading-relaxed">{sc.whoIsAtRisk}</p>
+        <RichText text={sc.whoIsAtRisk} />
       </BriefingSection>
 
       {/* 4. Detalhes técnicos */}
       {sc.technicalDetails && (
         <BriefingSection title="Detalhes técnicos">
-          <p className="text-sm text-[#C0C0C0] leading-relaxed">{sc.technicalDetails}</p>
+          <RichText text={sc.technicalDetails} />
         </BriefingSection>
       )}
 
@@ -175,7 +176,7 @@ function StructuredContent({ sc, briefing }: { sc: StructuredBriefing; briefing:
       {/* 8. Falsos positivos */}
       {sc.falsePositiveNotes && (
         <BriefingSection title="Falsos positivos">
-          <p className="text-sm text-[#A1A1AA] leading-relaxed">{sc.falsePositiveNotes}</p>
+          <RichText text={sc.falsePositiveNotes} />
         </BriefingSection>
       )}
 
