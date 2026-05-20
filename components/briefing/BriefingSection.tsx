@@ -1,15 +1,16 @@
 interface Props {
+  id?: string;
   title: string;
   children: React.ReactNode;
   className?: string;
   icon?: React.ReactNode;
 }
 
-export function BriefingSection({ title, children, className, icon }: Props) {
+export function BriefingSection({ id, title, children, className, icon }: Props) {
   return (
-    <section className={`mt-8 pt-6 pb-1 border-t border-white/[0.04] ${className ?? ""}`}>
+    <section id={id} className={`mt-8 pt-6 pb-1 border-t border-white/[0.04] ${className ?? ""}`}>
       <h2 className="flex items-center gap-3 text-base font-black text-white mb-5">
-        <span className="w-0.5 h-4 bg-red-600 rounded-full flex-shrink-0" />
+        <span className="w-0.5 h-4 bg-red-600 rounded-full flex-shrink-0" aria-hidden="true" />
         {icon && <span className="text-red-500">{icon}</span>}
         {title}
       </h2>
