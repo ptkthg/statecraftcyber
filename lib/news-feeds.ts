@@ -215,7 +215,7 @@ export async function fetchNewsArticles(maxAgeDays = 3): Promise<NewsArticle[]> 
           const cves = extractCves(`${item.title} ${summary}`);
 
           results.push({
-            id: item.guid ?? item.link,
+            id: (typeof item.guid === "string" ? item.guid : null) ?? item.link,
             slug: generateArticleSlug(item.title, item.link),
             title: item.title.trim(),
             summary,
