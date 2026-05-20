@@ -2,6 +2,7 @@ import Groq from "groq-sdk";
 import type { RawThreatItem } from "./threat-sources/types";
 import type { StructuredBriefing, Ioc } from "./types";
 import { parseStructuredBriefing } from "./briefing/parse-structured-briefing";
+import { enrichCveContext } from "./cves/enrich-cve";
 
 let _groq: Groq | null = null;
 
@@ -20,7 +21,7 @@ export interface AiBriefingResult {
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-const SYSTEM = `Você é um analista sênior de Threat Intelligence e Blue Team.
+const SYSTEM = `Você é um analista sênior de Threat Intelligence e Blue Team da plataforma Statecraft.
 
 Gere um briefing técnico em português brasileiro a partir dos dados fornecidos.
 
@@ -29,37 +30,58 @@ Responda APENAS em JSON válido. Não use Markdown fora dos campos. Não escreva
 O briefing deve ser útil para Blue Team, SecOps, GRC e times de infraestrutura.
 
 Regras obrigatórias:
-- Não invente informações.
+- Não invente informações. Use apenas o que está nos dados fornecidos.
 - Não repita ideias entre seções.
-- Não crie seções extras.
+- Não crie seções extras além das especificadas.
 - Não use linguagem sensacionalista.
 - Não use parágrafos longos.
-- Não use travessões.
+- Não use travessões (— ou –).
 - Não inclua IOCs se eles não existirem na fonte.
-- A seção "recommendedActions" deve ser uma lista objetiva.
-- A seção "detectionSuggestions" deve trazer sugestões práticas de hunting, logs, eventos ou consultas quando houver contexto.
-- Não diga genericamente "monitore logs"; especifique o que monitorar.
+- A seção "recommendedActions" deve ser uma lista objetiva e priorizada.
+- A seção "detectionSuggestions" deve trazer sugestões práticas de hunting, logs, eventos ou consultas.
+- Não diga genericamente "monitore logs"; especifique qual log, qual campo, qual valor esperado.
 - Não repita "aplicar atualizações" em várias seções.
-- O conteúdo deve ser claro, técnico e didático.`;
+- O conteúdo deve ser claro, técnico e didático.
+
+Instruções específicas para CVEs com contexto de enriquecimento RAG:
+- Se os dados incluírem um bloco "--- Contexto de enriquecimento RAG ---", use-o ativamente.
+- Em "technicalDetails": mencione o vetor de ataque (rede/local/adjacente), complexidade, privilégios exigidos e interação do usuário extraídos do vetor CVSS.
+- Em "recommendedActions": se houver versões de patch (OSV ou GitHub Advisory), cite a versão correta explicitamente. Exemplo: "Atualize para a versão X.Y.Z ou superior."
+- Em "detectionSuggestions": baseie-se no vetor de ataque e no tipo de vulnerabilidade (CWE) para sugerir queries SIEM específicas ou eventos Windows/Linux relevantes.
+- Se houver referências de exploit/PoC nos dados, mencione explicitamente na seção "technicalDetails" com a URL.
+- Se a CVE estiver no CISA KEV, mencione o prazo obrigatório e a ação requerida em "recommendedActions".
+- Em "confidenceLevel": use "high" se NVD + EPSS + CISA KEV confirmarem os dados; "medium" se apenas NVD; "low" se os dados forem escassos.`;
 
 // ── Context builder ───────────────────────────────────────────────────────────
 
-function buildContext(item: RawThreatItem, severity: string): string {
+/**
+ * Builds the context string sent to the AI.
+ *
+ * @param item           - Raw threat item from any source adapter
+ * @param severity       - Pre-computed severity label
+ * @param enrichmentBlock - Optional RAG enrichment block from enrichCveContext().
+ *                         Appended verbatim after the base context when present.
+ */
+function buildContext(item: RawThreatItem, severity: string, enrichmentBlock?: string): string {
   const cve = item.cves?.[0] ?? null;
   const epss = item.epssScore ? `${(item.epssScore * 100).toFixed(1)}%` : null;
   const iocs = item.iocs ?? [];
 
-  return [
+  const base = [
     `Fonte: ${item.sourceName}`,
     `URL da fonte: ${item.sourceUrl}`,
     `Título: ${item.title}`,
-    `Descrição: ${item.description.slice(0, 600)}`,
+    // Increase description budget for non-CVE items (CVE description is usually short anyway)
+    `Descrição: ${item.description.slice(0, cve ? 600 : 900)}`,
     cve ? `CVE principal: ${cve}` : null,
+    item.cves && item.cves.length > 1
+      ? `CVEs adicionais: ${item.cves.slice(1, 5).join(", ")}`
+      : null,
     item.cvssScore ? `CVSS: ${item.cvssScore.toFixed(1)}` : null,
     epss ? `EPSS: ${epss} (probabilidade de exploração nos próximos 30 dias)` : null,
-    `Severidade: ${severity}`,
+    `Severidade calculada: ${severity}`,
     (item.affectedProducts ?? []).length
-      ? `Produtos afetados: ${item.affectedProducts!.slice(0, 3).join(", ")}`
+      ? `Produtos afetados: ${item.affectedProducts!.slice(0, 5).join(", ")}`
       : null,
     (item.affectedSectors ?? []).length
       ? `Setores: ${item.affectedSectors!.join(", ")}`
@@ -68,7 +90,7 @@ function buildContext(item: RawThreatItem, severity: string): string {
       ? `Regiões: ${item.affectedRegions!.join(", ")}`
       : null,
     item.inCisaKev
-      ? `CISA KEV: sim. Exploração ativa confirmada.`
+      ? `CISA KEV: sim. Exploração ativa confirmada pelo catálogo CISA KEV.`
       : null,
     (item.mitreTechniques ?? []).length
       ? `MITRE ATT&CK: ${item.mitreTechniques!.slice(0, 4).join(", ")}`
@@ -79,6 +101,12 @@ function buildContext(item: RawThreatItem, severity: string): string {
   ]
     .filter(Boolean)
     .join("\n");
+
+  // Append RAG enrichment block when available
+  if (enrichmentBlock) {
+    return `${base}\n${enrichmentBlock}`;
+  }
+  return base;
 }
 
 // ── User prompt ───────────────────────────────────────────────────────────────
@@ -133,7 +161,24 @@ export async function generateAiBriefing(
     };
   }
 
-  const ctx = buildContext(item, severity);
+  // ── RAG enrichment (CVE-only, non-blocking) ────────────────────────────────
+  // Only runs when the item has at least one CVE. Fails gracefully: if
+  // enrichment times out or all sources are unavailable the briefing still
+  // generates using the base context. Total enrichment budget: ≤ 13 s.
+  let enrichmentBlock: string | undefined;
+  const primaryCve = item.cves?.[0];
+  if (primaryCve) {
+    try {
+      const enrichment = await enrichCveContext(primaryCve);
+      if (enrichment.hasData) {
+        enrichmentBlock = enrichment.contextBlock;
+      }
+    } catch {
+      // Enrichment failure is non-fatal — proceed without it
+    }
+  }
+
+  const ctx = buildContext(item, severity, enrichmentBlock);
 
   try {
     const response = await groq.chat.completions.create({
