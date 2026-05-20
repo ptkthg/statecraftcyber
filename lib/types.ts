@@ -22,3 +22,25 @@ export interface EnrichedIoc extends Ioc {
   briefingDate: string;
   sourceName: string;
 }
+
+// ── Structured briefing content ───────────────────────────────────────────────
+
+export interface StructuredBriefing {
+  title: string;
+  executiveSummary: string;
+  whatHappened: string;
+  whyItMatters: string;
+  whoIsAtRisk: string;
+  technicalDetails: string;
+  /** IOCs extracted from the source. Never AI-invented. */
+  identifiedIocs: Ioc[];
+  relatedCves: string[];
+  mitreTechniques: string[];
+  recommendedActions: string[];
+  detectionSuggestions: string[];
+  falsePositiveNotes: string;
+  confidenceLevel: Confidence;
+  confidenceReason: string;
+  sourceName: string;
+  sourceUrl: string;
+}

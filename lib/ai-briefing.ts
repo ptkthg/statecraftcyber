@@ -1,5 +1,7 @@
 import Groq from "groq-sdk";
 import type { RawThreatItem } from "./threat-sources/types";
+import type { StructuredBriefing, Ioc } from "./types";
+import { parseStructuredBriefing } from "./briefing/parse-structured-briefing";
 
 let _groq: Groq | null = null;
 
@@ -13,18 +15,39 @@ export interface AiBriefingResult {
   title: string;
   summary: string;
   content: string;
+  structuredContent: StructuredBriefing | null;
 }
 
-// ── Prompt base ───────────────────────────────────────────────────────────────
+// ── System prompt ─────────────────────────────────────────────────────────────
 
-const SYSTEM = `Você é um analista sênior de threat intelligence da Statecraft Cyber Intelligence. Escreva em português brasileiro. Tom jornalístico e informativo, como uma reportagem técnica de segurança. Seja direto e preciso. Nunca use travessões (— ou –). Nunca use emojis. Varie o vocabulário.`;
+const SYSTEM = `Você é um analista sênior de Threat Intelligence e Blue Team.
 
-// ── Contexto do item ──────────────────────────────────────────────────────────
+Gere um briefing técnico em português brasileiro a partir dos dados fornecidos.
+
+Responda APENAS em JSON válido. Não use Markdown fora dos campos. Não escreva texto antes ou depois do JSON.
+
+O briefing deve ser útil para Blue Team, SecOps, GRC e times de infraestrutura.
+
+Regras obrigatórias:
+- Não invente informações.
+- Não repita ideias entre seções.
+- Não crie seções extras.
+- Não use linguagem sensacionalista.
+- Não use parágrafos longos.
+- Não use travessões.
+- Não inclua IOCs se eles não existirem na fonte.
+- A seção "recommendedActions" deve ser uma lista objetiva.
+- A seção "detectionSuggestions" deve trazer sugestões práticas de hunting, logs, eventos ou consultas quando houver contexto.
+- Não diga genericamente "monitore logs"; especifique o que monitorar.
+- Não repita "aplicar atualizações" em várias seções.
+- O conteúdo deve ser claro, técnico e didático.`;
+
+// ── Context builder ───────────────────────────────────────────────────────────
 
 function buildContext(item: RawThreatItem, severity: string): string {
   const cve = item.cves?.[0] ?? null;
   const epss = item.epssScore ? `${(item.epssScore * 100).toFixed(1)}%` : null;
-  const iocCount = (item.iocs ?? []).length;
+  const iocs = item.iocs ?? [];
 
   return [
     `Fonte: ${item.sourceName}`,
@@ -45,20 +68,54 @@ function buildContext(item: RawThreatItem, severity: string): string {
       ? `Regiões: ${item.affectedRegions!.join(", ")}`
       : null,
     item.inCisaKev
-      ? `CISA KEV: sim. Exploração ativa confirmada. Remediação mandatória para agências federais dos EUA`
+      ? `CISA KEV: sim. Exploração ativa confirmada.`
       : null,
-    iocCount > 0
-      ? `IOCs identificados: ${iocCount} indicadores (IPs, domínios, hashes, URLs)`
-      : `IOCs: nenhum indicador estruturado disponível`,
     (item.mitreTechniques ?? []).length
       ? `MITRE ATT&CK: ${item.mitreTechniques!.slice(0, 4).join(", ")}`
       : null,
+    iocs.length > 0
+      ? `IOCs identificados na fonte (${iocs.length}): ${iocs.slice(0, 5).map((i) => `${i.type}:${i.value}`).join(", ")}`
+      : `IOCs: nenhum indicador estruturado na fonte`,
   ]
     .filter(Boolean)
     .join("\n");
 }
 
-// ── Gerador principal ─────────────────────────────────────────────────────────
+// ── User prompt ───────────────────────────────────────────────────────────────
+
+function buildPrompt(ctx: string, severity: string): string {
+  const defaultConf = severity === "critical" || severity === "high" ? "high" : "medium";
+  return `Gere o briefing a partir dos dados abaixo.
+
+Formato JSON obrigatório (retorne apenas o JSON):
+{
+  "title": "Título técnico e direto, máx. 100 caracteres",
+  "executiveSummary": "Resumo em 3 a 5 frases. Explique risco, impacto e prioridade.",
+  "whatHappened": "Explique o evento de forma objetiva e técnica. Se houver CVE, explique o que CVSS e EPSS significam na prática.",
+  "whyItMatters": "Impacto prático para organizações. Não repita o resumo executivo.",
+  "whoIsAtRisk": "Quem deve se preocupar: produto, setor, tecnologia, região ou tipo de ambiente.",
+  "technicalDetails": "Detalhes técnicos: vetores de ataque, mecanismo de exploração, técnicas MITRE ATT&CK se houver.",
+  "recommendedActions": [
+    "Ação objetiva e aplicável 1 (mais urgente)",
+    "Ação objetiva e aplicável 2",
+    "Ação objetiva e aplicável 3"
+  ],
+  "detectionSuggestions": [
+    "Sugestão prática de detecção ou hunting 1",
+    "Sugestão prática de detecção ou hunting 2"
+  ],
+  "falsePositiveNotes": "Possíveis falsos positivos. Se não houver contexto, declare: Não há dados suficientes para avaliar falsos positivos.",
+  "confidenceLevel": "${defaultConf}",
+  "confidenceReason": "Explique por que o nível de confiança foi atribuído com base na fonte e nos dados disponíveis.",
+  "sourceName": "Nome exato da fonte",
+  "sourceUrl": "URL exata da fonte"
+}
+
+Dados da fonte:
+${ctx}`;
+}
+
+// ── Main generator ────────────────────────────────────────────────────────────
 
 export async function generateAiBriefing(
   item: RawThreatItem,
@@ -67,161 +124,113 @@ export async function generateAiBriefing(
   templateContent: string
 ): Promise<AiBriefingResult> {
   const groq = getGroq();
-  if (!groq) return { title: item.title, summary: templateSummary, content: templateContent };
+  if (!groq) {
+    return {
+      title: item.title,
+      summary: templateSummary,
+      content: templateContent,
+      structuredContent: null,
+    };
+  }
 
   const ctx = buildContext(item, severity);
-  const iocCount = (item.iocs ?? []).length;
 
-  const [titleRes, summaryRes, contentRes] = await Promise.allSettled([
-    // 1. Título traduzido para PT-BR
-    groq.chat.completions.create({
+  try {
+    const response = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
-      max_tokens: 80,
+      max_tokens: 2000,
       temperature: 0.3,
+      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM },
-        {
-          role: "user",
-          content: `Traduza o título abaixo para português brasileiro técnico e conciso. Se já estiver em português, retorne exatamente como está. Retorne APENAS o título, sem aspas, sem explicações.\n\nTítulo: ${item.title}`,
-        },
+        { role: "user", content: buildPrompt(ctx, severity) },
       ],
-    }),
+    });
 
-    // 2. Resumo executivo
-    groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      max_tokens: 180,
-      temperature: 0.4,
-      messages: [
-        { role: "system", content: SYSTEM },
-        {
-          role: "user",
-          content: `Escreva um resumo executivo de 2 a 3 frases para analistas de segurança. Máximo 140 palavras. Destaque o risco concreto e o impacto prático. Use **negrito** apenas em termos técnicos essenciais (nomes de CVE, produtos, técnicas de ataque). Sem travessões. Sem repetição de palavras na mesma frase.\n\nDados:\n${ctx}`,
-        },
-      ],
-    }),
+    const raw = response.choices[0]?.message?.content?.trim() ?? "";
 
-    // 3. Conteúdo completo do briefing
-    groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      max_tokens: 1400,
-      temperature: 0.5,
-      messages: [
-        { role: "system", content: SYSTEM },
-        {
-          role: "user",
-          content: `Escreva um briefing de threat intelligence em markdown com as seções abaixo. Tom de reportagem técnica. Sem travessões. Parágrafos completos nas seções narrativas.
+    // Build fallback values from source data
+    const fallback: Partial<StructuredBriefing> = {
+      title: item.title,
+      executiveSummary: templateSummary,
+      sourceName: item.sourceName,
+      sourceUrl: item.sourceUrl,
+    };
 
-## O que aconteceu
-[Descreva o evento/vulnerabilidade de forma clara. Se houver CVE com CVSS ou EPSS, explique o que esses scores significam na prática para quem opera sistemas.]
+    const structured = parseStructuredBriefing(raw, fallback);
 
-## Por que isso é importante
-[Contextualize o impacto real: o que pode acontecer se explorado, exemplos de consequências concretas. Se for CISA KEV, explique o peso disso.]
+    if (!structured) {
+      return {
+        title: item.title,
+        summary: templateSummary,
+        content: templateContent,
+        structuredContent: null,
+      };
+    }
 
-## Quem está em risco
-[Descreva os alvos: setores, produtos, regiões. Seja específico.]
+    // Always use source-provided data for structured arrays — AI must not invent them
+    structured.identifiedIocs = (item.iocs ?? []) as Ioc[];
+    structured.relatedCves = item.cves ?? [];
+    structured.mitreTechniques = item.mitreTechniques ?? [];
 
-## IOCs Identificados
-${
-  iocCount > 0
-    ? `[Escreva UM parágrafo explicando o que os ${iocCount} indicadores de comprometimento encontrados nesta ameaça revelam sobre a infraestrutura ou comportamento do atacante. Não liste os IOCs, pois eles aparecem na tabela abaixo deste texto.]`
-    : `[Escreva que não há indicadores estruturados disponíveis para este briefing e oriente o analista a consultar a fonte original para busca manual de IOCs.]`
+    return {
+      title: structured.title,
+      summary: structured.executiveSummary,
+      content: buildMarkdownFallback(structured),
+      structuredContent: structured,
+    };
+  } catch {
+    return {
+      title: item.title,
+      summary: templateSummary,
+      content: templateContent,
+      structuredContent: null,
+    };
+  }
 }
 
-## Ações recomendadas
-[Lista com bullets de ações concretas e priorizadas. Comece com as mais urgentes. Seja específico: qual patch aplicar, qual configuração rever, qual log monitorar.]
+// ── Markdown fallback (legacy content field) ──────────────────────────────────
+// Produces a simplified markdown version stored in `content` for backward
+// compatibility with briefings opened before `structuredContent` was added.
 
-## Nível de Confiança
-[Explique por que o nível de confiança para esta ameaça específica é ${severity === "critical" || severity === "high" ? "alto" : "médio a baixo"}. Mencione a fonte [${item.sourceName}](${item.sourceUrl}) como link clicável. Explique o que esse nível de confiança significa para o analista tomar decisão.]
+export function buildMarkdownFallback(s: StructuredBriefing): string {
+  const sections: string[] = [];
 
-Dados da ameaça:
-${ctx}`,
-        },
-      ],
-    }),
-  ]);
+  sections.push(`## O que aconteceu\n\n${s.whatHappened}`);
+  sections.push(`## Por que isso importa\n\n${s.whyItMatters}`);
+  sections.push(`## Quem está em risco\n\n${s.whoIsAtRisk}`);
 
-  const title =
-    titleRes.status === "fulfilled"
-      ? (titleRes.value.choices[0]?.message?.content?.trim() ?? item.title)
-      : item.title;
-
-  const summary =
-    summaryRes.status === "fulfilled"
-      ? (summaryRes.value.choices[0]?.message?.content?.trim() ?? templateSummary)
-      : templateSummary;
-
-  const aiContent =
-    contentRes.status === "fulfilled"
-      ? (contentRes.value.choices[0]?.message?.content?.trim() ?? null)
-      : null;
-
-  const content = aiContent
-    ? mergeAiWithTemplate(aiContent, templateContent)
-    : templateContent;
-
-  return { title, summary, content };
-}
-
-// ── Merge: narrativa AI + dados do template ───────────────────────────────────
-
-/**
- * Preserva o texto narrativo gerado pela IA e injeta após ele as seções
- * de dados estruturados do template (lista de IOCs, CVEs com links,
- * impacto para PMEs, fontes consultadas com links clicáveis).
- *
- * Para a seção de IOCs: injeta a lista de IOCs do template logo após
- * o parágrafo narrativo gerado pela IA, dentro da mesma seção.
- */
-function mergeAiWithTemplate(aiContent: string, templateContent: string): string {
-  // CVEs, Fontes e Impacto para PMEs são renderizados como JSX na página (não em markdown)
-  // Aqui só preservamos o Nível de Confiança se a IA não o gerou
-  const dataSections: string[] = [];
-
-  // Extrair a lista de IOCs do template (o bloco após "## IOCs Identificados")
-  const iocListFromTemplate = extractSectionContent(templateContent, "## IOCs Identificados");
-
-  // Injetar lista de IOCs após o parágrafo narrativo de IOCs da IA (só se houver dados)
-  let content = aiContent;
-  const iocSectionIdx = content.indexOf("## IOCs Identificados");
-  if (iocSectionIdx !== -1 && iocListFromTemplate && iocListFromTemplate.trim().length > 0) {
-    const nextSectionIdx = content.indexOf("\n## ", iocSectionIdx + 5);
-    const iocEnd = nextSectionIdx !== -1 ? nextSectionIdx : content.length;
-    const aiIocNarrative = content.slice(iocSectionIdx, iocEnd).trim();
-    const rest = nextSectionIdx !== -1 ? content.slice(nextSectionIdx) : "";
-    content =
-      content.slice(0, iocSectionIdx) +
-      aiIocNarrative +
-      "\n\n" +
-      iocListFromTemplate +
-      rest;
+  if (s.technicalDetails) {
+    sections.push(`## Detalhes técnicos\n\n${s.technicalDetails}`);
   }
 
-  // Remover a seção "## Nível de Confiança" do template (IA já gerou a própria)
-  // e adicionar as demais seções de dados
-  const templateParts: string[] = [];
-  for (const section of dataSections) {
-    if (section === "## Nível de Confiança") continue; // IA já gerou
-    const sectionContent = extractSection(templateContent, section);
-    if (sectionContent) templateParts.push(sectionContent.trim());
+  if (s.identifiedIocs.length > 0) {
+    const iocLines = s.identifiedIocs
+      .slice(0, 30)
+      .map((ioc) => `- \`${ioc.value}\` (${ioc.type}, ${ioc.confidence})`);
+    sections.push(`## IOCs Identificados\n\n${iocLines.join("\n")}`);
+  } else {
+    sections.push(`## IOCs Identificados\n\nNenhum IOC estruturado foi identificado na fonte original.`);
   }
 
-  if (templateParts.length === 0) return content;
+  if (s.recommendedActions.length > 0) {
+    const bullets = s.recommendedActions.map((a) => `- ${a}`).join("\n");
+    sections.push(`## Ações recomendadas\n\n${bullets}`);
+  }
 
-  return content + "\n\n---\n\n" + templateParts.join("\n\n---\n\n");
-}
+  if (s.detectionSuggestions.length > 0) {
+    const bullets = s.detectionSuggestions.map((d) => `- ${d}`).join("\n");
+    sections.push(`## Sugestões de detecção\n\n${bullets}`);
+  }
 
-function extractSectionContent(text: string, header: string): string {
-  const idx = text.indexOf(header);
-  if (idx === -1) return "";
-  const start = text.indexOf("\n", idx) + 1;
-  const nextSection = text.indexOf("\n## ", start);
-  return nextSection !== -1 ? text.slice(start, nextSection).trim() : text.slice(start).trim();
-}
+  if (s.falsePositiveNotes) {
+    sections.push(`## Falsos positivos\n\n${s.falsePositiveNotes}`);
+  }
 
-function extractSection(text: string, header: string): string {
-  const idx = text.indexOf(header);
-  if (idx === -1) return "";
-  const nextSection = text.indexOf("\n## ", idx + header.length);
-  return nextSection !== -1 ? text.slice(idx, nextSection) : text.slice(idx);
+  const confMap: Record<string, string> = { high: "Alta", medium: "Média", low: "Baixa" };
+  sections.push(
+    `## Nível de confiança\n\n**${confMap[s.confidenceLevel] ?? s.confidenceLevel}** — ${s.confidenceReason}`
+  );
+
+  return sections.join("\n\n");
 }

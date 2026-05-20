@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hashAdminSecret } from "@/lib/security/hash-secret";
+import { createAdminToken } from "@/lib/security/admin-token";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export async function POST(req: NextRequest) {
@@ -27,21 +27,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
   }
 
-  // Store a hash of the secret — never the raw value
-  const tokenHash = hashAdminSecret(secret);
+  const token = createAdminToken(secret);
   const res = NextResponse.json({ ok: true });
-  res.cookies.set("admin_token", tokenHash, {
+  res.cookies.set("admin_token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 60 * 60 * 8,
-    path: "/",
+    path: "/admin",
   });
   return res;
 }
 
 export async function DELETE() {
   const res = NextResponse.json({ ok: true });
-  res.cookies.set("admin_token", "", { maxAge: 0, path: "/" });
+  res.cookies.set("admin_token", "", { maxAge: 0, path: "/admin" });
   return res;
 }

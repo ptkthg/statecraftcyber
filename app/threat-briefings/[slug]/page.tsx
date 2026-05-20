@@ -5,8 +5,16 @@ import {
   ArrowLeft, Shield, ExternalLink, Clock, AlertTriangle,
   Tag, Globe, Building2, ChevronRight
 } from "lucide-react";
-import type { Ioc } from "@/lib/types";
+import type { Ioc, StructuredBriefing } from "@/lib/types";
 import { renderSafeMarkdown } from "@/lib/security/sanitize-markdown";
+import { BriefingSection } from "@/components/briefing/BriefingSection";
+import { ExecutiveSummary } from "@/components/briefing/ExecutiveSummary";
+import { IocTable, EmptyIocState } from "@/components/briefing/IocTable";
+import { RecommendedActions } from "@/components/briefing/RecommendedActions";
+import { DetectionSuggestions } from "@/components/briefing/DetectionSuggestions";
+import { ConfidenceBlock } from "@/components/briefing/ConfidenceBlock";
+
+// ── Types ─────────────────────────────────────────────────────────────────
 
 interface Briefing {
   id: string;
@@ -14,6 +22,7 @@ interface Briefing {
   slug: string;
   summary: string;
   content: string;
+  structuredContent: StructuredBriefing | null;
   severity: "critical" | "high" | "medium" | "low";
   category: string;
   tags: string[];
@@ -32,49 +41,35 @@ interface Briefing {
   readingTime: number;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────
+// ── Style maps ────────────────────────────────────────────────────────────
 
 const SEVERITY_STYLES: Record<string, string> = {
   critical: "text-red-400 bg-red-600/10 border-red-600/30",
-  high: "text-orange-400 bg-orange-600/10 border-orange-600/30",
-  medium: "text-yellow-400 bg-yellow-600/10 border-yellow-600/30",
-  low: "text-blue-400 bg-blue-600/10 border-blue-600/30",
+  high:     "text-orange-400 bg-orange-600/10 border-orange-600/30",
+  medium:   "text-yellow-400 bg-yellow-600/10 border-yellow-600/30",
+  low:      "text-blue-400 bg-blue-600/10 border-blue-600/30",
 };
 
 const SEVERITY_LABELS: Record<string, string> = {
-  critical: "Crítico",
-  high: "Alto",
-  medium: "Médio",
-  low: "Baixo",
+  critical: "Crítico", high: "Alto", medium: "Médio", low: "Baixo",
 };
 
 const CONFIDENCE_LABELS: Record<string, string> = {
-  high: "Alta",
-  medium: "Média",
-  low: "Baixa",
+  high: "Alta", medium: "Média", low: "Baixa",
 };
 
 const IOC_TYPE_LABELS: Record<string, string> = {
-  ip: "Endereço IP",
-  domain: "Domínio",
-  url: "URL",
-  hash: "Hash",
-  email: "E-mail",
-  file: "Arquivo",
-  c2: "Servidor C2",
+  ip: "Endereço IP", domain: "Domínio", url: "URL",
+  hash: "Hash", email: "E-mail", file: "Arquivo", c2: "Servidor C2",
 };
 
 const CONFIDENCE_DOT: Record<string, string> = {
-  high: "bg-green-500",
-  medium: "bg-yellow-500",
-  low: "bg-[#555]",
+  high: "bg-green-500", medium: "bg-yellow-500", low: "bg-[#555]",
 };
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
+    day: "2-digit", month: "long", year: "numeric",
   });
 }
 
@@ -83,9 +78,7 @@ function formatDate(dateStr: string): string {
 async function getBriefing(slug: string): Promise<Briefing | null> {
   try {
     const { prisma } = await import("@/lib/prisma");
-    const b = await prisma.briefing.findUnique({
-      where: { slug },
-    });
+    const b = await prisma.briefing.findUnique({ where: { slug } });
     if (!b) return null;
 
     return {
@@ -93,6 +86,7 @@ async function getBriefing(slug: string): Promise<Briefing | null> {
       sourcePublishedAt: b.sourcePublishedAt?.toISOString() ?? null,
       createdAt: b.createdAt.toISOString(),
       iocs: b.iocs as unknown as Ioc[],
+      structuredContent: b.structuredContent as unknown as StructuredBriefing | null,
     };
   } catch {
     return null;
@@ -110,7 +104,9 @@ export async function generateMetadata({
   const briefing = await getBriefing(slug);
   if (!briefing) return { title: "Briefing não encontrado" };
 
-  const description = briefing.summary.replace(/[#*`_\[\]]/g, "").slice(0, 160);
+  const description = (briefing.structuredContent?.executiveSummary ?? briefing.summary)
+    .replace(/[#*`_\[\]]/g, "")
+    .slice(0, 160);
 
   return {
     title: briefing.title,
@@ -126,6 +122,82 @@ export async function generateMetadata({
   };
 }
 
+// ── Structured content renderer ───────────────────────────────────────────
+
+function StructuredContent({ sc, briefing }: { sc: StructuredBriefing; briefing: Briefing }) {
+  // Merge IOCs: prefer structured content's list (source-authoritative), else use legacy JSON field
+  const iocs: Ioc[] =
+    sc.identifiedIocs.length > 0 ? sc.identifiedIocs : briefing.iocs ?? [];
+
+  return (
+    <>
+      {/* 1. O que aconteceu */}
+      <BriefingSection title="O que aconteceu">
+        <p className="text-sm text-[#C0C0C0] leading-relaxed">{sc.whatHappened}</p>
+      </BriefingSection>
+
+      {/* 2. Por que isso importa */}
+      <BriefingSection title="Por que isso importa">
+        <p className="text-sm text-[#C0C0C0] leading-relaxed">{sc.whyItMatters}</p>
+      </BriefingSection>
+
+      {/* 3. Quem está em risco */}
+      <BriefingSection title="Quem está em risco">
+        <p className="text-sm text-[#C0C0C0] leading-relaxed">{sc.whoIsAtRisk}</p>
+      </BriefingSection>
+
+      {/* 4. Detalhes técnicos */}
+      {sc.technicalDetails && (
+        <BriefingSection title="Detalhes técnicos">
+          <p className="text-sm text-[#C0C0C0] leading-relaxed">{sc.technicalDetails}</p>
+        </BriefingSection>
+      )}
+
+      {/* 5. IOCs Identificados */}
+      <BriefingSection title={`IOCs Identificados${iocs.length > 0 ? ` (${iocs.length})` : ""}`}>
+        <IocTable iocs={iocs} />
+      </BriefingSection>
+
+      {/* 6. Ações recomendadas */}
+      {sc.recommendedActions.length > 0 && (
+        <BriefingSection title="Ações recomendadas">
+          <RecommendedActions actions={sc.recommendedActions} />
+        </BriefingSection>
+      )}
+
+      {/* 7. Sugestões de detecção */}
+      {sc.detectionSuggestions.length > 0 && (
+        <BriefingSection title="Sugestões de detecção">
+          <DetectionSuggestions suggestions={sc.detectionSuggestions} />
+        </BriefingSection>
+      )}
+
+      {/* 8. Falsos positivos */}
+      {sc.falsePositiveNotes && (
+        <BriefingSection title="Falsos positivos">
+          <p className="text-sm text-[#A1A1AA] leading-relaxed">{sc.falsePositiveNotes}</p>
+        </BriefingSection>
+      )}
+
+      {/* 9. Nível de confiança */}
+      <BriefingSection title="Nível de confiança">
+        <ConfidenceBlock level={sc.confidenceLevel} reason={sc.confidenceReason} />
+      </BriefingSection>
+    </>
+  );
+}
+
+// ── Legacy content renderer ───────────────────────────────────────────────
+
+function LegacyContent({ content }: { content: string }) {
+  return (
+    <div
+      className="prose-like"
+      dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(content) }}
+    />
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default async function BriefingPage({
@@ -138,10 +210,14 @@ export default async function BriefingPage({
 
   if (!briefing) notFound();
 
-  const byType: Record<string, Ioc[]> = {};
-  for (const ioc of briefing.iocs ?? []) {
-    if (!byType[ioc.type]) byType[ioc.type] = [];
-    byType[ioc.type].push(ioc);
+  const sc = briefing.structuredContent;
+
+  // Sidebar IOCs: use legacy JSON field (pre-normalized on ingest)
+  const sidebarIocs = briefing.iocs ?? [];
+  const sidebarByType: Record<string, Ioc[]> = {};
+  for (const ioc of sidebarIocs) {
+    if (!sidebarByType[ioc.type]) sidebarByType[ioc.type] = [];
+    sidebarByType[ioc.type].push(ioc);
   }
 
   return (
@@ -161,7 +237,6 @@ export default async function BriefingPage({
         <div className="flex flex-col lg:flex-row gap-10">
           {/* ── Article ─────────────────────────────────────────────────── */}
           <article className="flex-1 min-w-0">
-            {/* Back link */}
             <Link
               href="/threat-briefings"
               className="inline-flex items-center gap-1.5 text-xs text-[#555] hover:text-[#A1A1AA] mb-6 transition-colors"
@@ -195,7 +270,6 @@ export default async function BriefingPage({
                 {briefing.title}
               </h1>
 
-              {/* Meta row */}
               <div className="flex flex-wrap items-center gap-4 text-xs text-[#555] pb-4 border-b border-white/[0.04]">
                 <span className="flex items-center gap-1.5">
                   <Clock size={11} /> {briefing.readingTime} min de leitura
@@ -215,16 +289,10 @@ export default async function BriefingPage({
               </div>
             </div>
 
-            {/* Summary box */}
-            <div className="bg-[#0D0D0D] border-l-2 border-red-600 rounded-r-lg px-5 py-4 mb-8">
-              <div className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-2">
-                Resumo Executivo
-              </div>
-              <div
-                className="text-sm text-[#C0C0C0] leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(briefing.summary) }}
-              />
-            </div>
+            {/* Executive summary */}
+            <ExecutiveSummary
+              text={sc?.executiveSummary ?? briefing.summary.replace(/[#*`_\[\]]/g, "")}
+            />
 
             {/* Scores row */}
             {(briefing.cvssScore || briefing.epssScore) && (
@@ -255,16 +323,25 @@ export default async function BriefingPage({
               </div>
             )}
 
-            {/* Main content */}
-            <div
-              className="prose-like"
-              dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(briefing.content) }}
-            />
+            {/* ── Main content: structured or legacy ── */}
+            {sc ? (
+              <StructuredContent sc={sc} briefing={briefing} />
+            ) : (
+              <>
+                <LegacyContent content={briefing.content} />
+                {/* Show empty IOC state for legacy briefings with no IOCs */}
+                {sidebarIocs.length === 0 && (
+                  <BriefingSection title="IOCs Identificados">
+                    <EmptyIocState />
+                  </BriefingSection>
+                )}
+              </>
+            )}
 
             {/* CVEs Relacionadas */}
             {briefing.cves.length > 0 && (
-              <div className="mt-10 pt-8 border-t border-white/[0.04]">
-                <h2 className="text-base font-black text-white uppercase tracking-wider mb-4">
+              <section className="mt-10 pt-8 border-t border-white/[0.04]">
+                <h2 className="text-sm font-black text-white uppercase tracking-wider mb-4">
                   CVEs Relacionadas
                 </h2>
                 <div className="space-y-2">
@@ -302,12 +379,12 @@ export default async function BriefingPage({
                     </div>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
 
             {/* Fontes */}
-            <div className="mt-8 pt-8 border-t border-white/[0.04]">
-              <h2 className="text-base font-black text-white uppercase tracking-wider mb-4">
+            <section className="mt-8 pt-8 border-t border-white/[0.04]">
+              <h2 className="text-sm font-black text-white uppercase tracking-wider mb-4">
                 Fontes Consultadas
               </h2>
               <div className="space-y-2">
@@ -384,22 +461,22 @@ export default async function BriefingPage({
                   </a>
                 )}
               </div>
-            </div>
+            </section>
           </article>
 
-          {/* ── Sidebar ──────────────────────────────────────────────── */}
+          {/* ── Sidebar ──────────────────────────────────────────────────── */}
           <aside className="lg:w-72 flex-shrink-0 space-y-6">
             {/* IOCs */}
-            {briefing.iocs.length > 0 && (
+            {sidebarIocs.length > 0 && (
               <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-5 sticky top-20">
                 <div className="flex items-center gap-2 mb-4">
                   <AlertTriangle size={13} className="text-red-500" />
                   <span className="text-xs font-bold text-white uppercase tracking-wider">
-                    IOCs ({briefing.iocs.length})
+                    IOCs ({sidebarIocs.length})
                   </span>
                 </div>
                 <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
-                  {Object.entries(byType).map(([type, iocs]) => (
+                  {Object.entries(sidebarByType).map(([type, iocs]) => (
                     <div key={type}>
                       <div className="text-[9px] font-bold text-[#555] uppercase tracking-wider mb-2">
                         {IOC_TYPE_LABELS[type] ?? type}
@@ -510,4 +587,4 @@ export default async function BriefingPage({
   );
 }
 
-export const revalidate = 3600; // Revalidar a cada hora
+export const revalidate = 3600;

@@ -23,6 +23,8 @@ model Briefing {
   sourcePublishedAt DateTime?
   /// @deprecated Use the Ioc relation table instead. Kept for snapshot compatibility.
   iocs              Json       @default("[]")
+  /// Structured JSON content for the new rendering pipeline. Null for briefings generated before this field was added.
+  structuredContent Json?
   cves              String[]
   mitreTechniques   String[]
   epssScore         Float?

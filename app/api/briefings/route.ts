@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Ioc, LiveIoc } from "@/lib/types";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,18 @@ interface PrismaError {
 }
 
 export async function GET(req: NextRequest) {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    req.headers.get("x-real-ip") ??
+    "unknown";
+  const { allowed, retryAfterMs } = checkRateLimit(`briefings:${ip}`, 30, 60_000);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Muitas requisições. Tente novamente em instantes." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) } }
+    );
+  }
+
   try {
     // Importação dinâmica para não quebrar quando o banco não está configurado
     const { prisma } = await import("@/lib/prisma");

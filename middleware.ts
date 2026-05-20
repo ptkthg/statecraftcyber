@@ -1,11 +1,34 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Web Crypto equivalent of hashAdminSecret (Edge Runtime compatible)
-async function computeTokenHash(secret: string): Promise<string> {
-  const encoded = new TextEncoder().encode(`statecraft-admin:${secret}`);
-  const buf = await crypto.subtle.digest("SHA-256", encoded);
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+// Edge Runtime: verify HMAC-signed admin token (format: "<exp>.<hex-signature>")
+async function verifyAdminToken(token: string, secret: string): Promise<boolean> {
+  const dot = token.indexOf(".");
+  if (dot === -1) return false;
+
+  const exp = parseInt(token.slice(0, dot), 10);
+  if (!Number.isFinite(exp) || Date.now() > exp) return false;
+
+  const sig = token.slice(dot + 1);
+
+  try {
+    const keyData = new TextEncoder().encode(secret);
+    const key = await crypto.subtle.importKey(
+      "raw",
+      keyData,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const msgData = new TextEncoder().encode(String(exp));
+    const sigBytes = await crypto.subtle.sign("HMAC", key, msgData);
+    const expected = [...new Uint8Array(sigBytes)]
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    return sig === expected;
+  } catch {
+    return false;
+  }
 }
 
 export async function middleware(request: NextRequest) {
@@ -24,8 +47,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
 
-    const expected = await computeTokenHash(secret);
-    if (token !== expected) {
+    const valid = await verifyAdminToken(token, secret);
+    if (!valid) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
   }

@@ -1,4 +1,5 @@
 import type { RawThreatItem, RawIOC, Severity, Confidence } from "./threat-sources/types";
+import type { StructuredBriefing } from "./types";
 import { scoreSeverity, inferCategory } from "./severity-scoring";
 import { generateSlug, ensureUniqueSlug } from "./deduplication";
 import { generateAiBriefing } from "./ai-briefing";
@@ -8,6 +9,8 @@ export interface GeneratedBriefing {
   slug: string;
   summary: string;
   content: string;
+  /** Structured JSON content for the new rendering pipeline. Null for sync/fallback generation. */
+  structuredContent: StructuredBriefing | null;
   severity: Severity;
   category: string;
   tags: string[];
@@ -502,7 +505,7 @@ export async function generateBriefingAsync(
 ): Promise<GeneratedBriefing> {
   const base = buildBase(item, existingSlugs);
 
-  const { title, summary, content } = await generateAiBriefing(
+  const { title, summary, content, structuredContent } = await generateAiBriefing(
     item,
     base.severity,
     base.templateSummary,
@@ -514,6 +517,7 @@ export async function generateBriefingAsync(
     slug: base.slug,
     summary,
     content,
+    structuredContent,
     severity: base.severity,
     category: base.category,
     tags: base.tags,
@@ -543,6 +547,7 @@ export function generateBriefing(
     slug: base.slug,
     summary: base.templateSummary,
     content: base.templateContent,
+    structuredContent: null,
     severity: base.severity,
     category: base.category,
     tags: base.tags,

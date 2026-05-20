@@ -11,6 +11,7 @@ const CSP = [
   "img-src 'self' data: https:",
   "connect-src 'self' https:",
   "frame-src 'none'",
+  "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -32,6 +33,7 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           { key: "X-DNS-Prefetch-Control", value: "on" },
+          { key: "X-Download-Options", value: "noopen" },
         ],
       },
     ];
