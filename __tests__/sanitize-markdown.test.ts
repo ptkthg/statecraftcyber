@@ -50,6 +50,12 @@ describe("renderSafeMarkdown — XSS prevention", () => {
     expect(out).toContain('rel="noopener noreferrer nofollow"');
   });
 
+  it("strips javascript link destinations", () => {
+    const out = renderSafeMarkdown("[link](javascript:alert('xss'))");
+    expect(out).not.toContain("javascript:");
+    expect(out).not.toContain('href="');
+  });
+
   it("overrides target on links that already have one", () => {
     const out = renderSafeMarkdown('<a href="https://x.com" target="_self">x</a>');
     expect(out).toContain('target="_blank"');
