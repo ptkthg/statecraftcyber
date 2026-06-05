@@ -77,8 +77,7 @@ export const nvdAdapter: SourceAdapter = {
     const url = new URL(NVD_URL);
     url.searchParams.set("pubStartDate", fmt(yesterday));
     url.searchParams.set("pubEndDate", fmt(now));
-    url.searchParams.set("cvssV3Severity", "HIGH");
-    url.searchParams.set("resultsPerPage", "15");
+    url.searchParams.set("resultsPerPage", "20"); // sem filtro de severidade — filtramos localmente (HIGH + CRITICAL)
 
     const res = await fetch(url.toString(), {
       headers,
@@ -91,6 +90,7 @@ export const nvdAdapter: SourceAdapter = {
 
     return data.vulnerabilities
       .filter((v) => v.cve.vulnStatus !== "Rejected")
+      .filter((v) => (getCvss(v.cve) ?? 0) >= 7.0) // HIGH (7.0–8.9) + CRITICAL (9.0+)
       .map((v): RawThreatItem => {
         const cve = v.cve;
         const cvss = getCvss(cve);

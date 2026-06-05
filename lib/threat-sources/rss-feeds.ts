@@ -87,48 +87,52 @@ export const rssFeedsAdapter: SourceAdapter = {
   name: "RSS Feeds",
 
   async fetch(): Promise<RawThreatItem[]> {
-    const results: RawThreatItem[] = [];
     const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000); // 48h
 
-    for (const feed of FEEDS) {
-      try {
-        const parsed = await parser.parseURL(feed.url);
+    const perFeed = await Promise.all(
+      FEEDS.map(async (feed) => {
+        try {
+          const parsed = await parser.parseURL(feed.url);
+          const items: RawThreatItem[] = [];
 
-        for (const item of (parsed.items ?? []).slice(0, 5)) {
-          if (!item.title || !item.link) continue;
+          for (const item of (parsed.items ?? []).slice(0, 5)) {
+            if (!item.title || !item.link) continue;
 
-          const pubDate = item.pubDate ? new Date(item.pubDate) : new Date();
-          if (pubDate < cutoff) continue;
+            const pubDate = item.pubDate ? new Date(item.pubDate) : new Date();
+            if (pubDate < cutoff) continue;
 
-          const rawSummary = item.contentSnippet ?? item.content ?? item.summary ?? "";
-          const summary = truncate(cleanHtml(rawSummary), 600);
+            const rawSummary = item.contentSnippet ?? item.content ?? item.summary ?? "";
+            const summary = truncate(cleanHtml(rawSummary), 600);
 
-          if (!isSecurityRelevant(item.title, summary)) continue;
+            if (!isSecurityRelevant(item.title, summary)) continue;
 
-          const fullText = `${item.title} ${summary}`;
-          const cves = extractCvesFromText(fullText);
+            const cves = extractCvesFromText(`${item.title} ${summary}`);
 
-          results.push({
-            externalId: item.guid ?? item.link,
-            title: item.title.trim(),
-            description: summary || `Publicação de ${feed.name}: ${item.title}`,
-            sourceUrl: item.link,
-            sourceName: feed.name,
-            publishedAt: pubDate,
-            cves,
-            iocs: [],
-            mitreTechniques: [],
-            tags: inferTagsFromTitle(item.title),
-            affectedSectors: feed.defaultSectors ?? ["Corporativo"],
-            affectedRegions: feed.defaultRegions ?? ["Global"],
-          });
+            items.push({
+              externalId: item.guid ?? item.link,
+              title: item.title.trim(),
+              description: summary || `Publicação de ${feed.name}: ${item.title}`,
+              sourceUrl: item.link,
+              sourceName: feed.name,
+              publishedAt: pubDate,
+              cves,
+              iocs: [],
+              mitreTechniques: [],
+              tags: inferTagsFromTitle(item.title),
+              affectedSectors: feed.defaultSectors ?? ["Corporativo"],
+              affectedRegions: feed.defaultRegions ?? ["Global"],
+            });
+          }
+
+          return items;
+        } catch (err) {
+          console.warn(`[RSS] Feed "${feed.name}" falhou:`, (err as Error).message);
+          return [];
         }
-      } catch (err) {
-        console.warn(`[RSS] Feed "${feed.name}" falhou:`, (err as Error).message);
-      }
-    }
+      })
+    );
 
-    return results;
+    return perFeed.flat();
   },
 };
 

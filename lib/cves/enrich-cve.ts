@@ -192,16 +192,32 @@ interface KevEntry {
   knownRansomwareCampaignUse: string;
 }
 
-/** Check CISA KEV and extract mandatory action + ransomware association */
-async function fetchCisaKevDetail(cve: string): Promise<string | null> {
+// Module-level cache — avoids re-downloading o JSON KEV inteiro por CVE enriquecida no mesmo run
+let _kevCache: { data: { vulnerabilities: KevEntry[] }; at: number } | null = null;
+
+async function getCisaKevCatalog(): Promise<{ vulnerabilities: KevEntry[] } | null> {
+  const now = Date.now();
+  if (_kevCache && now - _kevCache.at < 120_000) return _kevCache.data;
   try {
     const res = await fetch(
       "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
       { signal: AbortSignal.timeout(8_000) }
     );
     if (!res.ok) return null;
-
     const data = await res.json() as { vulnerabilities: KevEntry[] };
+    _kevCache = { data, at: now };
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/** Check CISA KEV and extract mandatory action + ransomware association */
+async function fetchCisaKevDetail(cve: string): Promise<string | null> {
+  try {
+    const data = await getCisaKevCatalog();
+    if (!data) return null;
+
     const entry = data.vulnerabilities.find((v) => v.cveID === cve);
     if (!entry) return null;
 
