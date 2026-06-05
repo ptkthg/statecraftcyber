@@ -67,8 +67,9 @@ describe("mergeResults", () => {
   });
 
   it("limits total output to 20", () => {
-    const group = Array.from({ length: 15 }, (_, i) => makeBriefing(i / 15));
-    const result = mergeResults([group, group]);
+    const groupA = Array.from({ length: 15 }, (_, i) => makeBriefing((i + 0.1) / 15));
+    const groupB = Array.from({ length: 15 }, (_, i) => makeIoc((i + 0.2) / 15));
+    const result = mergeResults([groupA, groupB]);
     expect(result).toHaveLength(20);
   });
 
@@ -108,5 +109,11 @@ describe("mergeResults", () => {
     ];
     const result = mergeResults(groups, corr);
     expect(result.length).toBeLessThanOrEqual(20);
+  });
+
+  it("deduplicates results with the same type and id", () => {
+    const dup = makeBriefing(0.9);
+    const result = mergeResults([[dup, dup, makeBriefing(0.5)]]);
+    expect(result.filter((r) => r.id === dup.id)).toHaveLength(1);
   });
 });

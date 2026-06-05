@@ -23,6 +23,9 @@ export async function GET(req: NextRequest) {
   if (q.length < 2) {
     return NextResponse.json({ results: [], total: 0 });
   }
+  if (q.length > 200) {
+    return NextResponse.json({ results: [], total: 0 });
+  }
 
   try {
     const { prisma } = await import("@/lib/prisma");
@@ -102,7 +105,7 @@ export async function GET(req: NextRequest) {
             id: r.id,
             title: r.value,
             href: `/iocs?q=${encodeURIComponent(r.value)}`,
-            meta: `${r.type.toUpperCase()} · ${r.briefing.severity.toUpperCase()}`,
+            meta: `${r.type.toUpperCase()} · ${r.briefing?.severity?.toUpperCase() ?? "N/A"}`,
             rank: 0.5,
             isMono: true,
           }))
@@ -146,7 +149,7 @@ export async function GET(req: NextRequest) {
           id: r.id,
           title: r.value,
           href: `/iocs?q=${encodeURIComponent(r.value)}`,
-          meta: `via ${cveId.toUpperCase()} · ${r.briefing.severity.toUpperCase()}`,
+          meta: `via ${cveId.toUpperCase()} · ${r.briefing?.severity?.toUpperCase() ?? "N/A"}`,
           rank: 0.7,
           isMono: true,
         }));

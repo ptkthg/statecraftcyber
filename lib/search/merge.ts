@@ -16,12 +16,22 @@ export function mergeResults(
   // Correlated IOCs are prioritized by inserting them immediately after the first
   // briefing regardless of their rank — this ensures CVE correlation is always visible.
   if (correlatedIocs.length === 0) {
-    return all.slice(0, 20);
+    return deduplicate(all).slice(0, 20);
   }
 
   const firstBriefingIdx = all.findIndex((r) => r.type === "briefing");
   const insertAt = firstBriefingIdx === -1 ? 0 : firstBriefingIdx + 1;
   all.splice(insertAt, 0, ...correlatedIocs);
 
-  return all.slice(0, 20);
+  return deduplicate(all).slice(0, 20);
+}
+
+function deduplicate(items: SearchResult[]): SearchResult[] {
+  const seen = new Set<string>();
+  return items.filter((r) => {
+    const key = `${r.type}:${r.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
