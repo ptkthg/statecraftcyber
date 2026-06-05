@@ -36,6 +36,7 @@ model Briefing {
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   iocsRel           Ioc[]
+  searchVector      Unsupported("tsvector")? @map("search_vector")
 
   @@index([status, severity])
   @@index([status, createdAt(sort: Desc)])
@@ -68,7 +69,8 @@ model NewsCache {
   content     String   @db.Text
   source      String
   originalUrl String
-  enrichedAt  DateTime @default(now())
+  enrichedAt   DateTime @default(now())
+  searchVector Unsupported("tsvector")? @map("search_vector")
 }
 
 model CveCache {
