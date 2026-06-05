@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -79,8 +79,16 @@ export default function Header() {
             ))}
           </nav>
 
-          {/* CTA */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* CTA + Search */}
+          <div className="hidden md:flex items-center gap-2">
+            <button
+              onClick={() => window.dispatchEvent(new Event("open-search"))}
+              className="p-2 text-neutral-400 hover:text-white transition-colors rounded"
+              aria-label="Abrir busca global (Ctrl+K)"
+              title="Buscar (Ctrl+K)"
+            >
+              <Search size={18} aria-hidden />
+            </button>
             <Link
               href="/threat-briefings"
               className="px-4 py-2 text-sm font-semibold bg-red-600 hover:bg-red-500 text-white rounded transition-all duration-200 hover:shadow-[0_0_20px_rgba(229,9,20,0.4)]"
@@ -121,7 +129,17 @@ export default function Header() {
                 {item.label}
               </Link>
             ))}
-            <div className="pt-3 border-t border-white/5">
+            <div className="pt-3 border-t border-white/5 space-y-2">
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  window.dispatchEvent(new Event("open-search"));
+                }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-neutral-400 hover:text-white rounded transition-colors"
+              >
+                <Search size={16} aria-hidden />
+                Buscar
+              </button>
               <Link
                 href="/threat-briefings"
                 className="block w-full text-center px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded"

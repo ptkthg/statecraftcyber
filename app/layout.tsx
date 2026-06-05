@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, JetBrains_Mono, Playfair_Display, Lora } from "next/
 import "./globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { SearchOverlay } from "@/components/search/SearchOverlay";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -66,6 +67,7 @@ export default function RootLayout({
         <Header />
         <div id="main-content" className="flex-1 flex flex-col">{children}</div>
         <Footer />
+        <SearchOverlay />
       </body>
     </html>
   );
