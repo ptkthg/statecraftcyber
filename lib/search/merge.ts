@@ -1,10 +1,10 @@
 import type { SearchResult } from "./types";
 
-const CVE_PATTERN = /^CVE-\d{4}-\d+$/i;
+const CVE_PATTERN = /^CVE-\d{4}-\d{4,}$/i;
 
 export function detectCveId(q: string): string | null {
   const trimmed = q.trim();
-  return CVE_PATTERN.test(trimmed) ? trimmed : null;
+  return CVE_PATTERN.test(trimmed) ? trimmed.toUpperCase() : null;
 }
 
 export function mergeResults(
@@ -13,6 +13,8 @@ export function mergeResults(
 ): SearchResult[] {
   const all = groups.flat().sort((a, b) => b.rank - a.rank);
 
+  // Correlated IOCs are prioritized by inserting them immediately after the first
+  // briefing regardless of their rank — this ensures CVE correlation is always visible.
   if (correlatedIocs.length === 0) {
     return all.slice(0, 20);
   }

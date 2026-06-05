@@ -30,8 +30,8 @@ describe("detectCveId", () => {
     expect(detectCveId("CVE-2024-12345")).toBe("CVE-2024-12345");
   });
 
-  it("is case-insensitive", () => {
-    expect(detectCveId("cve-2024-12345")).toBe("cve-2024-12345");
+  it("normalizes return value to uppercase", () => {
+    expect(detectCveId("cve-2024-12345")).toBe("CVE-2024-12345");
   });
 
   it("handles 4-digit CVE IDs", () => {
@@ -46,8 +46,12 @@ describe("detectCveId", () => {
     expect(detectCveId("CVE-2024")).toBeNull();
   });
 
-  it("trims surrounding whitespace", () => {
-    expect(detectCveId("  CVE-2024-1234  ")).toBe("CVE-2024-1234");
+  it("trims whitespace and normalizes to uppercase", () => {
+    expect(detectCveId("  cve-2024-1234  ")).toBe("CVE-2024-1234");
+  });
+
+  it("returns null for CVE IDs with fewer than 4 digits in sequence", () => {
+    expect(detectCveId("CVE-2024-123")).toBeNull();
   });
 });
 
@@ -92,5 +96,17 @@ describe("mergeResults", () => {
   it("works without correlated IOCs argument", () => {
     const result = mergeResults([[makeBriefing(0.9)]]);
     expect(result).toHaveLength(1);
+  });
+
+  it("multiple correlated IOCs do not exceed the 20-item total cap", () => {
+    const corr = Array.from({ length: 10 }, (_, i) =>
+      makeIoc(0.8, `via CVE-2024-1234 · HIGH`)
+    );
+    const groups = [
+      Array.from({ length: 10 }, (_, i) => makeBriefing(0.9 - i * 0.05)),
+      Array.from({ length: 10 }, (_, i) => makeIoc(0.6 - i * 0.05)),
+    ];
+    const result = mergeResults(groups, corr);
+    expect(result.length).toBeLessThanOrEqual(20);
   });
 });
