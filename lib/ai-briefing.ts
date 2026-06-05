@@ -12,6 +12,50 @@ function getGroq(): Groq | null {
   return _groq;
 }
 
+async function callOpenRouter(
+  systemPrompt: string,
+  userPrompt: string
+): Promise<string | null> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return null;
+
+  const model = process.env.OPENROUTER_MODEL ?? "anthropic/claude-3.5-haiku";
+
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://statecraftcyber.vercel.app",
+        "X-Title": "Statecraft Cyber Intelligence",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 2000,
+        temperature: 0.3,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+
+    if (!res.ok) {
+      console.warn(`[OpenRouter] ${res.status} ${res.statusText}`);
+      return null;
+    }
+
+    const data = await res.json() as { choices?: { message?: { content?: string } }[] };
+    return data.choices?.[0]?.message?.content?.trim() ?? null;
+  } catch (err) {
+    console.warn("[OpenRouter] Falha:", (err as Error).message);
+    return null;
+  }
+}
+
 export interface AiBriefingResult {
   title: string;
   summary: string;
@@ -152,7 +196,9 @@ export async function generateAiBriefing(
   templateContent: string
 ): Promise<AiBriefingResult> {
   const groq = getGroq();
-  if (!groq) {
+  const hasOpenRouter = !!process.env.OPENROUTER_API_KEY;
+
+  if (!groq && !hasOpenRouter) {
     return {
       title: item.title,
       summary: templateSummary,
@@ -180,19 +226,33 @@ export async function generateAiBriefing(
 
   const ctx = buildContext(item, severity, enrichmentBlock);
 
-  try {
-    const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      max_tokens: 2000,
-      temperature: 0.3,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: buildPrompt(ctx, severity) },
-      ],
-    });
+  const userPrompt = buildPrompt(ctx, severity);
 
-    const raw = response.choices[0]?.message?.content?.trim() ?? "";
+  try {
+    let raw = "";
+
+    if (groq) {
+      try {
+        const response = await groq.chat.completions.create({
+          model: "llama-3.3-70b-versatile",
+          max_tokens: 2000,
+          temperature: 0.3,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: SYSTEM },
+            { role: "user", content: userPrompt },
+          ],
+        });
+        raw = response.choices[0]?.message?.content?.trim() ?? "";
+      } catch (groqErr) {
+        console.warn("[Groq] Falhou, tentando OpenRouter:", (groqErr as Error).message);
+      }
+    }
+
+    // Fallback to OpenRouter if Groq produced no output or isn't configured
+    if (!raw) {
+      raw = (await callOpenRouter(SYSTEM, userPrompt)) ?? "";
+    }
 
     // Build fallback values from source data
     const fallback: Partial<StructuredBriefing> = {
