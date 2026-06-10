@@ -99,9 +99,13 @@ export const threatfoxAdapter: SourceAdapter = {
   name: "abuse.ch / ThreatFox",
 
   async fetch(): Promise<RawThreatItem[]> {
+    const authKey = process.env.ABUSE_CH_AUTH_KEY;
     const res = await fetch(THREATFOX_API, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(authKey ? { "Auth-Key": authKey } : {}),
+      },
       body: JSON.stringify({ query: "get_iocs", days: 1 }),
       signal: AbortSignal.timeout(12_000),
     });

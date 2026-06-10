@@ -58,8 +58,10 @@ export const abusechAdapter: SourceAdapter = {
 };
 
 async function fetchUrlHaus(): Promise<RawThreatItem[]> {
+  const authKey = process.env.ABUSE_CH_AUTH_KEY;
   const res = await fetch(URLHAUS_API, {
     method: "GET",
+    headers: authKey ? { "Auth-Key": authKey } : {},
     signal: AbortSignal.timeout(12_000),
   });
   if (!res.ok) throw new Error(`URLhaus retornou ${res.status}`);
@@ -108,9 +110,13 @@ async function fetchUrlHaus(): Promise<RawThreatItem[]> {
 }
 
 async function fetchMalwareBazaar(): Promise<RawThreatItem[]> {
+  const authKey = process.env.ABUSE_CH_AUTH_KEY;
   const res = await fetch(MALWARE_BAZAAR_API, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      ...(authKey ? { "Auth-Key": authKey } : {}),
+    },
     body: "query=get_recent&selector=time",
     signal: AbortSignal.timeout(12_000),
   });
