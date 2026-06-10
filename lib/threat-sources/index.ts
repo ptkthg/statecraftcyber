@@ -4,6 +4,9 @@ import { nvdAdapter } from "./nvd";
 import { otxAdapter } from "./otx";
 import { abusechAdapter } from "./abuse-ch";
 import { rssFeedsAdapter } from "./rss-feeds";
+import { threatfoxAdapter } from "./threatfox";
+import { feodoTrackerAdapter } from "./feodo-tracker";
+import { cinsScoreAdapter } from "./cins-score";
 
 export { fetchEpssScores } from "./epss";
 export type { RawThreatItem, RawIOC, SourceAdapter, Severity, Confidence } from "./types";
@@ -14,6 +17,9 @@ const ALL_ADAPTERS: SourceAdapter[] = [
   otxAdapter,
   abusechAdapter,
   rssFeedsAdapter,
+  threatfoxAdapter,
+  feodoTrackerAdapter,
+  cinsScoreAdapter,
 ];
 
 export interface FetchResult {
