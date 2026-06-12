@@ -30,7 +30,7 @@ export default function Header() {
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
         scrolled
-          ? "bg-[#050505]/95 backdrop-blur-md border-b border-white/5"
+          ? "bg-canvas/95 backdrop-blur-md border-b border-white/5"
           : "bg-transparent"
       )}
     >
@@ -55,7 +55,7 @@ export default function Header() {
               <div className="text-sm font-black tracking-widest text-white uppercase">
                 <span className="text-red-600">S</span>TATECRAFT
               </div>
-              <div className="text-[9px] font-medium tracking-[0.2em] text-[#A1A1AA] uppercase">
+              <div className="text-[9px] font-medium tracking-[0.2em] text-dim uppercase">
                 Cyber Intelligence
               </div>
             </div>
@@ -70,8 +70,8 @@ export default function Header() {
                 className={cn(
                   "px-3 py-2 text-sm font-medium rounded transition-all duration-200",
                   pathname === item.href
-                    ? "text-red-500"
-                    : "text-[#A1A1AA] hover:text-white"
+                    ? "text-white font-semibold"
+                    : "text-dim hover:text-white"
                 )}
               >
                 {item.label}
@@ -83,7 +83,7 @@ export default function Header() {
           <div className="hidden md:flex items-center gap-2">
             <button
               onClick={() => window.dispatchEvent(new Event("open-search"))}
-              className="p-2 text-neutral-400 hover:text-white transition-colors rounded"
+              className="p-2 text-dim hover:text-white transition-colors rounded"
               aria-label="Abrir busca global (Ctrl+K)"
               title="Buscar (Ctrl+K)"
             >
@@ -91,7 +91,7 @@ export default function Header() {
             </button>
             <Link
               href="/threat-briefings"
-              className="px-4 py-2 text-sm font-semibold bg-red-600 hover:bg-red-500 text-white rounded transition-all duration-200 hover:shadow-[0_0_20px_rgba(229,9,20,0.4)]"
+              className="px-4 py-2 text-sm font-semibold bg-red-600 hover:bg-red-500 text-white rounded transition-all duration-200"
             >
               Ver Briefings
             </Link>
@@ -112,7 +112,7 @@ export default function Header() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div id="mobile-nav" className="md:hidden bg-[#0A0A0A] border-t border-white/5">
+        <div id="mobile-nav" className="md:hidden bg-canvas border-t border-white/5">
           <div className="px-4 py-4 space-y-1">
             {navItems.map((item) => (
               <Link
@@ -122,8 +122,8 @@ export default function Header() {
                 className={cn(
                   "block px-3 py-2 text-sm font-medium rounded transition-colors",
                   pathname === item.href
-                    ? "text-red-500 bg-red-950/20"
-                    : "text-[#A1A1AA] hover:text-white hover:bg-white/5"
+                    ? "text-white font-semibold bg-white/5"
+                    : "text-dim hover:text-white hover:bg-white/5"
                 )}
               >
                 {item.label}
@@ -135,7 +135,7 @@ export default function Header() {
                   setMobileOpen(false);
                   window.dispatchEvent(new Event("open-search"));
                 }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-neutral-400 hover:text-white rounded transition-colors"
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-dim hover:text-white rounded transition-colors"
               >
                 <Search size={16} aria-hidden />
                 Buscar
