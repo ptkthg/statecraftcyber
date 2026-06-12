@@ -299,7 +299,7 @@ async function RelatedBriefings({ cves, tags }: { cves: string[]; tags: string[]
               >
                 <div className={`w-2 h-2 rounded-full flex-shrink-0 ${sev.dot}`} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-white group-hover:text-red-400 transition-colors line-clamp-1 mb-1">
+                  <p className="text-sm font-semibold text-white transition-colors line-clamp-1 mb-1">
                     {b.title}
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
