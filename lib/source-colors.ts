@@ -30,8 +30,8 @@ export const SOURCE_COLORS: Record<string, SourceColor> = {
 };
 
 export const SOURCE_FALLBACK: SourceColor = {
-  dot:   "bg-[#555]",
-  badge: "text-[#A1A1AA] bg-white/[0.04] border-white/[0.08]",
+  dot:   "bg-dim",
+  badge: "text-dim bg-white/[0.04] border-white/[0.08]",
 };
 
 export function getSourceColor(source: string): SourceColor {
