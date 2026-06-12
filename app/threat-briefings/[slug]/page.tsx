@@ -618,7 +618,7 @@ export default async function BriefingPage({
               </p>
               <Link
                 href="/threat-briefings"
-                className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-overlay hover:bg-overlay border border-white/[0.08] hover:border-white/[0.15] text-white font-bold rounded-lg text-xs transition-all"
+                className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-overlay hover:bg-white/10 border border-white/[0.08] hover:border-white/[0.15] text-white font-bold rounded-lg text-xs transition-all"
               >
                 Ver todos <ArrowRight size={11} />
               </Link>
