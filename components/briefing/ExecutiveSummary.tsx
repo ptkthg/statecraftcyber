@@ -23,10 +23,10 @@ export function ExecutiveSummary({ text, severity = "high" }: Props) {
 
   return (
     <div className={`border-l-2 rounded-r-lg px-5 py-4 mb-8 ${style}`}>
-      <div className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${labelColor}`}>
+      <div className={`text-xs font-bold uppercase tracking-widest mb-2 ${labelColor}`}>
         Resumo Executivo
       </div>
-      <p className="text-sm text-[#C0C0C0] leading-relaxed">{text}</p>
+      <p className="text-sm text-body leading-relaxed">{text}</p>
     </div>
   );
 }

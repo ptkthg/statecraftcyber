@@ -45,7 +45,7 @@ export function IocTable({ iocs }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-[#666]">
+        <p className="text-xs text-dim">
           Adicione ao SIEM, EDR e firewall.
           {iocs.length > 15 && ` ${iocs.length} indicadores.`}
         </p>
@@ -54,20 +54,20 @@ export function IocTable({ iocs }: Props) {
 
       {Object.entries(byType).map(([type, list]) => (
         <div key={type}>
-          <div className="text-xs font-bold text-[#888] uppercase tracking-wider mb-2">
+          <div className="text-xs font-bold text-dim uppercase tracking-wider mb-2">
             {IOC_TYPE_LABELS[type] ?? type} ({list.length})
           </div>
-          <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="bg-raised border border-white/[0.06] rounded-xl overflow-hidden">
             {list.map((ioc, i) => (
               <div
                 key={i}
                 className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04] last:border-0 group"
               >
                 <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${CONFIDENCE_DOT[ioc.confidence] ?? "bg-dim"}`} />
-                <code className="text-[11px] font-mono text-[#A1A1AA] flex-1 break-all" title={ioc.value}>
+                <code className="text-xs font-mono text-dim flex-1 break-all" title={ioc.value}>
                   {ioc.value}
                 </code>
-                <span className="text-[10px] text-[#666] flex-shrink-0 font-medium">
+                <span className="text-xs text-dim flex-shrink-0 font-medium">
                   {CONFIDENCE_LABELS[ioc.confidence] ?? ioc.confidence}
                 </span>
                 <CopyButton text={ioc.value} />
@@ -82,11 +82,11 @@ export function IocTable({ iocs }: Props) {
 
 export function EmptyIocState() {
   return (
-    <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl px-5 py-6 text-center">
-      <p className="text-sm text-[#A1A1AA]">
+    <div className="bg-raised border border-white/[0.06] rounded-xl px-5 py-6 text-center">
+      <p className="text-sm text-dim">
         Nenhum IOC estruturado foi identificado na fonte original.
       </p>
-      <p className="text-xs text-[#666] mt-1.5 leading-relaxed">
+      <p className="text-xs text-dim mt-1.5 leading-relaxed">
         Consulte a fonte diretamente para busca manual de indicadores.
       </p>
     </div>

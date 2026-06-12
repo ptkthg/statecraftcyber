@@ -21,10 +21,10 @@ export function DetectionSuggestions({ suggestions }: Props) {
         return (
           <li
             key={i}
-            className="bg-[#0A0A0A] border border-white/[0.06] rounded-lg px-4 py-3 flex gap-3 items-start"
+            className="bg-canvas border border-white/[0.06] rounded-lg px-4 py-3 flex gap-3 items-start"
           >
-            <span className="text-red-500/70 mt-0.5 flex-shrink-0 font-mono text-xs select-none">›</span>
-            <p className={`text-sm text-[#C0C0C0] leading-relaxed flex-1 ${isCode ? "font-mono" : ""}`}>{s}</p>
+            <span className="text-dim mt-0.5 flex-shrink-0 font-mono text-xs select-none">›</span>
+            <p className={`text-sm text-body leading-relaxed flex-1 ${isCode ? "font-mono" : ""}`}>{s}</p>
             <CopyButton text={s} />
           </li>
         );
