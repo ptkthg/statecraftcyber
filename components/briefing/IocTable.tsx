@@ -20,7 +20,7 @@ const IOC_TYPE_LABELS: Record<string, string> = {
 const CONFIDENCE_DOT: Record<string, string> = {
   high: "bg-green-500",
   medium: "bg-yellow-500",
-  low: "bg-[#555]",
+  low: "bg-dim",
 };
 
 const CONFIDENCE_LABELS: Record<string, string> = {
@@ -63,7 +63,7 @@ export function IocTable({ iocs }: Props) {
                 key={i}
                 className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04] last:border-0 group"
               >
-                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${CONFIDENCE_DOT[ioc.confidence] ?? "bg-[#555]"}`} />
+                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${CONFIDENCE_DOT[ioc.confidence] ?? "bg-dim"}`} />
                 <code className="text-[11px] font-mono text-[#A1A1AA] flex-1 break-all" title={ioc.value}>
                   {ioc.value}
                 </code>

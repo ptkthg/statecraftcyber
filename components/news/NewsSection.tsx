@@ -45,7 +45,7 @@ function NewsCard({ article, featured = false }: { article: NewsArticle; feature
             <Clock size={8} />{timeAgo(article.publishedAt)}
           </span>
         </div>
-        <h3 className={`font-semibold text-white leading-snug group-hover:text-white/80 transition-colors line-clamp-2 ${featured ? "text-sm" : "text-xs"}`}>
+        <h3 className={`font-semibold text-white leading-snug transition-colors line-clamp-2 ${featured ? "text-sm" : "text-xs"}`}>
           {article.title}
         </h3>
         {featured && article.cves.length > 0 && (

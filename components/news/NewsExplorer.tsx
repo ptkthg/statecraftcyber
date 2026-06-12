@@ -59,7 +59,7 @@ function ArticleRow({ article }: { article: NewsArticle }) {
             className="object-cover"
           />
         ) : (
-          <Globe size={18} className="text-[#2a2a2a]" aria-hidden />
+          <Globe size={18} className="text-dim/40" aria-hidden />
         )}
       </div>
       <div className="min-w-0 flex-1">
@@ -82,7 +82,7 @@ function ArticleRow({ article }: { article: NewsArticle }) {
             <Clock size={9} />{timeAgo(article.publishedAt)}
           </span>
         </div>
-        <h3 className="text-sm font-semibold text-white leading-snug group-hover:text-white/80 transition-colors line-clamp-2 mb-1.5">
+        <h3 className="text-sm font-semibold text-white leading-snug transition-colors line-clamp-2 mb-1.5">
           {article.title}
         </h3>
         <div className="flex flex-wrap gap-1">
@@ -250,7 +250,7 @@ export default function NewsExplorer({ initialArticles }: Props) {
 
         {articles.length === 0 ? (
           <div className="py-24 text-center">
-            <Newspaper size={28} className="mx-auto text-[#333] mb-4" aria-hidden />
+            <Newspaper size={28} className="mx-auto text-dim/40 mb-4" aria-hidden />
             <p className="text-sm font-semibold text-dim mb-1">Nenhuma notícia disponível</p>
             <p className="text-xs text-dim max-w-xs mx-auto leading-relaxed">
               As fontes RSS podem estar temporariamente indisponíveis. Tente atualizar em instantes.

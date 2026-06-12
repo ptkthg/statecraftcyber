@@ -274,7 +274,7 @@ export default function CveExplorer({ initialCves, initialUpdatedAt }: Props) {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por CVE-ID, produto ou palavra-chave..."
               autoComplete="off"
-              className="w-full bg-raised border border-white/[0.08] focus:border-white/20 focus-visible:outline-none rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder-[#666] transition-colors"
+              className="w-full bg-raised border border-white/[0.08] focus:border-white/20 focus-visible:outline-none rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder-dim transition-colors"
             />
             {search && (
               <button onClick={() => setSearch("")} aria-label="Limpar busca" className="absolute right-4 top-1/2 -translate-y-1/2 text-dim hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 rounded">

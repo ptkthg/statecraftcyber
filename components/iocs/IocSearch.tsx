@@ -178,7 +178,7 @@ function IocRow({ ioc }: { ioc: EnrichedIoc }) {
         {conf.label}
       </div>
       <div className="flex-shrink-0 hidden md:flex items-center gap-1.5">
-        <div className={`w-1.5 h-1.5 rounded-full ${SEVERITY_DOT[ioc.briefingSeverity] ?? "bg-[#555]"}`} aria-hidden />
+        <div className={`w-1.5 h-1.5 rounded-full ${SEVERITY_DOT[ioc.briefingSeverity] ?? "bg-dim"}`} aria-hidden />
         <span className="text-xs text-dim">{SEVERITY_LABELS[ioc.briefingSeverity] ?? ioc.briefingSeverity}</span>
       </div>
       <Link
@@ -464,7 +464,7 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
               onChange={(e) => setQuery(e.target.value)}
               placeholder="185.220.101.45, update-win32[.]net, a3f7c9d2..."
               autoComplete="off"
-              className="w-full bg-raised border border-white/[0.10] focus:border-white/20 focus-visible:outline-none rounded-xl pl-10 pr-10 py-3.5 text-sm text-white placeholder-[#666] transition-colors font-mono"
+              className="w-full bg-raised border border-white/[0.10] focus:border-white/20 focus-visible:outline-none rounded-xl pl-10 pr-10 py-3.5 text-sm text-white placeholder-dim transition-colors font-mono"
             />
             {query && (
               <button

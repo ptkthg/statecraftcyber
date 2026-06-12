@@ -83,7 +83,7 @@ function FeaturedCard({ briefing }: { briefing: BriefingItem }) {
           ))}
           <span className="ml-auto text-xs text-dim">{timeAgo(briefing.createdAt)}</span>
         </div>
-        <h2 className="text-lg font-bold tracking-tight text-white mb-3 leading-snug group-hover:text-white/80 transition-colors">
+        <h2 className="text-lg font-bold tracking-tight text-white mb-3 leading-snug transition-colors">
           {briefing.title}
         </h2>
         <p className="text-sm text-dim leading-relaxed mb-4 line-clamp-3">{stripMarkdown(briefing.summary)}</p>
@@ -124,7 +124,7 @@ function BriefingCard({ briefing }: { briefing: BriefingItem }) {
           <span className="text-xs text-dim truncate">{briefing.category}</span>
           <span className="ml-auto text-xs text-dim flex-shrink-0">{timeAgo(briefing.createdAt)}</span>
         </div>
-        <h3 className="text-sm font-bold text-white mb-2 leading-snug group-hover:text-white/80 transition-colors line-clamp-2 flex-1">
+        <h3 className="text-sm font-bold text-white mb-2 leading-snug transition-colors line-clamp-2 flex-1">
           {briefing.title}
         </h3>
         <p className="text-xs text-dim leading-relaxed line-clamp-2 mb-3">{stripMarkdown(briefing.summary)}</p>
@@ -177,7 +177,7 @@ export default function BriefingExplorer({ initialBriefings, initialTrending, in
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setVisibleCount(6); }}
                 autoComplete="off"
-                className="w-full bg-transparent border-b border-white/[0.06] pl-11 pr-10 py-3.5 text-sm text-white placeholder-[#666] outline-none focus:placeholder-[#888] transition-colors focus-visible:outline-none"
+                className="w-full bg-transparent border-b border-white/[0.06] pl-11 pr-10 py-3.5 text-sm text-white placeholder-dim outline-none transition-colors focus-visible:outline-none"
               />
               {search && (
                 <button onClick={() => setSearch("")} aria-label="Limpar busca" className="absolute right-4 top-1/2 -translate-y-1/2 text-dim hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 rounded">
