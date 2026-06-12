@@ -53,28 +53,27 @@ export default async function ThreatBriefingsPage() {
   const { briefings, trending, latestIocs } = await getBriefings();
 
   return (
-    <main className="min-h-screen bg-[#050505] pt-16">
+    <main className="min-h-screen bg-canvas pt-16">
       {/* Hero — renderizado no servidor */}
       <section className="relative py-14 border-b border-white/[0.04] overflow-hidden">
-        <div className="absolute inset-0 bg-grid opacity-30" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#050505]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-canvas" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-1.5 rounded-full bg-red-600 blink" />
-            <span className="text-xs font-semibold text-red-400 uppercase tracking-widest">Threat Intelligence</span>
-            <span className="ml-2 flex items-center gap-1 text-[10px] text-green-400 bg-green-600/10 border border-green-600/20 px-2 py-0.5 rounded-full">
+            <span className="text-xs font-semibold text-dim uppercase tracking-widest">Threat Intelligence</span>
+            <span className="ml-2 flex items-center gap-1 text-xs text-green-400 bg-green-600/10 border border-green-600/20 px-2 py-0.5 rounded-full">
               <Wifi size={8} aria-hidden /> PIPELINE ATIVO
             </span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-3">Threat Briefings</h1>
-          <p className="text-[#A1A1AA] max-w-2xl text-base leading-relaxed mb-2">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-3">Threat Briefings</h1>
+          <p className="text-dim max-w-2xl text-base leading-relaxed mb-2">
             Análises operacionais de ameaças ativas, vulnerabilidades e campanhas APT, geradas automaticamente pela IA Statecraft a cada hora.
           </p>
-          <p className="text-xs text-[#A1A1AA] max-w-xl leading-relaxed">
+          <p className="text-xs text-dim max-w-xl leading-relaxed">
             Diferente das notícias, cada briefing é uma ficha técnica acionável: severidade, IOCs, CVEs e recomendações diretas para o Blue Team.
           </p>
           {briefings.length > 0 && (
-            <div className="mt-4 flex items-center gap-2 text-[11px] text-[#A1A1AA]">
+            <div className="mt-4 flex items-center gap-2 text-xs text-dim">
               <span className="font-mono font-bold text-white">{briefings.length}</span> briefings publicados
               {trending.some((b) => b.severity === "critical") && (
                 <span className="ml-2 text-red-400 font-semibold">· {trending.filter((b) => b.severity === "critical").length} crítico{trending.filter((b) => b.severity === "critical").length > 1 ? "s" : ""}</span>

@@ -19,7 +19,7 @@ export default async function CvesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] pt-16">
+    <main className="min-h-screen bg-canvas pt-16">
       <CveExplorer initialCves={data.cves} initialUpdatedAt={data.updatedAt} />
     </main>
   );

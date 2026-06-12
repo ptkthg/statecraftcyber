@@ -34,20 +34,20 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#050505] flex items-center justify-center px-4">
+    <main className="min-h-screen bg-canvas flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-center gap-2 mb-8">
           <Shield size={18} className="text-red-500" />
           <span className="text-sm font-bold text-white">Statecraft Admin</span>
         </div>
 
-        <div className="bg-[#0D0D0D] border border-white/[0.08] rounded-2xl p-8">
-          <h1 className="text-lg font-black text-white mb-1">Acesso restrito</h1>
-          <p className="text-xs text-[#555] mb-6">Painel operacional interno.</p>
+        <div className="bg-raised border border-white/[0.08] rounded-2xl p-8">
+          <h1 className="text-lg font-bold tracking-tight text-white mb-1">Acesso restrito</h1>
+          <p className="text-xs text-dim mb-6">Painel operacional interno.</p>
 
           <form onSubmit={submit} className="space-y-4">
             <div className="relative">
-              <label htmlFor="admin-password" className="block text-xs text-[#666] mb-1.5">
+              <label htmlFor="admin-password" className="block text-xs text-dim mb-1.5">
                 Senha
               </label>
               <input
@@ -57,13 +57,13 @@ export default function AdminLoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 autoComplete="current-password"
-                className="w-full bg-[#080808] border border-white/[0.08] focus:border-red-600/40 rounded-lg px-4 pr-10 py-2.5 text-sm text-white placeholder-[#333] outline-none transition-colors"
+                className="w-full bg-canvas border border-white/[0.08] focus:border-white/20 rounded-lg px-4 pr-10 py-2.5 text-sm text-white placeholder-dim outline-none transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowPw((v) => !v)}
                 aria-label={showPw ? "Ocultar senha" : "Mostrar senha"}
-                className="absolute right-3 top-[2.15rem] text-[#555] hover:text-[#A1A1AA] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 rounded"
+                className="absolute right-3 top-[2.15rem] text-dim hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 rounded"
               >
                 {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
@@ -76,7 +76,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={loading || !password}
-              className="w-full py-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D0D0D]"
+              className="w-full py-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-raised"
             >
               {loading ? "Verificando..." : "Entrar"}
             </button>

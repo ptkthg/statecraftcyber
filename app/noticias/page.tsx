@@ -36,30 +36,29 @@ export default async function NoticiasPage() {
   const initialArticles = await getCachedNews();
 
   return (
-    <main className="min-h-screen bg-[#050505] pt-16">
+    <main className="min-h-screen bg-canvas pt-16">
       {/* Hero */}
       <section className="relative py-14 border-b border-white/[0.04] overflow-hidden">
-        <div className="absolute inset-0 bg-grid opacity-30" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#050505]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-canvas" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-1.5 rounded-full bg-red-600 blink" />
-            <span className="text-xs font-semibold text-red-400 uppercase tracking-widest">Monitoramento Ativo</span>
+            <span className="text-xs font-semibold text-dim uppercase tracking-widest">Monitoramento Ativo</span>
           </div>
           <div>
-            <h1 className="text-4xl md:text-5xl font-black text-white mb-2">Notícias</h1>
-            <p className="text-[#A1A1AA] text-sm leading-relaxed max-w-xl mb-1">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-2">Notícias</h1>
+            <p className="text-dim text-sm leading-relaxed max-w-xl mb-1">
               Cobertura jornalística do cenário global de segurança, reescrita em português pela IA Statecraft a partir de 19 fontes especializadas.
             </p>
-            <p className="text-xs text-[#888] max-w-xl leading-relaxed">
+            <p className="text-xs text-dim max-w-xl leading-relaxed">
               Para análises técnicas com IOCs e recomendações operacionais, veja os{" "}
-              <a href="/threat-briefings" className="text-red-400 hover:text-red-300 transition-colors">
+              <a href="/threat-briefings" className="text-dim hover:text-white transition-colors">
                 Threat Briefings
               </a>.
             </p>
             {initialArticles.length > 0 && (
-              <p className="text-xs text-[#666] mt-3">
-                <span className="font-mono font-bold text-[#A1A1AA]">{initialArticles.length}</span> artigos monitorados
+              <p className="text-xs text-dim mt-3">
+                <span className="font-mono font-bold text-dim">{initialArticles.length}</span> artigos monitorados
               </p>
             )}
           </div>

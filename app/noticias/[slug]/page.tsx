@@ -58,11 +58,11 @@ function ArticleBodySkeleton({ article }: { article: NewsArticle }) {
   return (
     <div>
       {/* Status de geração */}
-      <div className="flex items-center gap-2.5 px-4 py-3.5 bg-[#0D0D0D] border border-white/[0.06] rounded-xl mb-8">
+      <div className="flex items-center gap-2.5 px-4 py-3.5 bg-raised border border-white/[0.06] rounded-xl mb-8">
         <Loader2 size={14} className="text-red-500 animate-spin flex-shrink-0" />
         <div>
-          <p className="text-xs text-[#777]">Gerando notícia em português...</p>
-          <p className="text-[10px] text-[#444] mt-0.5">A IA está redigindo o artigo completo. Aguarde alguns segundos.</p>
+          <p className="text-xs text-dim">Gerando notícia em português...</p>
+          <p className="text-xs text-dim mt-0.5">A IA está redigindo o artigo completo. Aguarde alguns segundos.</p>
         </div>
       </div>
 
@@ -89,9 +89,9 @@ function ArticleBodySkeleton({ article }: { article: NewsArticle }) {
       </div>
 
       {/* Resumo original como fallback */}
-      <div className="p-5 bg-[#0D0D0D] border border-white/[0.04] rounded-xl mt-8">
-        <p className="text-[10px] text-[#444] uppercase tracking-widest mb-3 font-semibold">Resumo original (fonte)</p>
-        <p className="text-sm text-[#666] leading-relaxed italic">{article.summary}</p>
+      <div className="p-5 bg-raised border border-white/[0.04] rounded-xl mt-8">
+        <p className="text-xs text-dim uppercase tracking-widest mb-3 font-semibold">Resumo original (fonte)</p>
+        <p className="text-sm text-dim leading-relaxed italic">{article.summary}</p>
       </div>
     </div>
   );
@@ -130,40 +130,38 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
 
   return (
     <div>
-      {/* Título principal com Playfair Display */}
+      {/* Título principal */}
       <h1
-        style={{ fontFamily: "var(--font-playfair, Georgia, serif)" }}
-        className="text-4xl md:text-5xl font-bold text-white leading-tight tracking-tight mb-4"
+        className="text-4xl md:text-5xl font-bold tracking-tight text-white leading-tight mb-4"
       >
         {displayTitle}
       </h1>
 
       {/* Subtítulo — categoria/fonte */}
       <p
-        style={{ fontFamily: "var(--font-playfair, Georgia, serif)" }}
-        className="text-lg md:text-xl text-[#888] font-normal italic leading-snug mb-6"
+        className="text-lg md:text-xl text-dim font-normal italic leading-snug mb-6"
       >
         {isAi ? "Análise elaborada pela Statecraft com base em fontes abertas" : `Fonte: ${article.source}`}
       </p>
 
       {/* Linha de creditos */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-8 pb-6 border-b border-white/[0.07]">
-        <span className="text-xs text-[#555]">
-          Por <strong className="text-[#777]">IA Statecraft</strong>
+        <span className="text-xs text-dim">
+          Por <strong className="text-dim">IA Statecraft</strong>
         </span>
-        <span className="text-[#333]">|</span>
-        <span className="flex items-center gap-1 text-xs text-[#555]">
+        <span className="text-dim">|</span>
+        <span className="flex items-center gap-1 text-xs text-dim">
           <Clock size={10} />{formatDateFull(article.publishedAt)}
         </span>
-        <span className="text-[#333]">|</span>
-        <span className="flex items-center gap-1 text-xs text-[#555]">
+        <span className="text-dim">|</span>
+        <span className="flex items-center gap-1 text-xs text-dim">
           <Clock size={10} />
           {Math.max(3, Math.ceil((enriched.content || article.summary).split(/\s+/).length / 200))} min de leitura
         </span>
         {isAi && (
           <>
-            <span className="text-[#333]">|</span>
-            <span className="flex items-center gap-1 text-[10px] text-[#444]">
+            <span className="text-dim">|</span>
+            <span className="flex items-center gap-1 text-xs text-dim">
               <Sparkles size={9} className="text-red-600" />
               {enriched.fromCache ? "Cache" : "Gerado por IA"}
             </span>
@@ -173,8 +171,8 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
 
       {/* Lide (parágrafo de abertura destacado) */}
       <p
-        style={{ fontFamily: "var(--font-lora, Georgia, serif)" }}
-        className="text-lg text-[#C0C0CA] leading-relaxed mb-8 pl-5 border-l-[3px] border-red-600/50 italic"
+        style={{ fontFamily: "var(--font-lora), Georgia, serif" }}
+        className="text-lg text-body leading-relaxed mb-8 pl-5 border-l-[3px] border-red-600/50 italic"
       >
         {displaySummary}
       </p>
@@ -202,25 +200,24 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
         <div className="flex items-center gap-2 mb-5">
           <BookOpen size={13} className="text-[#555]" />
           <h2
-            style={{ fontFamily: "var(--font-playfair, Georgia, serif)" }}
-            className="text-sm font-bold text-[#666] uppercase tracking-widest"
+            className="text-sm font-bold text-dim uppercase tracking-widest"
           >
             Referências
           </h2>
         </div>
 
         {/* Referência ABNT */}
-        <div className="bg-[#0A0A0A] border border-white/[0.05] rounded-xl p-5">
-          <p className="text-[11px] leading-relaxed text-[#555] font-mono">
-            <span className="text-[#777]">[1]</span>{" "}
-            {abntSourceName(article.source)}. <em className="not-italic text-[#666]">{enriched.title || article.title}</em>.{" "}
+        <div className="bg-raised border border-white/[0.05] rounded-xl p-5">
+          <p className="text-xs leading-relaxed text-dim font-mono">
+            <span className="text-dim">[1]</span>{" "}
+            {abntSourceName(article.source)}. <em className="not-italic text-dim">{enriched.title || article.title}</em>.{" "}
             {article.source}, {pubDate}.{" "}
             Disponível em:{" "}
             <a
               href={article.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-red-600/70 hover:text-red-500 underline break-all"
+              className="text-dim hover:text-white underline break-all"
             >
               &lt;{article.url}&gt;
             </a>
@@ -230,16 +227,16 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
       </div>
 
       {/* CTA — fonte original */}
-      <div className="p-5 bg-[#0D0D0D] border border-white/[0.08] rounded-xl flex items-center justify-between gap-4 flex-wrap">
+      <div className="p-5 bg-raised border border-white/[0.08] rounded-xl flex items-center justify-between gap-4 flex-wrap">
         <div>
           <p className="text-xs font-semibold text-white mb-0.5">Ler na fonte original</p>
-          <p className="text-[11px] text-[#555]">{article.source}</p>
+          <p className="text-xs text-dim">{article.source}</p>
         </div>
         <a
           href={article.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-lg transition-all hover:shadow-[0_0_18px_rgba(229,9,20,0.35)] flex-shrink-0"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-lg transition-all flex-shrink-0"
         >
           Acessar <ExternalLink size={12} />
         </a>
@@ -283,12 +280,11 @@ async function RelatedBriefings({ cves, tags }: { cves: string[]; tags: string[]
         <div className="flex items-center gap-2 mb-4">
           <Shield size={13} className="text-red-500" />
           <h2
-            style={{ fontFamily: "var(--font-playfair, Georgia, serif)" }}
-            className="text-sm font-bold text-white"
+            className="text-sm font-bold tracking-tight text-white"
           >
             Threat Briefings Relacionados
           </h2>
-          <span className="text-[10px] text-[#555] ml-1">da plataforma Statecraft</span>
+          <span className="text-xs text-dim ml-1">da plataforma Statecraft</span>
         </div>
         <div className="space-y-2">
           {briefings.map((b) => {
@@ -299,7 +295,7 @@ async function RelatedBriefings({ cves, tags }: { cves: string[]; tags: string[]
               <Link
                 key={b.slug}
                 href={`/threat-briefings/${b.slug}`}
-                className="group flex items-center gap-4 p-4 bg-[#0D0D0D] border border-white/[0.06] hover:border-red-600/25 rounded-xl transition-all"
+                className="group flex items-center gap-4 p-4 bg-raised border border-white/[0.06] hover:bg-overlay rounded-xl transition-all"
               >
                 <div className={`w-2 h-2 rounded-full flex-shrink-0 ${sev.dot}`} />
                 <div className="min-w-0 flex-1">
@@ -307,9 +303,9 @@ async function RelatedBriefings({ cves, tags }: { cves: string[]; tags: string[]
                     {b.title}
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={`text-[10px] font-medium ${sev.text}`}>{sev.label}</span>
+                    <span className={`text-xs font-medium ${sev.text}`}>{sev.label}</span>
                     <span className="text-[#333]">·</span>
-                    <span className="text-[10px] text-[#555]">{b.category}</span>
+                    <span className="text-xs text-dim">{b.category}</span>
                     {matchedCves.length > 0 && (
                       <>
                         <span className="text-[#333]">·</span>
@@ -322,14 +318,14 @@ async function RelatedBriefings({ cves, tags }: { cves: string[]; tags: string[]
                     )}
                   </div>
                 </div>
-                <ChevronRight size={14} className="flex-shrink-0 text-[#444] group-hover:text-red-400 transition-colors" />
+                <ChevronRight size={14} className="flex-shrink-0 text-dim group-hover:text-white transition-colors" />
               </Link>
             );
           })}
         </div>
         <Link
           href="/threat-briefings"
-          className="inline-flex items-center gap-1 mt-3 text-xs text-[#555] hover:text-red-400 transition-colors"
+          className="inline-flex items-center gap-1 mt-3 text-xs text-dim hover:text-white transition-colors"
         >
           Ver todos os briefings <ChevronRight size={11} />
         </Link>
@@ -347,7 +343,7 @@ function RelatedCard({ article }: { article: NewsArticle }) {
   return (
     <Link
       href={`/noticias/${article.slug}`}
-      className="group block bg-[#0D0D0D] border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/[0.12] transition-all"
+      className="group block bg-raised border border-white/[0.06] rounded-xl overflow-hidden hover:bg-overlay transition-all"
     >
       {article.imageUrl && (
         <div className="relative w-full h-28 overflow-hidden">
@@ -360,8 +356,7 @@ function RelatedCard({ article }: { article: NewsArticle }) {
           {article.source.split(" ")[0]}
         </span>
         <p
-          style={{ fontFamily: "var(--font-playfair, Georgia, serif)" }}
-          className="text-xs font-semibold text-white leading-snug group-hover:text-red-400 transition-colors line-clamp-3"
+          className="text-xs font-semibold text-white leading-snug group-hover:text-white transition-colors line-clamp-3"
         >
           {article.title}
         </p>
@@ -418,15 +413,15 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     .slice(0, 3);
 
   return (
-    <main className="min-h-screen bg-[#050505] pt-16">
+    <main className="min-h-screen bg-canvas pt-16">
       {/* Breadcrumb */}
       <div className="border-b border-white/[0.04]">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-xs text-[#555]">
-          <Link href="/" className="hover:text-[#A1A1AA] transition-colors">Home</Link>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-xs text-dim">
+          <Link href="/" className="hover:text-body transition-colors">Home</Link>
           <span>/</span>
-          <Link href="/noticias" className="hover:text-[#A1A1AA] transition-colors">Notícias</Link>
+          <Link href="/noticias" className="hover:text-body transition-colors">Notícias</Link>
           <span>/</span>
-          <span className="text-[#666] truncate max-w-[260px]">{article.title}</span>
+          <span className="text-dim truncate max-w-[260px]">{article.title}</span>
         </div>
       </div>
 
@@ -435,7 +430,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         {/* Voltar */}
         <Link
           href="/noticias"
-          className="inline-flex items-center gap-1.5 text-xs text-[#555] hover:text-[#A1A1AA] transition-colors mb-8"
+          className="inline-flex items-center gap-1.5 text-xs text-dim hover:text-white transition-colors mb-8"
         >
           <ArrowLeft size={12} />
           Voltar para Notícias
@@ -447,7 +442,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
             {article.source}
           </span>
-          <span className="flex items-center gap-1 text-xs text-[#555]">
+          <span className="flex items-center gap-1 text-xs text-dim">
             {article.sourceRegion === "Brasil"
               ? <MapPin size={10} className="text-green-500" />
               : <Globe size={10} />
@@ -457,7 +452,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           {(() => {
             const t = TYPE_STYLES[article.type] ?? TYPE_STYLES["Ameaça"];
             return (
-              <span className={`px-2 py-0.5 rounded border text-[10px] font-semibold ${t.cls}`}>
+              <span className={`px-2 py-0.5 rounded border text-xs font-semibold ${t.cls}`}>
                 {t.label}
               </span>
             );
@@ -474,13 +469,13 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 href={`https://nvd.nist.gov/vuln/detail/${cve}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-2 py-0.5 rounded text-[10px] font-mono font-bold text-red-400 bg-red-600/10 border border-red-600/20 hover:bg-red-600/20 hover:border-red-500/40 transition-colors"
+                className="px-2 py-0.5 rounded text-xs font-mono font-bold text-red-400 bg-red-600/10 border border-red-600/20 hover:bg-red-600/20 hover:border-red-500/40 transition-colors"
               >
                 {cve}
               </a>
             ))}
             {article.tags.map((tag) => (
-              <span key={tag} className="px-2 py-0.5 rounded text-[10px] text-[#666] bg-white/[0.04] border border-white/[0.06]">
+              <span key={tag} className="px-2 py-0.5 rounded text-xs text-dim bg-white/[0.04] border border-white/[0.06]">
                 #{tag}
               </span>
             ))}
@@ -507,8 +502,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
               className="w-full object-cover"
               style={{ maxHeight: "400px" }}
             />
-            <div className="px-4 py-2 bg-[#0D0D0D] border-t border-white/[0.04]">
-              <p className="text-[10px] text-[#444]">Imagem: {article.source}</p>
+            <div className="px-4 py-2 bg-raised border-t border-white/[0.04]">
+              <p className="text-xs text-dim">Imagem: {article.source}</p>
             </div>
           </div>
         )}
@@ -529,8 +524,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             <div className="flex items-center gap-3 mb-6">
               <div className="h-px flex-1 bg-white/[0.06]" />
               <h2
-                style={{ fontFamily: "var(--font-playfair, Georgia, serif)" }}
-                className="text-xs font-bold text-[#555] uppercase tracking-widest"
+                className="text-xs font-bold text-dim uppercase tracking-widest"
               >
                 Leia também
               </h2>

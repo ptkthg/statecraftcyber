@@ -97,7 +97,7 @@ export default async function IocPage() {
   const { results, total, stats } = await fetchInitialIocs();
 
   return (
-    <main className="min-h-screen bg-[#050505] pt-16">
+    <main className="min-h-screen bg-canvas pt-16">
       <IocSearch initialResults={results} initialTotal={total} initialStats={stats} />
     </main>
   );

@@ -49,20 +49,19 @@ const sources = [
 
 export default function SobrePage() {
   return (
-    <main className="min-h-screen bg-[#050505] pt-16">
+    <main className="min-h-screen bg-canvas pt-16">
       {/* Hero */}
       <section className="relative py-20 border-b border-white/[0.04] overflow-hidden">
-        <div className="absolute inset-0 bg-grid opacity-30" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#050505]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-canvas" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-1.5 rounded-full bg-red-600" />
-            <span className="text-xs font-semibold text-red-400 uppercase tracking-widest">Sobre o Projeto</span>
+            <span className="text-xs font-semibold text-dim uppercase tracking-widest">Sobre o Projeto</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-6 max-w-2xl leading-tight">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6 max-w-2xl leading-tight">
             Threat intelligence<br />em português, em tempo real
           </h1>
-          <p className="text-[#A1A1AA] max-w-2xl text-base leading-relaxed">
+          <p className="text-dim max-w-2xl text-base leading-relaxed">
             A Statecraft é um projeto pessoal de threat intelligence construído do zero:
             uma plataforma que agrega dados de fontes abertas globais e os transforma em
             briefings técnicos em português, com IOCs estruturados e contexto acionável para
@@ -76,22 +75,22 @@ export default function SobrePage() {
         {/* Quem sou */}
         <div className="grid md:grid-cols-2 gap-12 items-start">
           <div>
-            <div className="text-xs font-semibold text-red-500 uppercase tracking-widest mb-4">O Criador</div>
-            <h2 className="text-2xl font-black text-white mb-5 leading-snug">
+            <div className="text-xs font-semibold text-dim uppercase tracking-widest mb-4">O Criador</div>
+            <h2 className="text-2xl font-bold tracking-tight text-white mb-5 leading-snug">
               Patrick Santos
             </h2>
-            <p className="text-sm text-[#A1A1AA] leading-relaxed mb-3">
+            <p className="text-sm text-body leading-relaxed mb-3">
               Analista de segurança com foco em Blue Team: detecção de ameaças, resposta a incidentes
               e operações defensivas. Trabalho com feeds de threat intelligence como CISA KEV e OTX
               AlienVault no dia a dia, e construí a Statecraft para tornar esse tipo de dado mais
               acessível e legível para outros profissionais da área no Brasil.
             </p>
-            <p className="text-sm text-[#A1A1AA] leading-relaxed mb-3">
+            <p className="text-sm text-body leading-relaxed mb-3">
               A plataforma nasceu de uma necessidade real: a maioria dos feeds de threat intel é em
               inglês, técnica e dispersa entre dezenas de fontes diferentes. A Statecraft centraliza,
               processa e traduz isso em briefings estruturados, sem perder a precisão técnica.
             </p>
-            <p className="text-sm text-[#A1A1AA] leading-relaxed">
+            <p className="text-sm text-body leading-relaxed">
               Além dos briefings, estou desenvolvendo um SIEM próprio, construído para refletir
               como detecção e correlação funcionam na prática em ambientes reais de Blue Team.
             </p>
@@ -99,7 +98,7 @@ export default function SobrePage() {
               href="https://portfolioptk.vercel.app/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 mt-6 text-sm font-medium text-[#A1A1AA] hover:text-white border border-white/10 hover:border-white/20 px-4 py-2.5 rounded-lg transition-all group"
+              className="inline-flex items-center gap-2 mt-6 text-sm font-medium text-body hover:text-white border border-white/10 hover:border-white/20 px-4 py-2.5 rounded-lg transition-all group"
             >
               <ExternalLink size={13} className="text-red-500" />
               Ver portfólio completo
@@ -108,38 +107,38 @@ export default function SobrePage() {
           </div>
 
           <div className="space-y-3">
-            <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-5">
+            <div className="bg-raised border border-white/[0.06] rounded-xl p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 rounded-lg bg-red-600/10 border border-red-600/20 flex items-center justify-center">
                   <Shield size={15} className="text-red-500" />
                 </div>
                 <h3 className="text-sm font-bold text-white">Blue Team & Defesa</h3>
               </div>
-              <p className="text-xs text-[#A1A1AA] leading-relaxed">
+              <p className="text-xs text-body leading-relaxed">
                 Detecção de ameaças, análise de IOCs, resposta a incidentes e operações defensivas em ambientes reais.
               </p>
             </div>
 
-            <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-5">
+            <div className="bg-raised border border-white/[0.06] rounded-xl p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 rounded-lg bg-red-600/10 border border-red-600/20 flex items-center justify-center">
                   <Database size={15} className="text-red-500" />
                 </div>
                 <h3 className="text-sm font-bold text-white">Threat Intelligence</h3>
               </div>
-              <p className="text-xs text-[#A1A1AA] leading-relaxed">
+              <p className="text-xs text-body leading-relaxed">
                 Consumo e análise de feeds como CISA KEV, OTX AlienVault e NVD. Enriquecimento de IOCs e mapeamento MITRE ATT&CK.
               </p>
             </div>
 
-            <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-5">
+            <div className="bg-raised border border-white/[0.06] rounded-xl p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 rounded-lg bg-orange-600/10 border border-orange-600/20 flex items-center justify-center">
                   <Cpu size={15} className="text-orange-400" />
                 </div>
-                <h3 className="text-sm font-bold text-white">SIEM Próprio <span className="text-[10px] font-medium text-orange-400 ml-2 px-1.5 py-0.5 rounded bg-orange-600/10 border border-orange-600/20">EM DESENVOLVIMENTO</span></h3>
+                <h3 className="text-sm font-bold text-white">SIEM Próprio <span className="text-xs font-medium text-orange-400 ml-2 px-1.5 py-0.5 rounded bg-orange-600/10 border border-orange-600/20">EM DESENVOLVIMENTO</span></h3>
               </div>
-              <p className="text-xs text-[#A1A1AA] leading-relaxed">
+              <p className="text-xs text-body leading-relaxed">
                 Plataforma de detecção e correlação construída do zero, baseada em como Blue Teams reais operam. Em breve disponível neste site.
               </p>
             </div>
@@ -148,9 +147,9 @@ export default function SobrePage() {
 
         {/* Como a plataforma funciona */}
         <div>
-          <div className="text-xs font-semibold text-red-500 uppercase tracking-widest mb-4">Como Funciona</div>
-          <h2 className="text-2xl font-black text-white mb-3">Do feed bruto ao briefing acionável</h2>
-          <p className="text-sm text-[#A1A1AA] mb-8 max-w-2xl leading-relaxed">
+          <div className="text-xs font-semibold text-dim uppercase tracking-widest mb-4">Como Funciona</div>
+          <h2 className="text-2xl font-bold tracking-tight text-white mb-3">Do feed bruto ao briefing acionável</h2>
+          <p className="text-sm text-body mb-8 max-w-2xl leading-relaxed">
             A plataforma roda um pipeline automatizado que coleta dados de fontes abertas,
             normaliza e enriquece cada ameaça e publica briefings em português atualizados continuamente.
           </p>
@@ -162,13 +161,13 @@ export default function SobrePage() {
                   {i < pipeline.length - 1 && (
                     <div className="hidden lg:block absolute top-6 left-full w-full h-[1px] bg-gradient-to-r from-red-600/20 to-transparent z-10" />
                   )}
-                  <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-5">
+                  <div className="bg-raised border border-white/[0.06] rounded-xl p-5">
                     <div className="w-9 h-9 rounded-lg bg-red-600/10 border border-red-600/20 flex items-center justify-center mb-3">
                       <Icon size={16} className="text-red-500" />
                     </div>
-                    <div className="text-xs font-bold text-[#666] font-mono mb-1">{String(i + 1).padStart(2, "0")}</div>
-                    <h3 className="text-sm font-black text-white mb-2">{step.label}</h3>
-                    <p className="text-xs text-[#A1A1AA] leading-relaxed">{step.description}</p>
+                    <div className="text-xs font-bold text-dim font-mono mb-1">{String(i + 1).padStart(2, "0")}</div>
+                    <h3 className="text-sm font-bold text-white mb-2">{step.label}</h3>
+                    <p className="text-xs text-body leading-relaxed">{step.description}</p>
                   </div>
                 </div>
               );
@@ -178,9 +177,9 @@ export default function SobrePage() {
 
         {/* Fontes */}
         <div>
-          <div className="text-xs font-semibold text-red-500 uppercase tracking-widest mb-4">Fontes de Dados</div>
-          <h2 className="text-2xl font-black text-white mb-3">De onde vem a inteligência</h2>
-          <p className="text-sm text-[#A1A1AA] mb-8 max-w-2xl leading-relaxed">
+          <div className="text-xs font-semibold text-dim uppercase tracking-widest mb-4">Fontes de Dados</div>
+          <h2 className="text-2xl font-bold tracking-tight text-white mb-3">De onde vem a inteligência</h2>
+          <p className="text-sm text-body mb-8 max-w-2xl leading-relaxed">
             Todos os feeds são públicos e de alta credibilidade. Cada briefing referencia sua fonte
             original para rastreabilidade completa: você sempre sabe de onde veio o dado.
           </p>
@@ -191,13 +190,13 @@ export default function SobrePage() {
                 href={src.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group bg-[#0D0D0D] border border-white/[0.06] hover:border-red-600/20 rounded-xl p-5 transition-colors"
+                className="group bg-raised border border-white/[0.06] hover:bg-overlay rounded-xl p-5 transition-colors"
               >
-                <h3 className="text-sm font-black text-white mb-2 group-hover:text-red-400 transition-colors flex items-center gap-2">
+                <h3 className="text-sm font-bold text-white mb-2 group-hover:text-white transition-colors flex items-center gap-2">
                   {src.name}
                   <ArrowRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                 </h3>
-                <p className="text-xs text-[#A1A1AA] leading-relaxed">{src.desc}</p>
+                <p className="text-xs text-body leading-relaxed">{src.desc}</p>
               </a>
             ))}
           </div>
@@ -205,8 +204,8 @@ export default function SobrePage() {
 
         {/* Stack técnica */}
         <div>
-          <div className="text-xs font-semibold text-red-500 uppercase tracking-widest mb-4">Stack Técnica</div>
-          <h2 className="text-2xl font-black text-white mb-8">Construído com</h2>
+          <div className="text-xs font-semibold text-dim uppercase tracking-widest mb-4">Stack Técnica</div>
+          <h2 className="text-2xl font-bold tracking-tight text-white mb-8">Construído com</h2>
           <div className="flex flex-wrap gap-3">
             {[
               "Next.js 15", "TypeScript", "Tailwind CSS", "PostgreSQL", "Prisma",
@@ -214,7 +213,7 @@ export default function SobrePage() {
             ].map((tech) => (
               <span
                 key={tech}
-                className="px-3 py-1.5 text-xs font-medium bg-[#0D0D0D] border border-white/[0.08] rounded-lg text-[#A1A1AA]"
+                className="px-3 py-1.5 text-xs font-medium bg-raised border border-white/[0.08] rounded-lg text-body"
               >
                 {tech}
               </span>
@@ -223,14 +222,14 @@ export default function SobrePage() {
         </div>
 
         {/* CTA */}
-        <div className="bg-[#0D0D0D] border border-red-600/15 rounded-2xl p-10 text-center">
-          <h2 className="text-2xl font-black text-white mb-3">Veja a plataforma em ação</h2>
-          <p className="text-[#A1A1AA] text-sm leading-relaxed mb-6 max-w-md mx-auto">
+        <div className="bg-raised border border-white/[0.06] rounded-2xl p-10 text-center">
+          <h2 className="text-2xl font-bold tracking-tight text-white mb-3">Veja a plataforma em ação</h2>
+          <p className="text-body text-sm leading-relaxed mb-6 max-w-md mx-auto">
             Briefings de threat intelligence atualizados em tempo real, em português, sem cadastro.
           </p>
           <Link
             href="/threat-briefings"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-sm transition-all hover:shadow-[0_0_30px_rgba(229,9,20,0.3)]"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-sm transition-all"
           >
             Ver Threat Briefings <ArrowRight size={14} />
           </Link>

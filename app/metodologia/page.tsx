@@ -63,7 +63,7 @@ function Section({ id, icon: Icon, title, children }: {
         <div className="w-8 h-8 rounded-lg bg-red-600/10 border border-red-600/20 flex items-center justify-center flex-shrink-0">
           <Icon size={14} className="text-red-500" aria-hidden />
         </div>
-        <h2 className="text-xl font-black text-white">{title}</h2>
+        <h2 className="text-xl font-bold tracking-tight text-white">{title}</h2>
       </div>
       {children}
     </section>
@@ -72,18 +72,17 @@ function Section({ id, icon: Icon, title, children }: {
 
 export default function MetodologiaPage() {
   return (
-    <main className="min-h-screen bg-[#050505] pt-16">
+    <main className="min-h-screen bg-canvas pt-16">
       {/* Hero */}
       <section className="relative py-14 border-b border-white/[0.04] overflow-hidden">
-        <div className="absolute inset-0 bg-grid opacity-30" aria-hidden />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#050505]" aria-hidden />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-canvas" aria-hidden />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 mb-4">
             <ShieldCheck size={14} className="text-red-500" aria-hidden />
-            <span className="text-xs font-semibold text-red-400 uppercase tracking-widest">Transparência</span>
+            <span className="text-xs font-semibold text-dim uppercase tracking-widest">Transparência</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-4 leading-tight">Metodologia</h1>
-          <p className="text-[#A1A1AA] text-base leading-relaxed max-w-2xl mb-6">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-4 leading-tight">Metodologia</h1>
+          <p className="text-body text-base leading-relaxed max-w-2xl mb-6">
             Como a Statecraft coleta, processa e apresenta dados de threat intelligence.
             Esta página documenta as fontes, o pipeline de dados, o papel da IA e as limitações do sistema.
           </p>
@@ -101,7 +100,7 @@ export default function MetodologiaPage() {
               <Link
                 key={href}
                 href={href}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs text-[#666] hover:text-[#A1A1AA] bg-[#0D0D0D] border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500"
+                className="flex items-center gap-1 px-3 py-1.5 text-xs text-dim hover:text-white bg-raised border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
               >
                 {label}
                 <ChevronRight size={10} aria-hidden />
@@ -115,18 +114,18 @@ export default function MetodologiaPage() {
 
         {/* Fontes */}
         <Section id="fontes" icon={Globe} title="Fontes de dados">
-          <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="bg-raised border border-white/[0.06] rounded-xl overflow-hidden">
             {SOURCES.map((s, i) => (
               <div key={i} className="flex flex-wrap items-start gap-4 px-5 py-4 border-b border-white/[0.04] last:border-0">
                 <div className="w-36 flex-shrink-0">
                   <p className="text-xs font-bold text-white">{s.name}</p>
-                  <p className="text-[10px] text-red-400 font-medium mt-0.5">{s.type}</p>
+                  <p className="text-xs text-red-400 font-medium mt-0.5">{s.type}</p>
                 </div>
-                <p className="text-xs text-[#777] leading-relaxed flex-1">{s.detail}</p>
+                <p className="text-xs text-dim leading-relaxed flex-1">{s.detail}</p>
               </div>
             ))}
           </div>
-          <p className="text-xs text-[#555] mt-3 leading-relaxed">
+          <p className="text-xs text-dim mt-3 leading-relaxed">
             Todas as fontes são públicas e abertas. A Statecraft não tem acesso a feeds proprietários ou dados classificados.
           </p>
         </Section>
@@ -135,13 +134,13 @@ export default function MetodologiaPage() {
         <Section id="pipeline" icon={Cpu} title="Pipeline de processamento">
           <div className="space-y-3">
             {PIPELINE.map((p) => (
-              <div key={p.step} className="flex gap-4 p-5 bg-[#0D0D0D] border border-white/[0.06] rounded-xl">
+              <div key={p.step} className="flex gap-4 p-5 bg-raised border border-white/[0.06] rounded-xl">
                 <div className="w-6 h-6 rounded-full bg-red-600/15 border border-red-600/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-[10px] font-black text-red-400">{p.step}</span>
+                  <span className="text-xs font-bold text-red-400">{p.step}</span>
                 </div>
                 <div>
                   <p className="text-sm font-bold text-white mb-1">{p.title}</p>
-                  <p className="text-xs text-[#777] leading-relaxed">{p.desc}</p>
+                  <p className="text-xs text-dim leading-relaxed">{p.desc}</p>
                 </div>
               </div>
             ))}
@@ -150,15 +149,15 @@ export default function MetodologiaPage() {
 
         {/* Priorização */}
         <Section id="priorizacao" icon={AlertTriangle} title="Priorização de CVEs">
-          <p className="text-xs text-[#777] leading-relaxed mb-5">
+          <p className="text-xs text-dim leading-relaxed mb-5">
             CVEs são filtrados e ordenados com base em três sinais independentes: CVSS, EPSS e CISA KEV.
             Vulnerabilidades com exploração confirmada têm prioridade incondicional.
           </p>
-          <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="bg-raised border border-white/[0.06] rounded-xl overflow-hidden">
             {PRIORITIZATION.map((p, i) => (
               <div key={i} className="flex items-center gap-4 px-5 py-3.5 border-b border-white/[0.04] last:border-0">
-                <span className="text-xs font-mono text-[#D4D4D8] flex-1">{p.label}</span>
-                <span className="text-[10px] text-[#555] text-right">{p.weight}</span>
+                <span className="text-xs font-mono text-body flex-1">{p.label}</span>
+                <span className="text-xs text-dim text-right">{p.weight}</span>
               </div>
             ))}
           </div>
@@ -166,23 +165,23 @@ export default function MetodologiaPage() {
 
         {/* IA */}
         <Section id="ia" icon={ShieldCheck} title="Papel da inteligência artificial">
-          <p className="text-xs text-[#777] leading-relaxed mb-5">
+          <p className="text-xs text-dim leading-relaxed mb-5">
             O modelo LLaMA 3.3 70B (via Groq) é utilizado em três contextos distintos.
             Em nenhum deles a IA inventa dados — ela processa e reformata informações das fontes primárias.
           </p>
           <div className="space-y-3">
             {AI_ROLES.map((r) => (
-              <div key={r.area} className="p-5 bg-[#0D0D0D] border border-white/[0.06] rounded-xl">
+              <div key={r.area} className="p-5 bg-raised border border-white/[0.06] rounded-xl">
                 <p className="text-xs font-bold text-white mb-1.5">{r.area}</p>
-                <p className="text-xs text-[#777] leading-relaxed">{r.desc}</p>
+                <p className="text-xs text-dim leading-relaxed">{r.desc}</p>
               </div>
             ))}
           </div>
           <div className="mt-4 p-4 bg-yellow-600/[0.06] border border-yellow-600/20 rounded-xl">
             <p className="text-xs text-yellow-300 leading-relaxed">
               <strong>Rastreabilidade:</strong> cada briefing e CVE enriquecido registra quando o conteúdo foi gerado
-              e qual é a fonte primária. O campo <code className="font-mono text-[10px] bg-yellow-600/10 px-1 rounded">enrichedAt</code> em
-              CveCache e <code className="font-mono text-[10px] bg-yellow-600/10 px-1 rounded">enrichedAt</code> em NewsCache
+              e qual é a fonte primária. O campo <code className="font-mono text-xs bg-yellow-600/10 px-1 rounded">enrichedAt</code> em
+              CveCache e <code className="font-mono text-xs bg-yellow-600/10 px-1 rounded">enrichedAt</code> em NewsCache
               permitem auditar quando a IA processou cada item.
             </p>
           </div>
@@ -190,16 +189,16 @@ export default function MetodologiaPage() {
 
         {/* IOCs */}
         <Section id="iocs" icon={Database} title="Normalização de IOCs">
-          <p className="text-xs text-[#777] leading-relaxed mb-5">
+          <p className="text-xs text-dim leading-relaxed mb-5">
             Todos os indicadores de comprometimento passam por normalização antes de serem persistidos
-            na tabela relacional <code className="font-mono text-[10px] bg-white/[0.06] px-1 rounded">Ioc</code>.
+            na tabela relacional <code className="font-mono text-xs bg-white/[0.06] px-1 rounded">Ioc</code>.
             Isso garante deduplicação correta e busca consistente.
           </p>
-          <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="bg-raised border border-white/[0.06] rounded-xl overflow-hidden">
             {IOC_NORMALIZATION.map((n, i) => (
               <div key={i} className="flex items-start gap-4 px-5 py-3.5 border-b border-white/[0.04] last:border-0">
-                <span className="w-16 text-[10px] font-bold text-red-400 font-mono flex-shrink-0 mt-0.5">{n.type}</span>
-                <p className="text-xs text-[#777] leading-relaxed">{n.rule}</p>
+                <span className="w-16 text-xs font-bold text-red-400 font-mono flex-shrink-0 mt-0.5">{n.type}</span>
+                <p className="text-xs text-dim leading-relaxed">{n.rule}</p>
               </div>
             ))}
           </div>
@@ -230,9 +229,9 @@ export default function MetodologiaPage() {
                 desc: "O pipeline depende de disponibilidade das APIs do NVD, CISA, FIRST.org, OTX e dos RSS feeds. Indisponibilidade de uma fonte é registrada em CronLog mas não interrompe o pipeline.",
               },
             ].map((item) => (
-              <div key={item.title} className="p-5 bg-[#0D0D0D] border border-white/[0.06] rounded-xl">
+              <div key={item.title} className="p-5 bg-raised border border-white/[0.06] rounded-xl">
                 <p className="text-xs font-bold text-white mb-1.5">{item.title}</p>
-                <p className="text-xs text-[#777] leading-relaxed">{item.desc}</p>
+                <p className="text-xs text-dim leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -249,19 +248,19 @@ export default function MetodologiaPage() {
         <div className="pt-8 border-t border-white/[0.04] flex flex-wrap gap-4">
           <Link
             href="/threat-briefings"
-            className="flex items-center gap-1.5 text-sm text-[#A1A1AA] hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 rounded"
+            className="flex items-center gap-1.5 text-sm text-body hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 rounded"
           >
             Ver Threat Briefings <ArrowRight size={13} aria-hidden />
           </Link>
           <Link
             href="/cves"
-            className="flex items-center gap-1.5 text-sm text-[#A1A1AA] hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 rounded"
+            className="flex items-center gap-1.5 text-sm text-body hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 rounded"
           >
             Ver CVEs <ArrowRight size={13} aria-hidden />
           </Link>
           <Link
             href="/sobre"
-            className="flex items-center gap-1.5 text-sm text-[#A1A1AA] hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 rounded"
+            className="flex items-center gap-1.5 text-sm text-body hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 rounded"
           >
             Sobre a Statecraft <ArrowRight size={13} aria-hidden />
           </Link>

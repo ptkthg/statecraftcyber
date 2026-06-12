@@ -242,15 +242,15 @@ export default async function BriefingPage({
   const confidenceReason = sc?.confidenceReason ?? null;
 
   return (
-    <main className="min-h-screen bg-[#050505] pt-16">
+    <main className="min-h-screen bg-canvas pt-16">
       {/* Breadcrumb */}
       <div className="border-b border-white/[0.04]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-xs text-[#888]">
-          <Link href="/" className="hover:text-[#C0C0C0] transition-colors">Home</Link>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-xs text-dim">
+          <Link href="/" className="hover:text-body transition-colors">Home</Link>
           <ChevronRight size={12} className="text-[#555]" />
-          <Link href="/threat-briefings" className="hover:text-[#C0C0C0] transition-colors">Threat Briefings</Link>
+          <Link href="/threat-briefings" className="hover:text-body transition-colors">Threat Briefings</Link>
           <ChevronRight size={12} className="text-[#555]" />
-          <span className="text-[#A1A1AA] truncate max-w-[260px]">{briefing.title}</span>
+          <span className="text-dim truncate max-w-[260px]">{briefing.title}</span>
         </div>
       </div>
 
@@ -263,11 +263,11 @@ export default async function BriefingPage({
             {/* Header */}
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-4 flex-wrap">
-                <span className={`text-[10px] font-bold px-2.5 py-1 rounded border uppercase tracking-wider flex items-center gap-1.5 ${SEVERITY_STYLES[briefing.severity]}`}>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded border uppercase tracking-wider flex items-center gap-1.5 ${SEVERITY_STYLES[briefing.severity]}`}>
                   <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${SEVERITY_DOT[briefing.severity]}`} />
                   {SEVERITY_LABELS[briefing.severity]}
                 </span>
-                <span className="text-xs text-[#A1A1AA] bg-white/[0.04] px-2.5 py-1 rounded border border-white/[0.06]">
+                <span className="text-xs text-body bg-white/[0.04] px-2.5 py-1 rounded border border-white/[0.06]">
                   {briefing.category}
                 </span>
                 {briefing.cves.slice(0, 3).map((cve) => (
@@ -276,7 +276,7 @@ export default async function BriefingPage({
                     href={`https://nvd.nist.gov/vuln/detail/${cve}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-mono text-[10px] text-[#888] hover:text-red-400 bg-[#0A0A0A] border border-white/[0.06] hover:border-red-600/20 px-2 py-0.5 rounded transition-colors"
+                    className="font-mono text-xs text-dim hover:text-white bg-raised border border-white/[0.06] hover:border-white/[0.12] px-2 py-0.5 rounded transition-colors"
                   >
                     {cve}
                   </a>
@@ -284,13 +284,12 @@ export default async function BriefingPage({
               </div>
 
               <h1
-                className="text-3xl md:text-4xl font-bold text-white leading-tight mb-4 tracking-tight"
-                style={{ fontFamily: "var(--font-playfair, Georgia, serif)" }}
+                className="text-3xl md:text-4xl font-bold tracking-tight text-white leading-tight mb-4"
               >
                 {briefing.title}
               </h1>
 
-              <div className="flex flex-wrap items-center gap-4 text-xs text-[#888] pb-4 border-b border-white/[0.04]">
+              <div className="flex flex-wrap items-center gap-4 text-xs text-dim pb-4 border-b border-white/[0.04]">
                 <span className="flex items-center gap-1.5">
                   <Clock size={11} /> {briefing.readingTime} min de leitura
                 </span>
@@ -302,7 +301,7 @@ export default async function BriefingPage({
                   href={briefing.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-red-500 hover:text-red-400 transition-colors"
+                  className="flex items-center gap-1 text-dim hover:text-white transition-colors"
                 >
                   Fonte original <ExternalLink size={10} />
                 </a>
@@ -315,7 +314,7 @@ export default async function BriefingPage({
                 {sidebarIocs.length > 0 && (
                   <a
                     href="#secao-iocs"
-                    className="flex items-center justify-between bg-[#0D0D0D] border border-white/[0.06] hover:border-red-600/20 rounded-lg px-4 py-3 transition-colors group"
+                    className="flex items-center justify-between bg-raised border border-white/[0.06] hover:bg-overlay rounded-lg px-4 py-3 transition-colors group"
                   >
                     <div className="flex items-center gap-2">
                       <AlertTriangle size={12} className="text-red-500" />
@@ -323,12 +322,12 @@ export default async function BriefingPage({
                         {sidebarIocs.length} IOC{sidebarIocs.length > 1 ? "s" : ""} identificados
                       </span>
                     </div>
-                    <ArrowDown size={12} className="text-[#555] group-hover:text-red-400 transition-colors" />
+                    <ArrowDown size={12} className="text-dim group-hover:text-white transition-colors" />
                   </a>
                 )}
                 {briefing.mitreTechniques.length > 0 && (
-                  <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-lg px-4 py-3">
-                    <div className="text-[10px] font-bold text-[#888] uppercase tracking-wider mb-2">MITRE ATT&CK</div>
+                  <div className="bg-raised border border-white/[0.06] rounded-lg px-4 py-3">
+                    <div className="text-xs font-bold text-dim uppercase tracking-wider mb-2">MITRE ATT&CK</div>
                     <div className="flex flex-wrap gap-1">
                       {briefing.mitreTechniques.slice(0, 6).map((t) => (
                         <a
@@ -337,7 +336,7 @@ export default async function BriefingPage({
                           target="_blank"
                           rel="noopener noreferrer"
                           title={MITRE_NAMES[t] ? `${t}: ${MITRE_NAMES[t]}` : t}
-                          className="text-[10px] font-mono text-red-400 hover:text-red-300 bg-red-600/5 border border-red-600/15 px-2 py-0.5 rounded transition-colors"
+                          className="text-xs font-mono text-red-400 hover:text-red-300 bg-red-600/5 border border-red-600/15 px-2 py-0.5 rounded transition-colors"
                         >
                           {t}
                         </a>
@@ -357,26 +356,26 @@ export default async function BriefingPage({
             {/* Scores row — always rendered */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
               {briefing.cvssScore && (
-                <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-lg p-4 text-center">
-                  <div className="text-xs text-[#999] uppercase tracking-wider mb-1">CVSS v3</div>
-                  <div className={`text-3xl font-black ${briefing.cvssScore >= 9 ? "text-red-500" : briefing.cvssScore >= 7 ? "text-orange-400" : "text-yellow-400"}`}>
+                <div className="bg-raised border border-white/[0.06] rounded-lg p-4 text-center">
+                  <div className="text-xs text-dim uppercase tracking-wider mb-1">CVSS v3</div>
+                  <div className={`text-3xl font-bold ${briefing.cvssScore >= 9 ? "text-red-500" : briefing.cvssScore >= 7 ? "text-orange-400" : "text-yellow-400"}`}>
                     {briefing.cvssScore.toFixed(1)}
                   </div>
-                  <div className="text-xs text-[#999] mt-1">{cvssLabel(briefing.cvssScore)}</div>
+                  <div className="text-xs text-dim mt-1">{cvssLabel(briefing.cvssScore)}</div>
                 </div>
               )}
               {briefing.epssScore != null && (
-                <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-lg p-4 text-center">
-                  <div className="text-xs text-[#999] uppercase tracking-wider mb-1">EPSS</div>
-                  <div className={`text-3xl font-black ${epssColor(briefing.epssScore)}`}>
+                <div className="bg-raised border border-white/[0.06] rounded-lg p-4 text-center">
+                  <div className="text-xs text-dim uppercase tracking-wider mb-1">EPSS</div>
+                  <div className={`text-3xl font-bold ${epssColor(briefing.epssScore)}`}>
                     {(briefing.epssScore * 100).toFixed(1)}%
                   </div>
-                  <div className="text-xs text-[#999] mt-1">{epssLabel(briefing.epssScore)}</div>
+                  <div className="text-xs text-dim mt-1">{epssLabel(briefing.epssScore)}</div>
                 </div>
               )}
-              <div className={`bg-[#0D0D0D] border border-white/[0.06] rounded-lg p-4 text-center ${!briefing.cvssScore && briefing.epssScore == null ? "col-span-2 lg:col-span-3" : ""}`}>
-                <div className="text-xs text-[#999] uppercase tracking-wider mb-1">Confiança</div>
-                <div className={`text-2xl font-black ${briefing.confidence === "high" ? "text-green-400" : briefing.confidence === "medium" ? "text-yellow-400" : "text-[#888]"}`}>
+              <div className={`bg-raised border border-white/[0.06] rounded-lg p-4 text-center ${!briefing.cvssScore && briefing.epssScore == null ? "col-span-2 lg:col-span-3" : ""}`}>
+                <div className="text-xs text-dim uppercase tracking-wider mb-1">Confiança</div>
+                <div className={`text-2xl font-bold ${briefing.confidence === "high" ? "text-green-400" : briefing.confidence === "medium" ? "text-yellow-400" : "text-dim"}`}>
                   {CONFIDENCE_LABELS[briefing.confidence]}
                 </div>
               </div>
@@ -406,7 +405,7 @@ export default async function BriefingPage({
             {/* CVEs Relacionadas */}
             {briefing.cves.length > 0 && (
               <section className="mt-8 pt-6 border-t border-white/[0.04]">
-                <h2 className="flex items-center gap-3 text-base font-black text-white mb-5">
+                <h2 className="flex items-center gap-3 text-base font-bold tracking-tight text-white mb-5">
                   <span className="w-0.5 h-4 bg-red-600 rounded-full flex-shrink-0" aria-hidden="true" />
                   CVEs Relacionadas
                 </h2>
@@ -414,22 +413,22 @@ export default async function BriefingPage({
                   {briefing.cves.map((cve) => (
                     <div
                       key={cve}
-                      className="bg-[#0D0D0D] border border-white/[0.06] rounded-lg px-4 py-3 flex items-center justify-between gap-4 flex-wrap"
+                      className="bg-raised border border-white/[0.06] rounded-lg px-4 py-3 flex items-center justify-between gap-4 flex-wrap"
                     >
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-sm font-bold text-white">{cve}</span>
                         {cve === briefing.cves[0] && briefing.epssScore != null && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${briefing.epssScore >= 0.7 ? "bg-red-500/10 border-red-500/25 text-red-400" : "bg-yellow-500/10 border-yellow-500/25 text-yellow-400"}`}>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded border ${briefing.epssScore >= 0.7 ? "bg-red-500/10 border-red-500/25 text-red-400" : "bg-yellow-500/10 border-yellow-500/25 text-yellow-400"}`}>
                             EPSS {(briefing.epssScore * 100).toFixed(1)}%
                           </span>
                         )}
                         {cve === briefing.cves[0] && briefing.cvssScore != null && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${briefing.cvssScore >= 9 ? "bg-red-500/10 border-red-500/25 text-red-400" : "bg-orange-500/10 border-orange-500/25 text-orange-400"}`}>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded border ${briefing.cvssScore >= 9 ? "bg-red-500/10 border-red-500/25 text-red-400" : "bg-orange-500/10 border-orange-500/25 text-orange-400"}`}>
                             CVSS {briefing.cvssScore.toFixed(1)}
                           </span>
                         )}
                         {briefing.tags.includes("cisa-kev") && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-red-600/10 border-red-600/25 text-red-500 uppercase tracking-wider">
+                          <span className="text-xs font-bold px-2 py-0.5 rounded border bg-red-600/10 border-red-600/25 text-red-500 uppercase tracking-wider">
                             CISA KEV
                           </span>
                         )}
@@ -438,7 +437,7 @@ export default async function BriefingPage({
                         href={`https://nvd.nist.gov/vuln/detail/${cve}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-xs font-semibold text-[#888] hover:text-red-400 border border-white/[0.06] hover:border-red-600/25 px-3 py-1.5 rounded transition-colors whitespace-nowrap"
+                        className="flex items-center gap-1.5 text-xs font-semibold text-dim hover:text-white border border-white/[0.06] hover:border-white/[0.12] px-3 py-1.5 rounded transition-colors whitespace-nowrap"
                       >
                         Ver no NVD <ExternalLink size={10} />
                       </a>
@@ -450,13 +449,13 @@ export default async function BriefingPage({
 
             {/* Fontes — compact strip */}
             <section className="mt-8 pt-6 border-t border-white/[0.04]">
-              <div className="text-xs text-[#999] uppercase tracking-wider mb-3">Fontes</div>
+              <div className="text-xs text-dim uppercase tracking-wider mb-3">Fontes</div>
               <div className="flex flex-wrap gap-x-4 gap-y-2">
                 <a
                   href={briefing.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs text-[#888] hover:text-red-400 underline underline-offset-2 transition-colors"
+                  className="flex items-center gap-1 text-xs text-dim hover:text-white underline underline-offset-2 transition-colors"
                 >
                   {briefing.sourceName} <ExternalLink size={10} />
                 </a>
@@ -466,7 +465,7 @@ export default async function BriefingPage({
                     href={`https://nvd.nist.gov/vuln/detail/${cve}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs font-mono text-[#888] hover:text-red-400 underline underline-offset-2 transition-colors"
+                    className="flex items-center gap-1 text-xs font-mono text-dim hover:text-white underline underline-offset-2 transition-colors"
                   >
                     NVD:{cve} <ExternalLink size={10} />
                   </a>
@@ -476,7 +475,7 @@ export default async function BriefingPage({
                     href={`https://api.first.org/data/v1/epss?cve=${briefing.cves[0]}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-[#888] hover:text-red-400 underline underline-offset-2 transition-colors"
+                    className="flex items-center gap-1 text-xs text-dim hover:text-white underline underline-offset-2 transition-colors"
                   >
                     FIRST EPSS <ExternalLink size={10} />
                   </a>
@@ -486,7 +485,7 @@ export default async function BriefingPage({
                     href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 underline underline-offset-2 transition-colors"
+                    className="flex items-center gap-1 text-xs text-dim hover:text-white underline underline-offset-2 transition-colors"
                   >
                     CISA KEV <ExternalLink size={10} />
                   </a>
@@ -500,7 +499,7 @@ export default async function BriefingPage({
 
             {/* IOCs */}
             {sidebarIocs.length > 0 && (
-              <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-5 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
+              <div className="bg-raised border border-white/[0.06] rounded-xl p-5 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
                 <div className="flex items-center justify-between gap-2 mb-4">
                   <div className="flex items-center gap-2">
                     <AlertTriangle size={13} className="text-red-500" />
@@ -516,7 +515,7 @@ export default async function BriefingPage({
                 <div className="space-y-4">
                   {Object.entries(sidebarByType).map(([type, iocs]) => (
                     <div key={type}>
-                      <div className="text-xs font-bold text-[#888] uppercase tracking-wider mb-2">
+                      <div className="text-xs font-bold text-dim uppercase tracking-wider mb-2">
                         {IOC_TYPE_LABELS[type] ?? type}
                       </div>
                       <div className="space-y-1.5">
@@ -524,7 +523,7 @@ export default async function BriefingPage({
                           <div key={i} className="flex items-center gap-2">
                             <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${CONFIDENCE_DOT[ioc.confidence] ?? "bg-[#555]"}`} />
                             <span
-                              className="font-mono text-[10px] text-[#A1A1AA] truncate"
+                              className="font-mono text-xs text-body truncate"
                               title={ioc.value}
                             >
                               {ioc.value}
@@ -535,22 +534,22 @@ export default async function BriefingPage({
                     </div>
                   ))}
                 </div>
-                <div className="mt-3 pt-3 border-t border-white/[0.04] text-xs text-[#888]">
+                <div className="mt-3 pt-3 border-t border-white/[0.04] text-xs text-dim">
                   Adicione ao SIEM, firewall e EDR
                 </div>
               </div>
             )}
 
             {/* Metadata */}
-            <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-5 space-y-4">
+            <div className="bg-raised border border-white/[0.06] rounded-xl p-5 space-y-4">
               {briefing.affectedSectors.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#888] uppercase tracking-wider mb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-dim uppercase tracking-wider mb-2">
                     <Building2 size={10} /> Setores Afetados
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {briefing.affectedSectors.map((s) => (
-                      <span key={s} className="text-xs bg-white/[0.04] border border-white/[0.06] text-[#A1A1AA] px-2 py-0.5 rounded">
+                      <span key={s} className="text-xs bg-white/[0.04] border border-white/[0.06] text-body px-2 py-0.5 rounded">
                         {s}
                       </span>
                     ))}
@@ -560,12 +559,12 @@ export default async function BriefingPage({
 
               {briefing.affectedRegions.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#888] uppercase tracking-wider mb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-dim uppercase tracking-wider mb-2">
                     <Globe size={10} /> Regiões
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {briefing.affectedRegions.map((r) => (
-                      <span key={r} className="text-xs bg-white/[0.04] border border-white/[0.06] text-[#A1A1AA] px-2 py-0.5 rounded">
+                      <span key={r} className="text-xs bg-white/[0.04] border border-white/[0.06] text-body px-2 py-0.5 rounded">
                         {r}
                       </span>
                     ))}
@@ -575,12 +574,12 @@ export default async function BriefingPage({
 
               {briefing.tags.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#888] uppercase tracking-wider mb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-dim uppercase tracking-wider mb-2">
                     <Tag size={10} /> Tags
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {briefing.tags.map((t) => (
-                      <span key={t} className="text-[10px] text-[#888] bg-[#0A0A0A] border border-white/[0.05] px-2 py-0.5 rounded font-mono">
+                      <span key={t} className="text-xs text-dim bg-raised border border-white/[0.05] px-2 py-0.5 rounded font-mono">
                         #{t}
                       </span>
                     ))}
@@ -590,7 +589,7 @@ export default async function BriefingPage({
 
               {briefing.mitreTechniques.length > 0 && (
                 <div>
-                  <div className="text-xs font-bold text-[#888] uppercase tracking-wider mb-2">
+                  <div className="text-xs font-bold text-dim uppercase tracking-wider mb-2">
                     MITRE ATT&CK
                   </div>
                   <div className="flex flex-wrap gap-1">
@@ -601,7 +600,7 @@ export default async function BriefingPage({
                         target="_blank"
                         rel="noopener noreferrer"
                         title={MITRE_NAMES[t] ? `${t}: ${MITRE_NAMES[t]}` : `Ver ${t} no MITRE ATT&CK`}
-                        className="text-[10px] font-mono text-red-400 hover:text-red-300 bg-red-600/5 border border-red-600/15 px-2 py-0.5 rounded transition-colors"
+                        className="text-xs font-mono text-red-400 hover:text-red-300 bg-red-600/5 border border-red-600/15 px-2 py-0.5 rounded transition-colors"
                       >
                         {t}
                       </a>
@@ -612,14 +611,14 @@ export default async function BriefingPage({
             </div>
 
             {/* Voltar */}
-            <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl p-5">
+            <div className="bg-raised border border-white/[0.06] rounded-xl p-5">
               <div className="text-xs font-bold text-white mb-2">Mais Briefings</div>
-              <p className="text-xs text-[#A1A1AA] leading-relaxed mb-4">
+              <p className="text-xs text-body leading-relaxed mb-4">
                 Veja todos os briefings de threat intelligence publicados na plataforma.
               </p>
               <Link
                 href="/threat-briefings"
-                className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-[#161616] hover:bg-[#1a1a1a] border border-white/[0.08] hover:border-red-600/25 text-white font-bold rounded-lg text-xs transition-all"
+                className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-overlay hover:bg-overlay border border-white/[0.08] hover:border-white/[0.15] text-white font-bold rounded-lg text-xs transition-all"
               >
                 Ver todos <ArrowRight size={11} />
               </Link>
