@@ -81,7 +81,7 @@ export default function Footer() {
           <div className="flex items-center gap-2 text-xs text-dim">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
             <span>Plataforma operacional</span>
-            <span className="text-[#555]">·</span>
+            <span className="text-dim">·</span>
             <span>Brasil</span>
           </div>
         </div>
