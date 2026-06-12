@@ -16,7 +16,7 @@ export function ConfidenceBlock({ level, reason }: Props) {
 
   return (
     <div className={`rounded-xl px-5 py-4 border ${s.bg} ${s.border}`}>
-      <div className={`text-xs font-bold tracking-tight uppercase tracking-wider mb-2 ${s.color}`}>
+      <div className={`text-xs font-bold uppercase tracking-wider mb-2 ${s.color}`}>
         Confiança {s.label}
       </div>
       <p className="text-sm text-dim leading-relaxed">{reason}</p>
