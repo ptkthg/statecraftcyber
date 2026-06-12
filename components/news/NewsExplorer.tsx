@@ -49,7 +49,7 @@ function ArticleRow({ article }: { article: NewsArticle }) {
       href={`/noticias/${article.slug}`}
       className="group flex gap-4 p-4 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.015] transition-colors"
     >
-      <div className="relative flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden hidden sm:flex items-center justify-center bg-[#111]">
+      <div className="relative flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden hidden sm:flex items-center justify-center bg-raised">
         {article.imageUrl ? (
           <Image
             src={article.imageUrl}
@@ -64,41 +64,41 @@ function ArticleRow({ article }: { article: NewsArticle }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-semibold ${colors.badge}`}>
+          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-xs font-semibold ${colors.badge}`}>
             <span className={`w-1 h-1 rounded-full ${colors.dot}`} />
             {article.source.replace("Blog", "").replace("Google ", "").trim()}
           </span>
           {article.type && (
-            <span className="px-1.5 py-0.5 rounded border text-[10px] font-medium text-[#888] bg-white/[0.03] border-white/[0.06]">
+            <span className="px-1.5 py-0.5 rounded border text-xs font-medium text-dim bg-white/[0.03] border-white/[0.06]">
               {article.type}
             </span>
           )}
           {article.sourceRegion === "Brasil" && (
-            <span className="flex items-center gap-0.5 text-[10px] text-green-500">
+            <span className="flex items-center gap-0.5 text-xs text-green-500">
               <MapPin size={9} />BR
             </span>
           )}
-          <span className="flex items-center gap-0.5 text-[10px] text-[#888]">
+          <span className="flex items-center gap-0.5 text-xs text-dim">
             <Clock size={9} />{timeAgo(article.publishedAt)}
           </span>
         </div>
-        <h3 className="text-sm font-semibold text-white leading-snug group-hover:text-red-400 transition-colors line-clamp-2 mb-1.5">
+        <h3 className="text-sm font-semibold text-white leading-snug group-hover:text-white/80 transition-colors line-clamp-2 mb-1.5">
           {article.title}
         </h3>
         <div className="flex flex-wrap gap-1">
           {article.cves.slice(0, 2).map((cve) => (
-            <span key={cve} className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold text-red-400 bg-red-600/10 border border-red-600/20">
+            <span key={cve} className="px-1.5 py-0.5 rounded text-xs font-mono font-bold text-red-400 bg-red-600/10 border border-red-600/20">
               {cve}
             </span>
           ))}
           {article.tags.slice(0, 2).map((tag) => (
-            <span key={tag} className="px-1.5 py-0.5 rounded text-[10px] text-[#888] bg-white/[0.04] border border-white/[0.06]">
+            <span key={tag} className="px-1.5 py-0.5 rounded text-xs text-dim bg-white/[0.04] border border-white/[0.06]">
               #{tag}
             </span>
           ))}
         </div>
       </div>
-      <ChevronRight size={14} className="flex-shrink-0 text-[#444] group-hover:text-red-400 transition-colors self-start mt-0.5" />
+      <ChevronRight size={14} className="flex-shrink-0 text-dim group-hover:text-white transition-colors self-start mt-0.5" />
     </Link>
   );
 }
@@ -107,11 +107,11 @@ function DateGroup({ label, articles }: { label: string; articles: NewsArticle[]
   return (
     <section className="mb-8">
       <div className="flex items-center gap-3 mb-3">
-        <span className="text-xs font-bold text-[#A1A1AA] uppercase tracking-widest">{label}</span>
+        <span className="text-xs font-bold text-dim uppercase tracking-widest">{label}</span>
         <div className="h-px flex-1 bg-white/[0.06]" />
-        <span className="text-[10px] text-[#888] font-mono">{articles.length}</span>
+        <span className="text-xs text-dim font-mono">{articles.length}</span>
       </div>
-      <div className="bg-[#0D0D0D] border border-white/[0.06] rounded-xl overflow-hidden">
+      <div className="bg-raised border border-white/[0.06] rounded-xl overflow-hidden">
         {articles.map((article) => (
           <ArticleRow key={article.slug} article={article} />
         ))}
@@ -176,7 +176,7 @@ export default function NewsExplorer({ initialArticles }: Props) {
       {/* Filtros */}
       <div className="flex flex-col gap-4 mb-8">
         <div>
-          <div className="text-[10px] font-bold text-[#888] uppercase tracking-widest mb-2">Tipo</div>
+          <div className="text-xs font-bold text-dim uppercase tracking-widest mb-2">Tipo</div>
           <div className="flex flex-wrap gap-1.5">
             {ARTICLE_TYPES.map((t) => {
               const count = typeCounts[t] ?? 0;
@@ -186,14 +186,14 @@ export default function NewsExplorer({ initialArticles }: Props) {
                   key={t || "all"}
                   onClick={() => setArticleType(t)}
                   aria-pressed={articleType === t}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 ${
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 ${
                     articleType === t
-                      ? "bg-red-600/15 border-red-600/30 text-red-400"
-                      : "bg-[#0D0D0D] border-white/[0.06] text-[#A1A1AA] hover:text-white hover:border-white/[0.12]"
+                      ? "bg-white/10 border-white/20 text-white font-semibold"
+                      : "bg-raised border-white/[0.06] text-dim hover:text-white hover:border-white/[0.12]"
                   }`}
                 >
                   {getTypeLabel(t || "")}
-                  <span className="ml-1.5 text-[10px] opacity-50">{count}</span>
+                  <span className="ml-1.5 text-xs opacity-50">{count}</span>
                 </button>
               );
             })}
@@ -201,7 +201,7 @@ export default function NewsExplorer({ initialArticles }: Props) {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="text-[10px] font-bold text-[#888] uppercase tracking-widest mr-1">Região</div>
+          <div className="text-xs font-bold text-dim uppercase tracking-widest mr-1">Região</div>
           {(["", "Global", "Brasil"] as const).map((r) => {
             const count = r
               ? articles.filter((a) => a.sourceRegion === r).length
@@ -211,16 +211,16 @@ export default function NewsExplorer({ initialArticles }: Props) {
                 key={r || "all-r"}
                 onClick={() => setRegion(r)}
                 aria-pressed={region === r}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 ${
                   region === r
-                    ? "bg-red-600/15 border-red-600/30 text-red-400"
-                    : "bg-[#0D0D0D] border-white/[0.06] text-[#A1A1AA] hover:text-white hover:border-white/[0.12]"
+                    ? "bg-white/10 border-white/20 text-white font-semibold"
+                    : "bg-raised border-white/[0.06] text-dim hover:text-white hover:border-white/[0.12]"
                 }`}
               >
                 {r === "Global" && <Globe size={10} />}
                 {r === "Brasil" && <MapPin size={10} />}
                 {r === "" ? "Todas" : r}
-                <span className="text-[10px] opacity-50">{count}</span>
+                <span className="text-xs opacity-50">{count}</span>
               </button>
             );
           })}
@@ -229,13 +229,13 @@ export default function NewsExplorer({ initialArticles }: Props) {
             onClick={refresh}
             disabled={refreshing}
             aria-label={refreshing ? "Atualizando notícias..." : "Atualizar notícias"}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#A1A1AA] hover:text-white border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all ml-auto focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-dim hover:text-white border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all ml-auto focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:opacity-50"
           >
             <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} aria-hidden />
             {refreshing ? "Atualizando..." : "Atualizar"}
           </button>
 
-          <div className="flex items-center gap-1.5 text-xs text-[#888]">
+          <div className="flex items-center gap-1.5 text-xs text-dim">
             <Newspaper size={10} aria-hidden />
             <span className="font-mono font-bold text-white">{filtered.length}</span>
             <span>artigos</span>
@@ -245,20 +245,20 @@ export default function NewsExplorer({ initialArticles }: Props) {
 
       <div className="relative">
         {refreshing && (
-          <div className="absolute inset-0 bg-[#050505]/70 z-10 rounded-xl pointer-events-none" aria-hidden />
+          <div className="absolute inset-0 bg-canvas/70 z-10 rounded-xl pointer-events-none" aria-hidden />
         )}
 
         {articles.length === 0 ? (
           <div className="py-24 text-center">
             <Newspaper size={28} className="mx-auto text-[#333] mb-4" aria-hidden />
-            <p className="text-sm font-semibold text-[#888] mb-1">Nenhuma notícia disponível</p>
-            <p className="text-xs text-[#666] max-w-xs mx-auto leading-relaxed">
+            <p className="text-sm font-semibold text-dim mb-1">Nenhuma notícia disponível</p>
+            <p className="text-xs text-dim max-w-xs mx-auto leading-relaxed">
               As fontes RSS podem estar temporariamente indisponíveis. Tente atualizar em instantes.
             </p>
             <button
               onClick={refresh}
               disabled={refreshing}
-              className="mt-4 flex items-center gap-1.5 px-4 py-2 text-xs text-[#A1A1AA] hover:text-white border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all mx-auto"
+              className="mt-4 flex items-center gap-1.5 px-4 py-2 text-xs text-dim hover:text-white border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all mx-auto"
             >
               <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} aria-hidden />
               Tentar novamente
@@ -266,10 +266,10 @@ export default function NewsExplorer({ initialArticles }: Props) {
           </div>
         ) : grouped.length === 0 ? (
           <div className="py-20 text-center">
-            <p className="text-sm text-[#888]">Nenhuma notícia com esses filtros.</p>
+            <p className="text-sm text-dim">Nenhuma notícia com esses filtros.</p>
             <button
               onClick={() => { setArticleType(""); setRegion(""); }}
-              className="mt-3 text-xs text-red-400 hover:text-red-300 transition-colors"
+              className="mt-3 text-xs text-dim hover:text-white transition-colors"
             >
               Limpar filtros
             </button>
@@ -281,7 +281,7 @@ export default function NewsExplorer({ initialArticles }: Props) {
         )}
       </div>
 
-      <p className="mt-6 text-center text-[10px] text-[#888] leading-relaxed max-w-lg mx-auto">
+      <p className="mt-6 text-center text-xs text-dim leading-relaxed max-w-lg mx-auto">
         Artigos coletados de RSS feeds e reescritos em PT-BR por IA. Clique para ler a cobertura completa gerada pela Statecraft.
       </p>
     </div>

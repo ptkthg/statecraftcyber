@@ -17,7 +17,7 @@ function NewsCard({ article, featured = false }: { article: NewsArticle; feature
   return (
     <Link
       href={`/noticias/${article.slug}`}
-      className="group block bg-[#0D0D0D] border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/[0.14] hover:bg-[#111] transition-all"
+      className="group block bg-raised border border-white/[0.06] rounded-xl overflow-hidden hover:border-white/[0.14] hover:bg-overlay transition-all"
     >
       {article.imageUrl && (
         <div className={`relative w-full overflow-hidden ${featured ? "h-40" : "h-28"}`}>
@@ -32,20 +32,20 @@ function NewsCard({ article, featured = false }: { article: NewsArticle; feature
       )}
       <div className="p-4">
         <div className="flex items-center gap-2 mb-2">
-          <span className="flex items-center gap-1 text-[10px] text-[#888]">
+          <span className="flex items-center gap-1 text-xs text-dim">
             <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
             {article.source.split(" ")[0]}
           </span>
           {article.sourceRegion === "Brasil" ? (
-            <span className="flex items-center gap-0.5 text-[10px] text-green-600"><MapPin size={8} />BR</span>
+            <span className="flex items-center gap-0.5 text-xs text-green-600"><MapPin size={8} />BR</span>
           ) : (
-            <span className="flex items-center gap-0.5 text-[10px] text-[#777]"><Globe size={8} /></span>
+            <span className="flex items-center gap-0.5 text-xs text-dim"><Globe size={8} /></span>
           )}
-          <span className="ml-auto flex items-center gap-1 text-[10px] text-[#777]">
+          <span className="ml-auto flex items-center gap-1 text-xs text-dim">
             <Clock size={8} />{timeAgo(article.publishedAt)}
           </span>
         </div>
-        <h3 className={`font-semibold text-white leading-snug group-hover:text-red-400 transition-colors line-clamp-2 ${featured ? "text-sm" : "text-xs"}`}>
+        <h3 className={`font-semibold text-white leading-snug group-hover:text-white/80 transition-colors line-clamp-2 ${featured ? "text-sm" : "text-xs"}`}>
           {article.title}
         </h3>
         {featured && article.cves.length > 0 && (
@@ -79,11 +79,11 @@ export default function NewsSection({ articles }: Props) {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Flame size={12} className="text-orange-500" />
-              <span className="text-xs font-semibold text-red-500 uppercase tracking-widest">Em alta</span>
+              <span className="text-xs font-semibold text-dim uppercase tracking-widest">Em alta</span>
             </div>
-            <h2 className="text-2xl font-black text-white">Últimas Notícias</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-white">Últimas Notícias</h2>
           </div>
-          <Link href="/noticias" className="hidden sm:flex items-center gap-1 text-sm text-[#A1A1AA] hover:text-white transition-colors">
+          <Link href="/noticias" className="hidden sm:flex items-center gap-1 text-sm text-dim hover:text-white transition-colors">
             Ver todas <ArrowRight size={14} />
           </Link>
         </div>
@@ -105,7 +105,7 @@ export default function NewsSection({ articles }: Props) {
         )}
 
         <div className="mt-4 sm:hidden text-center">
-          <Link href="/noticias" className="inline-flex items-center gap-1 text-sm text-[#A1A1AA] hover:text-white transition-colors">
+          <Link href="/noticias" className="inline-flex items-center gap-1 text-sm text-dim hover:text-white transition-colors">
             Ver todas as notícias <ArrowRight size={14} />
           </Link>
         </div>

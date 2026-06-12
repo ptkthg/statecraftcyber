@@ -10,9 +10,9 @@ interface Props {
 export function EmptyState({ icon: Icon, title, description, action }: Props) {
   return (
     <div className="text-center py-20 border border-white/[0.06] rounded-xl">
-      <Icon size={32} className="text-[#555] mx-auto mb-3" aria-hidden />
-      <p className="text-sm font-bold text-[#A1A1AA] mb-1">{title}</p>
-      {description && <p className="text-xs text-[#888] mb-4 max-w-xs mx-auto leading-relaxed">{description}</p>}
+      <Icon size={32} className="text-dim mx-auto mb-3" aria-hidden />
+      <p className="text-sm font-bold text-dim mb-1">{title}</p>
+      {description && <p className="text-xs text-dim mb-4 max-w-xs mx-auto leading-relaxed">{description}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   );

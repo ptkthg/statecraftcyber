@@ -34,7 +34,7 @@ export default function ThreatFeed() {
   const visibleItems = Array.from({ length: 5 }, (_, i) => feedItems[(offset + i) % feedItems.length]);
 
   return (
-    <div className="bg-[#0A0A0A] border border-white/5 rounded-lg overflow-hidden">
+    <div className="bg-canvas border border-white/5 rounded-lg overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
         <div className="flex items-center gap-2">
@@ -43,7 +43,7 @@ export default function ThreatFeed() {
             Feed de Ameaças
           </span>
         </div>
-        <span className="text-xs text-[#A1A1AA] font-mono">ATUALIZADO A CADA HORA</span>
+        <span className="text-xs text-dim font-mono">ATUALIZADO A CADA HORA</span>
       </div>
 
       {/* Items */}
@@ -61,9 +61,9 @@ export default function ThreatFeed() {
                 <Icon size={10} className={config.color} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-[#D4D4D8] leading-relaxed">{item.message}</p>
+                <p className="text-xs text-body leading-relaxed">{item.message}</p>
               </div>
-              <span className="flex-shrink-0 text-[10px] text-[#666] font-mono whitespace-nowrap">
+              <span className="flex-shrink-0 text-xs text-dim font-mono whitespace-nowrap">
                 {item.time}
               </span>
             </Link>
@@ -73,8 +73,8 @@ export default function ThreatFeed() {
 
       {/* Footer */}
       <div className="px-4 py-3 border-t border-white/5 flex items-center justify-between">
-        <span className="text-xs text-[#666]">1.247.832 eventos processados hoje</span>
-        <Link href="/threat-briefings" className="text-xs text-red-500 hover:text-red-400 font-medium transition-colors">
+        <span className="text-xs text-dim">1.247.832 eventos processados hoje</span>
+        <Link href="/threat-briefings" className="text-xs text-dim hover:text-white font-medium transition-colors">
           Ver todos →
         </Link>
       </div>
