@@ -36,7 +36,7 @@ export function SearchResultCard({ result, selected, onSelect }: Props) {
     >
       <span
         className={cn(
-          "shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded border",
+          "shrink-0 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider rounded border",
           TYPE_COLOR[result.type]
         )}
       >
@@ -54,7 +54,7 @@ export function SearchResultCard({ result, selected, onSelect }: Props) {
         {result.title}
       </span>
 
-      <span className="shrink-0 text-xs text-neutral-500 truncate max-w-[140px]">
+      <span className="shrink-0 text-xs text-dim truncate max-w-[140px]">
         {result.meta}
       </span>
     </Link>

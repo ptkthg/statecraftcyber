@@ -67,7 +67,7 @@ export function SearchOverlay() {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
         <Dialog.Content
-          className="fixed top-[18%] left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-2xl z-50 bg-[#0A0A0A] border border-neutral-800 rounded-xl shadow-2xl overflow-hidden focus:outline-none"
+          className="fixed top-[18%] left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-2xl z-50 bg-raised border border-white/10 rounded-xl shadow-2xl overflow-hidden focus:outline-none"
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             inputRef.current?.focus();
@@ -78,14 +78,14 @@ export function SearchOverlay() {
           <Dialog.Title className="sr-only">Busca global</Dialog.Title>
 
           {/* Input row */}
-          <div className="flex items-center gap-3 px-4 py-3.5 border-b border-neutral-800">
-            <Search size={16} className="shrink-0 text-neutral-500" aria-hidden />
+          <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/10">
+            <Search size={16} className="shrink-0 text-dim" aria-hidden />
             <input
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar CVEs, IOCs, briefings, notícias…"
-              className="flex-1 bg-transparent text-sm text-white placeholder-neutral-500 outline-none"
+              className="flex-1 bg-transparent text-sm text-white placeholder-dim outline-none"
               aria-label="Termo de busca"
               autoComplete="off"
               spellCheck={false}
@@ -93,13 +93,13 @@ export function SearchOverlay() {
             {query && (
               <button
                 onClick={() => setQuery("")}
-                className="shrink-0 text-neutral-500 hover:text-white transition-colors"
+                className="shrink-0 text-dim hover:text-white transition-colors"
                 aria-label="Limpar busca"
               >
                 <X size={14} aria-hidden />
               </button>
             )}
-            <kbd className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-neutral-500 bg-neutral-900 border border-neutral-700 rounded font-mono">
+            <kbd className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 text-xs text-dim bg-raised border border-white/10 rounded font-mono">
               ESC
             </kbd>
           </div>
@@ -107,7 +107,7 @@ export function SearchOverlay() {
           {/* Results area */}
           <div className="max-h-[420px] overflow-y-auto p-2">
             {query.length < 2 && (
-              <p className="px-4 py-8 text-sm text-neutral-500 text-center">
+              <p className="px-4 py-8 text-sm text-dim text-center">
                 Digite para buscar CVEs, IOCs, briefings e notícias…
               </p>
             )}
@@ -128,7 +128,7 @@ export function SearchOverlay() {
             )}
 
             {query.length >= 2 && !loading && !error && results.length === 0 && (
-              <p className="px-4 py-8 text-sm text-neutral-500 text-center">
+              <p className="px-4 py-8 text-sm text-dim text-center">
                 Nenhum resultado para{" "}
                 <span className="text-white font-mono">&quot;{query}&quot;</span>
               </p>
@@ -136,7 +136,7 @@ export function SearchOverlay() {
 
             {results.length > 0 && (
               <>
-                <p className="px-4 pt-2 pb-1 text-[11px] text-neutral-500">
+                <p className="px-4 pt-2 pb-1 text-xs text-dim">
                   {total} resultado{total !== 1 ? "s" : ""}
                 </p>
                 {results.map((result, idx) => (
@@ -152,17 +152,17 @@ export function SearchOverlay() {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center gap-4 px-4 py-2.5 border-t border-neutral-800 text-[11px] text-neutral-600">
+          <div className="flex items-center gap-4 px-4 py-2.5 border-t border-white/10 text-xs text-dim">
             <span className="flex items-center gap-1.5">
-              <kbd className="px-1 py-0.5 bg-neutral-900 border border-neutral-700 rounded font-mono">↑↓</kbd>
+              <kbd className="px-1 py-0.5 bg-raised border border-white/10 rounded font-mono">↑↓</kbd>
               navegar
             </span>
             <span className="flex items-center gap-1.5">
-              <kbd className="px-1 py-0.5 bg-neutral-900 border border-neutral-700 rounded font-mono">↵</kbd>
+              <kbd className="px-1 py-0.5 bg-raised border border-white/10 rounded font-mono">↵</kbd>
               abrir
             </span>
             <span className="flex items-center gap-1.5">
-              <kbd className="px-1 py-0.5 bg-neutral-900 border border-neutral-700 rounded font-mono">ESC</kbd>
+              <kbd className="px-1 py-0.5 bg-raised border border-white/10 rounded font-mono">ESC</kbd>
               fechar
             </span>
           </div>

@@ -123,7 +123,7 @@ function CveCard({ cve }: { cve: CveEntry }) {
       {/* ── Scores ── */}
       <div className="flex items-center gap-5">
         <div>
-          <div className={`text-2xl font-black font-mono leading-none ${cvssColor(cve.cvssScore)}`}>
+          <div className={`text-2xl font-bold font-mono leading-none ${cvssColor(cve.cvssScore)}`}>
             {cve.cvssScore?.toFixed(1) ?? "N/A"}
           </div>
           <div className="text-[9px] text-dim uppercase tracking-wider mt-0.5">CVSS {cve.cvssVersion}</div>
@@ -132,7 +132,7 @@ function CveCard({ cve }: { cve: CveEntry }) {
           <>
             <div className="w-px h-8 bg-white/[0.06]" />
             <div>
-              <div className="text-lg font-black font-mono leading-none text-purple-400">
+              <div className="text-lg font-bold font-mono leading-none text-purple-400">
                 {(cve.epss * 100).toFixed(1)}%
               </div>
               <div className="text-[9px] text-dim uppercase tracking-wider mt-0.5">
