@@ -61,7 +61,7 @@ export default function SobrePage() {
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6 max-w-2xl leading-tight">
             Threat intelligence<br />em português, em tempo real
           </h1>
-          <p className="text-dim max-w-2xl text-base leading-relaxed">
+          <p className="text-body max-w-2xl text-base leading-relaxed">
             A Statecraft é um projeto pessoal de threat intelligence construído do zero:
             uma plataforma que agrega dados de fontes abertas globais e os transforma em
             briefings técnicos em português, com IOCs estruturados e contexto acionável para

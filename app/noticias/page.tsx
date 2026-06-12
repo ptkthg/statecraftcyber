@@ -47,7 +47,7 @@ export default async function NoticiasPage() {
           </div>
           <div>
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-2">Notícias</h1>
-            <p className="text-dim text-sm leading-relaxed max-w-xl mb-1">
+            <p className="text-body text-sm leading-relaxed max-w-xl mb-1">
               Cobertura jornalística do cenário global de segurança, reescrita em português pela IA Statecraft a partir de 19 fontes especializadas.
             </p>
             <p className="text-xs text-dim max-w-xl leading-relaxed">

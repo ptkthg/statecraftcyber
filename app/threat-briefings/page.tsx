@@ -66,7 +66,7 @@ export default async function ThreatBriefingsPage() {
             </span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-3">Threat Briefings</h1>
-          <p className="text-dim max-w-2xl text-base leading-relaxed mb-2">
+          <p className="text-body max-w-2xl text-base leading-relaxed mb-2">
             Análises operacionais de ameaças ativas, vulnerabilidades e campanhas APT, geradas automaticamente pela IA Statecraft a cada hora.
           </p>
           <p className="text-xs text-dim max-w-xl leading-relaxed">
