@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Statecraft — Proposta v2 · todas as páginas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Bricolage+Grotesque:wght@500;600;700&family=Sora:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg:#0B0B0D; --raised:#131316; --overlay:#1B1B20;
+    --ink:#F4F4F5; --body:#C2C2CB; --dim:#8E8E99;
+    --red:#FF2D46; --red-soft:#FF6B7A; --red-rgb:255,45,70; --cold:#7FA3B8;
+    --line:rgba(255,255,255,0.05);
+  }
+
+  /* ── seletor de paleta ── */
+  .palette {
+    position:fixed; bottom:18px; right:18px; z-index:200;
+    background:#000; border:1px solid #2a2a2a; border-radius:16px;
+    padding:14px 16px; font-size:11px; box-shadow:0 10px 40px rgba(0,0,0,0.6);
+    width:230px;
+  }
+  .palette .pt { font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#999; margin-bottom:8px; font-size:10px; }
+  .palette .row { display:flex; gap:8px; margin-bottom:12px; }
+  .palette .sw { width:30px; height:30px; border-radius:9px; cursor:pointer; border:2px solid transparent; }
+  .palette .sw.on { border-color:#fff; }
+  .palette .sw[title] { position:relative; }
+  html { scroll-behavior:smooth; }
+  :root { --f-display:'Space Grotesk'; --f-body:'Inter'; --f-mono:'JetBrains Mono'; }
+  body { font-family:var(--f-body),sans-serif; background:#000; color:var(--ink); }
+  .display { font-family:var(--f-display),sans-serif; }
+  .mono { font-family:var(--f-mono),monospace; }
+
+  /* switcher */
+  .switcher { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; background:#000; border-bottom:1px solid #1c1c1c; }
+  .switcher a { flex:1; text-align:center; padding:12px 8px; color:#888; text-decoration:none; font-size:11px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; border-right:1px solid #161616; }
+  .switcher a:hover { color:#fff; background:#121212; }
+  .page { min-height:100vh; padding-top:42px; background:var(--bg); border-bottom:6px solid #000; }
+
+  .inner { max-width:1140px; margin:0 auto; padding:24px 32px 90px; }
+
+  /* nav */
+  .nav { display:flex; justify-content:space-between; align-items:center; padding:12px 0 30px; }
+  .logo { font-family:var(--f-display),sans-serif; font-weight:700; font-size:15px; letter-spacing:0.08em; text-transform:uppercase; }
+  .logo span { color:var(--red); }
+  .nav-links { display:flex; gap:26px; font-size:13.5px; }
+  .nav-links a { color:var(--dim); text-decoration:none; padding-bottom:3px; cursor:pointer; }
+  .nav-links a:hover { color:#fff; }
+  .nav-links a.on { color:#fff; font-weight:600; border-bottom:2px solid var(--red); }
+  .nav .cta { border:1px solid rgba(255,255,255,0.14); color:var(--ink); padding:8px 18px; border-radius:99px; font-size:13px; font-weight:600; cursor:pointer; }
+  .nav .cta:hover { background:var(--overlay); }
+
+  /* base box */
+  .box { background:var(--raised); border:1px solid var(--line); border-radius:20px; padding:26px; position:relative; overflow:hidden;
+    transition:transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease; }
+  .box.click { cursor:pointer; }
+  .box.click:hover { transform:translateY(-2px); background:var(--overlay); border-color:rgba(255,255,255,0.1); box-shadow:0 8px 28px rgba(0,0,0,0.45); }
+  .k { font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--dim); }
+  .period { font-size:11px; color:var(--dim); font-family:var(--f-mono),monospace; }
+  .footlink { display:flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600; color:var(--cold); margin-top:auto; padding-top:14px; }
+  .box.click:hover .footlink { color:#fff; }
+  .footlink::after { content:"→"; transition:transform .18s; }
+  .box.click:hover .footlink::after { transform:translateX(3px); }
+
+  .tags { display:flex; gap:6px; flex-wrap:wrap; }
+  .tg { font-size:10.5px; font-weight:600; padding:2px 9px; border-radius:99px; }
+  .tg.alert { background:rgba(var(--red-rgb),0.14); color:var(--red-soft); }
+  .tg.warn { background:rgba(201,162,39,0.14); color:#D9B843; }
+  .tg.info { background:rgba(127,163,184,0.12); color:var(--cold); }
+  .tg.plain { background:rgba(255,255,255,0.06); color:var(--dim); }
+  .tg.solid { background:var(--red); color:#fff; }
+
+  /* page header pattern */
+  .phead { padding:8px 0 26px; }
+  .phead .crumb { font-size:12px; color:var(--dim); margin-bottom:14px; }
+  .phead .crumb b { color:var(--body); font-weight:500; }
+  .phead h1 { font-family:var(--f-display),sans-serif; font-size:32px; font-weight:700; letter-spacing:-0.02em; margin-bottom:8px; }
+  .phead p { font-size:14.5px; color:var(--body); max-width:620px; line-height:1.6; }
+  .phead .meta { display:flex; gap:18px; margin-top:14px; font-family:var(--f-mono),monospace; font-size:11.5px; color:var(--dim); }
+  .phead .meta .live { color:var(--body); display:flex; align-items:center; gap:7px; }
+  .phead .meta .live::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--red); animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  /* filtros */
+  .filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; align-items:center; }
+  .filters .fl { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:0.08em; margin-right:4px; }
+  .pill { font-size:12.5px; font-weight:600; padding:7px 16px; border-radius:99px; border:1px solid var(--line); color:var(--dim); cursor:pointer; }
+  .pill:hover { color:#fff; border-color:rgba(255,255,255,0.15); }
+  .pill.on { background:rgba(255,255,255,0.1); color:#fff; border-color:rgba(255,255,255,0.2); }
+  .pill.crit.on { background:rgba(var(--red-rgb),0.16); color:var(--red-soft); border-color:rgba(var(--red-rgb),0.4); }
+  .search { background:var(--raised); border:1px solid var(--line); border-radius:99px; padding:10px 18px; font-size:13px; color:var(--dim); width:340px; margin-bottom:20px; }
+
+  /* ═══ BRIEFINGS LISTING ═══ */
+  .bgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .feat { grid-column:span 3; display:grid; grid-template-columns:1.4fr 1fr; gap:30px; border-color:rgba(var(--red-rgb),0.3);
+    background:radial-gradient(ellipse at top left, rgba(var(--red-rgb),0.08), transparent 55%), var(--raised); }
+  .feat h2 { font-family:var(--f-display),sans-serif; font-size:23px; font-weight:700; line-height:1.25; letter-spacing:-0.015em; margin:12px 0 10px; }
+  .feat p { font-size:14px; color:var(--body); line-height:1.65; }
+  .feat .side { border-left:1px solid var(--line); padding-left:30px; display:flex; flex-direction:column; gap:12px; justify-content:center; }
+  .feat .fact { font-size:12px; color:var(--dim); }
+  .feat .fact b { display:block; font-size:14px; color:var(--ink); font-weight:600; margin-top:2px; }
+  .bcard { display:flex; flex-direction:column; min-height:210px; }
+  .bcard .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .bcard h3 { font-size:15px; font-weight:600; line-height:1.4; margin-bottom:8px; }
+  .bcard p { font-size:13px; color:var(--dim); line-height:1.6; }
+  .bcard .when { font-family:var(--f-mono),monospace; font-size:11px; color:var(--dim); }
+
+  /* ═══ DETALHE ═══ */
+  .det { display:grid; grid-template-columns:2fr 1fr; gap:16px; }
+  .det .main { display:flex; flex-direction:column; gap:16px; }
+  .det .aside { display:flex; flex-direction:column; gap:16px; }
+  .sumbox { border-left:3px solid var(--red); }
+  .sumbox .k { color:var(--red-soft); margin-bottom:10px; display:block; }
+  .sumbox p { font-size:14.5px; line-height:1.7; color:var(--body); }
+  .scorerow { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .score { text-align:left; }
+  .score .n { font-family:var(--f-display),sans-serif; font-size:30px; font-weight:700; }
+  .score .n.red { color:var(--red); } .score .n.green { color:#4ADE80; } .score .n.cold { color:var(--cold); }
+  .score .l { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:0.08em; margin-top:6px; }
+  .score .sub { font-size:11px; color:var(--dim); margin-top:3px; }
+  .prose h2 { font-size:15px; font-weight:700; margin:18px 0 10px; display:flex; align-items:center; gap:10px; }
+  .prose h2::before { content:""; width:3px; height:15px; background:rgba(255,255,255,0.15); border-radius:2px; }
+  .prose p { font-size:14px; line-height:1.75; color:var(--body); margin-bottom:12px; }
+  .ioct { width:100%; border-collapse:collapse; font-family:var(--f-mono),monospace; font-size:11.5px; }
+  .ioct th { text-align:left; color:var(--dim); font-weight:500; text-transform:uppercase; font-size:10px; letter-spacing:0.08em; padding:8px 10px; border-bottom:1px solid var(--line); }
+  .ioct td { padding:9px 10px; border-bottom:1px solid var(--line); color:var(--body); }
+  .ioct td .copy { color:var(--dim); cursor:pointer; } .ioct tr:hover .copy { color:var(--cold); }
+  .act { display:flex; gap:12px; padding:11px 0; border-top:1px solid var(--line); font-size:13.5px; color:var(--body); line-height:1.5; }
+  .act i { font-style:normal; font-family:var(--f-mono),monospace; color:var(--dim); font-size:11px; padding-top:2px; }
+
+  /* ═══ CVES ═══ */
+  .cvetable { width:100%; border-collapse:separate; border-spacing:0 10px; }
+  .cverow { background:var(--raised); cursor:pointer; }
+  .cverow td { padding:18px 20px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); font-size:13.5px; vertical-align:middle; }
+  .cverow td:first-child { border-left:1px solid var(--line); border-radius:16px 0 0 16px; }
+  .cverow td:last-child { border-right:1px solid var(--line); border-radius:0 16px 16px 0; }
+  .cverow:hover td { background:var(--overlay); }
+  .cvss { font-family:var(--f-display),sans-serif; font-size:22px; font-weight:700; }
+  .cvss.crit { color:var(--red); } .cvss.high { color:#FF8A4C; } .cvss.med { color:#D9B843; }
+  .cvename { font-family:var(--f-mono),monospace; font-size:12.5px; color:var(--cold); margin-bottom:4px; display:block; }
+  .cvet { font-weight:600; line-height:1.4; }
+  .cved { font-size:12px; color:var(--dim); margin-top:4px; }
+  .arrow { color:var(--dim); font-size:18px; } .cverow:hover .arrow { color:#fff; }
+
+  /* ═══ NOTÍCIAS ═══ */
+  .ngrid { display:grid; grid-template-columns:2fr 1fr; gap:16px; align-items:start; }
+  .nmain { display:flex; flex-direction:column; gap:16px; }
+  .day { font-family:var(--f-mono),monospace; font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:0.1em; margin:8px 0 -4px; }
+  .ncard { display:flex; gap:18px; align-items:flex-start; }
+  .ncard .time { font-family:var(--f-mono),monospace; font-size:11px; color:var(--dim); min-width:46px; padding-top:4px; }
+  .ncard h3 { font-size:15.5px; font-weight:600; line-height:1.45; margin-bottom:6px; }
+  .ncard:hover h3 { text-decoration:underline; text-underline-offset:3px; }
+  .ncard p { font-size:13px; color:var(--dim); line-height:1.6; margin-bottom:8px; }
+</style>
+</head>
+<body>
+
+<nav class="switcher">
+  <a href="#home">Visão geral</a>
+  <a href="#briefings">Briefings</a>
+  <a href="#detalhe">Briefing · detalhe</a>
+  <a href="#cves">Vulnerabilidades</a>
+  <a href="#noticias">Notícias</a>
+</nav>
+
+<!-- ════════════ HOME (resumo, igual v2) ════════════ -->
+<div class="page" id="home">
+  <div class="inner">
+    <div class="nav">
+      <span class="logo"><span>S</span>tatecraft</span>
+      <div class="nav-links"><a class="on">Visão geral</a><a>Briefings</a><a>Notícias</a><a>Vulnerabilidades</a><a>Indicadores</a><a>Sobre</a></div>
+      <span class="cta">Buscar ⌘K</span>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px;">
+      <div class="box" style="grid-column:span 2; min-height:300px; display:flex; flex-direction:column; justify-content:flex-end;
+        background:radial-gradient(ellipse at 85% 15%, rgba(var(--red-rgb),0.10), transparent 55%), radial-gradient(rgba(255,255,255,0.028) 1px, transparent 1px) 0 0/22px 22px, var(--raised);">
+        <div style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--cold); margin-bottom:14px;">Threat intel global com contexto para o Brasil</div>
+        <h1 class="display" style="font-size:26px; font-weight:700; line-height:1.22; margin-bottom:12px;">Briefings de ameaças cibernéticas em português para SOC, GRC e times de segurança.</h1>
+        <p style="font-size:14px; color:var(--body); line-height:1.65; margin-bottom:20px;">Resumo acionável de ameaças: severidade, CVEs, IOCs, fontes e técnicas MITRE ATT&CK em um só lugar.</p>
+        <span style="display:inline-flex; background:var(--red); color:#fff; font-size:13.5px; font-weight:700; padding:11px 22px; border-radius:99px; width:fit-content; cursor:pointer;">Ver briefing mais recente →</span>
+      </div>
+      <div class="box click" style="grid-column:span 2; border-color:rgba(var(--red-rgb),0.3); display:flex; flex-direction:column;
+        background:radial-gradient(ellipse at top left, rgba(var(--red-rgb),0.08), transparent 55%), var(--raised);">
+        <div style="display:flex; justify-content:space-between;"><span class="k" style="color:var(--red-soft);">Críticos ativos agora</span><span class="period">últimas 24h</span></div>
+        <div class="display" style="font-size:38px; font-weight:700; margin:8px 0 2px;">5 <small style="font-size:14px; color:var(--body); font-weight:600;">+2 nas últimas 24h</small></div>
+        <div style="font-size:12.5px; color:var(--body); margin-bottom:8px;">2 explorados ativamente · 1 com ransomware · 2 no KEV/CISA</div>
+        <div style="font-size:13.5px; padding:9px 0; border-top:1px solid var(--line); font-weight:600;">VMware: CVE-2026-1234 com exploração ativa</div>
+        <div style="font-size:13.5px; padding:9px 0; border-top:1px solid var(--line); font-weight:600;">Firewalls: zero-day explorado por APT</div>
+        <span class="footlink">Ver críticos ativos</span>
+      </div>
+      <div class="box" style="grid-column:span 4; text-align:center; color:var(--dim); font-size:12.5px; padding:14px;">… home completa da v2 (métricas, regiões, alertas, notícias) …</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ BRIEFINGS LISTING ════════════ -->
+<div class="page" id="briefings">
+  <div class="inner">
+    <div class="nav">
+      <span class="logo"><span>S</span>tatecraft</span>
+      <div class="nav-links"><a>Visão geral</a><a class="on">Briefings</a><a>Notícias</a><a>Vulnerabilidades</a><a>Indicadores</a><a>Sobre</a></div>
+      <span class="cta">Buscar ⌘K</span>
+    </div>
+    <div class="phead">
+      <h1 class="display">Threat Briefings</h1>
+      <p>Análises operacionais de ameaças ativas com severidade, IOCs e recomendações diretas para o Blue Team.</p>
+      <div class="meta"><span class="live">pipeline ativo · atualizado há 14 min</span><span>142 publicados · 5 críticos</span></div>
+    </div>
+    <div class="search">Buscar por título, CVE, tag ou conteúdo…&nbsp;&nbsp;⌘K</div>
+    <div class="filters">
+      <span class="fl">Sev.</span>
+      <span class="pill on">Todos</span><span class="pill crit on">Crítico</span><span class="pill">Alto</span><span class="pill">Médio</span>
+      <span class="fl" style="margin-left:14px;">Cat.</span>
+      <span class="pill">Ransomware</span><span class="pill">Vulnerabilidade</span><span class="pill">APT</span><span class="pill">Phishing</span><span class="pill">LATAM</span>
+    </div>
+    <div class="bgrid">
+      <div class="box click feat">
+        <div>
+          <div class="tags"><span class="tg solid">Crítico</span><span class="tg alert">Exploração ativa</span><span class="tg alert">CISA KEV</span><span class="tg plain">Vulnerabilidade</span></div>
+          <h2>VMware: CVE-2026-1234 com exploração ativa em vCenter</h2>
+          <p>A falha permite escalada de privilégios a root e já é usada por dois grupos de ransomware. Patch disponível — aplicação imediata recomendada.</p>
+          <span class="footlink">Ler briefing completo</span>
+        </div>
+        <div class="side">
+          <div class="fact">Publicado<b>há 14 min · CISA KEV</b></div>
+          <div class="fact">EPSS<b>16,1% · risco moderado</b></div>
+          <div class="fact">IOCs prontos para SIEM<b>12 indicadores</b></div>
+        </div>
+      </div>
+      <div class="box click bcard">
+        <div class="top"><span class="tg solid">Crítico</span><span class="when">ontem</span></div>
+        <h3>Firewalls corporativos: zero-day explorado por grupo APT</h3>
+        <p>Campanha direcionada a appliances expostos; vendor sem patch — mitigação via regra de bloqueio.</p>
+        <div class="tags" style="margin-top:10px;"><span class="tg alert">Exploração ativa</span><span class="tg plain">APT</span></div>
+        <span class="footlink">Ler briefing</span>
+      </div>
+      <div class="box click bcard">
+        <div class="top"><span class="tg warn">Médio</span><span class="when">08:00</span></div>
+        <h3>PIX: campanha de phishing com 23 domínios novos em 48h</h3>
+        <p>Kits em português via SMS imitam bancos brasileiros. Lista completa de domínios no briefing.</p>
+        <div class="tags" style="margin-top:10px;"><span class="tg info">Brasil</span><span class="tg plain">Phishing</span></div>
+        <span class="footlink">Ler briefing</span>
+      </div>
+      <div class="box click bcard">
+        <div class="top"><span class="tg plain">Baixo</span><span class="when">ontem</span></div>
+        <h3>DVRs: variante Mirai usa credenciais padrão na LATAM</h3>
+        <p>Expansão lenta, sem alvos corporativos confirmados. Hardening básico aplica.</p>
+        <div class="tags" style="margin-top:10px;"><span class="tg info">LATAM</span><span class="tg plain">Botnet</span></div>
+        <span class="footlink">Ler briefing</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ BRIEFING DETALHE ════════════ -->
+<div class="page" id="detalhe">
+  <div class="inner">
+    <div class="nav">
+      <span class="logo"><span>S</span>tatecraft</span>
+      <div class="nav-links"><a>Visão geral</a><a class="on">Briefings</a><a>Notícias</a><a>Vulnerabilidades</a><a>Indicadores</a><a>Sobre</a></div>
+      <span class="cta">Buscar ⌘K</span>
+    </div>
+    <div class="phead">
+      <div class="crumb">Briefings / <b>VMware: CVE-2026-1234</b></div>
+      <div class="tags" style="margin-bottom:14px;"><span class="tg solid">Crítico</span><span class="tg alert">Exploração ativa</span><span class="tg alert">CISA KEV</span><span class="tg plain">EPSS 16%</span></div>
+      <h1 class="display" style="font-size:28px; max-width:760px;">VMware: CVE-2026-1234 com exploração ativa em vCenter</h1>
+      <div class="meta"><span>3 min de leitura</span><span>12 jun 2026 · 14:00</span><span style="color:var(--cold); cursor:pointer;">Fonte original ↗</span></div>
+    </div>
+    <div class="det">
+      <div class="main">
+        <div class="box sumbox">
+          <span class="k">Resumo executivo</span>
+          <p>A vulnerabilidade afeta vários produtos da VMware, permitindo escalada de privilégios a root pelo uso inadequado de binários setuid. A CISA confirmou exploração ativa e exige aplicação imediata de atualizações.</p>
+        </div>
+        <div class="box prose">
+          <h2>O que aconteceu</h2>
+          <p>A falha foi identificada em produtos VMware, incluindo Fusion, Remote Console e Horizon Client. O vetor CVSS indica ataque local com complexidade baixa e privilégios exigidos baixos.</p>
+          <h2>Quem é afetado</h2>
+          <p>Ambientes corporativos com VMware exposto, especialmente infraestruturas com acesso local compartilhado e estações de administração.</p>
+          <h2>Ações recomendadas</h2>
+          <div class="act"><i>01</i>Aplicar o patch oficial da VMware imediatamente em todos os hosts afetados.</div>
+          <div class="act"><i>02</i>Auditar binários setuid em sistemas com VMware instalado.</div>
+          <div class="act"><i>03</i>Monitorar os IOCs listados abaixo no SIEM pelas próximas 72h.</div>
+        </div>
+        <div class="box">
+          <div style="display:flex; justify-content:space-between; margin-bottom:12px;"><span class="k">IOCs · prontos para SIEM</span><span class="period" style="color:var(--cold); cursor:pointer;">Exportar CSV ↓</span></div>
+          <table class="ioct">
+            <tr><th>Tipo</th><th>Indicador</th><th>Confiança</th><th></th></tr>
+            <tr><td>IP</td><td>185.220.101.45</td><td style="color:#4ADE80;">alta</td><td class="copy">copiar</td></tr>
+            <tr><td>Domínio</td><td>vmw-update[.]top</td><td style="color:#4ADE80;">alta</td><td class="copy">copiar</td></tr>
+            <tr><td>SHA-256</td><td>9f86d081884c7d65…</td><td style="color:#D9B843;">média</td><td class="copy">copiar</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="aside">
+        <div class="box scorerow" style="display:grid;">
+          <div class="score"><div class="n red">9.8</div><div class="l">CVSS</div><div class="sub">crítico</div></div>
+          <div class="score"><div class="n cold">16%</div><div class="l">EPSS</div><div class="sub">30 dias</div></div>
+          <div class="score"><div class="n green">Alta</div><div class="l">Confiança</div><div class="sub">CISA + NVD</div></div>
+        </div>
+        <div class="box">
+          <span class="k" style="display:block; margin-bottom:12px;">MITRE ATT&CK</span>
+          <div class="tags"><span class="tg info">T1068 · Escalada de privilégios</span><span class="tg info">T1190 · Exploit público</span></div>
+        </div>
+        <div class="box">
+          <span class="k" style="display:block; margin-bottom:12px;">Contexto</span>
+          <div style="font-size:12.5px; color:var(--body); line-height:1.7;">Setores: <b style="color:var(--ink);">Corporativo</b><br>Regiões: <b style="color:var(--ink);">Global</b><br>Fonte: <b style="color:var(--ink);">CISA KEV</b></div>
+        </div>
+        <div class="box click">
+          <span class="k" style="display:block; margin-bottom:10px;">Críticos relacionados</span>
+          <div style="font-size:13px; font-weight:600; padding:8px 0; border-top:1px solid var(--line);">Firewalls: zero-day explorado por APT</div>
+          <div style="font-size:13px; font-weight:600; padding:8px 0; border-top:1px solid var(--line);">Saúde: ransomware ativo no Brasil</div>
+          <span class="footlink">Ver críticos ativos</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ CVES ════════════ -->
+<div class="page" id="cves">
+  <div class="inner">
+    <div class="nav">
+      <span class="logo"><span>S</span>tatecraft</span>
+      <div class="nav-links"><a>Visão geral</a><a>Briefings</a><a>Notícias</a><a class="on">Vulnerabilidades</a><a>Indicadores</a><a>Sobre</a></div>
+      <span class="cta">Buscar ⌘K</span>
+    </div>
+    <div class="phead">
+      <h1 class="display">Vulnerabilidades <span style="color:var(--dim); font-size:18px;">CVE</span></h1>
+      <p>Vulnerabilidades catalogadas nos últimos 7 dias, com CVSS, EPSS e correlação com o catálogo KEV/CISA de exploração confirmada.</p>
+      <div class="meta"><span class="live">38 analisadas hoje</span><span>4 com exploração conhecida</span></div>
+    </div>
+    <div class="search">Buscar por CVE, produto ou fornecedor…</div>
+    <div class="filters">
+      <span class="pill on">Todas</span><span class="pill crit on">Críticas</span><span class="pill">Altas</span><span class="pill">Médias</span>
+      <span class="pill" style="margin-left:14px;">Só KEV/CISA</span><span class="pill">Com exploit público</span>
+    </div>
+    <table class="cvetable">
+      <tr class="cverow">
+        <td style="width:80px;"><div class="cvss crit">9.8</div><div style="font-size:10px; color:var(--dim); text-transform:uppercase;">cvss</div></td>
+        <td><span class="cvename">CVE-2026-1234</span><div class="cvet">VMware vCenter — escalada de privilégios a root</div><div class="cved">EPSS 16% · publicada há 2 dias</div></td>
+        <td style="width:220px;"><div class="tags"><span class="tg alert">CISA KEV</span><span class="tg alert">Exploração ativa</span></div></td>
+        <td style="width:40px;" class="arrow">›</td>
+      </tr>
+      <tr class="cverow">
+        <td><div class="cvss crit">9.1</div><div style="font-size:10px; color:var(--dim); text-transform:uppercase;">cvss</div></td>
+        <td><span class="cvename">CVE-2026-2871</span><div class="cvet">FortiOS — execução remota de código em VPNs expostas</div><div class="cved">EPSS 31% · publicada ontem</div></td>
+        <td><div class="tags"><span class="tg alert">Exploração ativa</span><span class="tg plain">Briefing disponível</span></div></td>
+        <td class="arrow">›</td>
+      </tr>
+      <tr class="cverow">
+        <td><div class="cvss high">8.1</div><div style="font-size:10px; color:var(--dim); text-transform:uppercase;">cvss</div></td>
+        <td><span class="cvename">CVE-2026-2640</span><div class="cvet">Microsoft Exchange — elevação de privilégio via NTLM relay</div><div class="cved">EPSS 8% · Patch Tuesday jun/2026</div></td>
+        <td><div class="tags"><span class="tg warn">Patch disponível</span></div></td>
+        <td class="arrow">›</td>
+      </tr>
+      <tr class="cverow">
+        <td><div class="cvss med">6.5</div><div style="font-size:10px; color:var(--dim); text-transform:uppercase;">cvss</div></td>
+        <td><span class="cvename">CVE-2026-2218</span><div class="cvet">Cisco IOS XE — negação de serviço em interface web</div><div class="cved">EPSS 2% · publicada há 3 dias</div></td>
+        <td><div class="tags"><span class="tg plain">Sem exploração conhecida</span></div></td>
+        <td class="arrow">›</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ════════════ NOTÍCIAS ════════════ -->
+<div class="page" id="noticias">
+  <div class="inner">
+    <div class="nav">
+      <span class="logo"><span>S</span>tatecraft</span>
+      <div class="nav-links"><a>Visão geral</a><a>Briefings</a><a class="on">Notícias</a><a>Vulnerabilidades</a><a>Indicadores</a><a>Sobre</a></div>
+      <span class="cta">Buscar ⌘K</span>
+    </div>
+    <div class="phead">
+      <h1 class="display">Notícias</h1>
+      <p>Cobertura do cenário global de segurança, reescrita em português pela IA Statecraft a partir de 19 fontes especializadas.</p>
+      <div class="meta"><span class="live">atualizado há 6 min</span></div>
+    </div>
+    <div class="filters">
+      <span class="pill on">Tudo</span><span class="pill">Alertas operacionais</span><span class="pill">Contexto</span>
+      <span class="pill" style="margin-left:14px;">Brasil</span><span class="pill">Global</span>
+    </div>
+    <div class="ngrid">
+      <div class="nmain">
+        <div class="day">Hoje · 12 jun 2026</div>
+        <div class="box click ncard">
+          <span class="time">14:32</span>
+          <div>
+            <div class="tags" style="margin-bottom:8px;"><span class="tg plain">Contexto</span><span class="tg plain">Ransomware</span></div>
+            <h3>Nacional ucraniano admite envolvimento em operação de ransomware Conti</h3>
+            <p>Extraditado da Irlanda para os EUA, réu confessa participação em conspiração ligada a ataques contra infraestrutura crítica.</p>
+            <span class="when mono" style="font-size:11px; color:var(--dim);">BleepingComputer · 3 min de leitura</span>
+          </div>
+        </div>
+        <div class="box click ncard" style="border-color:rgba(var(--red-rgb),0.25);">
+          <span class="time">11:05</span>
+          <div>
+            <div class="tags" style="margin-bottom:8px;"><span class="tg alert">Alerta operacional</span><span class="tg plain">Patch Tuesday</span></div>
+            <h3>Microsoft corrige 67 falhas no Patch Tuesday de junho — 9 críticas</h3>
+            <p>Duas vulnerabilidades já constam no KEV/CISA. Janela de patching recomendada: 72h para sistemas expostos.</p>
+            <span class="when mono" style="font-size:11px; color:var(--dim);">MSRC · 4 min de leitura</span>
+          </div>
+        </div>
+        <div class="day">Ontem · 11 jun 2026</div>
+        <div class="box click ncard">
+          <span class="time">09:40</span>
+          <div>
+            <div class="tags" style="margin-bottom:8px;"><span class="tg info">Brasil</span><span class="tg plain">LGPD</span></div>
+            <h3>ANPD multa empresa por vazamento de dados de clientes</h3>
+            <p>Primeira sanção do ano sinaliza endurecimento da fiscalização sobre incidentes não reportados.</p>
+            <span class="when mono" style="font-size:11px; color:var(--dim);">Convergência Digital · 2 min</span>
+          </div>
+        </div>
+      </div>
+      <div class="box" style="position:sticky; top:60px;">
+        <span class="k" style="display:block; margin-bottom:4px; color:var(--red-soft);">Alertas operacionais</span>
+        <span class="period">exigem ação</span>
+        <div style="font-size:13px; font-weight:600; padding:10px 0; border-bottom:1px solid var(--line); margin-top:10px;">Microsoft: 67 falhas corrigidas — 9 críticas</div>
+        <div style="font-size:13px; font-weight:600; padding:10px 0; border-bottom:1px solid var(--line);">Cisco: patch para falha explorada em VPNs</div>
+        <div style="font-size:13px; font-weight:600; padding:10px 0;">Fortinet: atualização urgente para FortiOS</div>
+        <span class="footlink" style="cursor:pointer;">Ver todos os alertas</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="palette">
+  <div class="pt">Tom de vermelho</div>
+  <div class="row" id="reds">
+    <div class="sw on" style="background:#FF2D46" title="Scarlet vibrante" data-red="#FF2D46" data-soft="#FF6B7A" data-rgb="255,45,70"></div>
+    <div class="sw" style="background:#F5174F" title="Crimson elétrico" data-red="#F5174F" data-soft="#FF5C8A" data-rgb="245,23,79"></div>
+    <div class="sw" style="background:#FF3B30" title="Vermelho quente" data-red="#FF3B30" data-soft="#FF7A6B" data-rgb="255,59,48"></div>
+    <div class="sw" style="background:#E50914" title="Original (atual)" data-red="#E50914" data-soft="#FF6B72" data-rgb="229,9,20"></div>
+  </div>
+  <div class="pt">Tom de preto</div>
+  <div class="row" id="blacks">
+    <div class="sw on" style="background:#0B0B0D; border-color:#444;" title="Grafite neutro" data-bg="#0B0B0D" data-raised="#131316" data-overlay="#1B1B20"></div>
+    <div class="sw" style="background:#0A0C14; border-color:#444;" title="Azul-noite" data-bg="#0A0C14" data-raised="#10131E" data-overlay="#171B2A"></div>
+    <div class="sw" style="background:#0C0A11; border-color:#444;" title="Violeta profundo" data-bg="#0C0A11" data-raised="#13101B" data-overlay="#1B1626"></div>
+    <div class="sw" style="background:#050505; border-color:#444;" title="Preto puro" data-bg="#050505" data-raised="#0F0F0F" data-overlay="#181818"></div>
+  </div>
+  <div class="pt">Fonte · títulos</div>
+  <div class="row" id="fdisplay" style="flex-direction:column; gap:5px;">
+    <div class="fopt on" data-font="Space Grotesk" style="font-family:'Space Grotesk';">Space Grotesk — geométrica tech</div>
+    <div class="fopt" data-font="Bricolage Grotesque" style="font-family:'Bricolage Grotesque';">Bricolage Grotesque — personalidade</div>
+    <div class="fopt" data-font="Sora" style="font-family:'Sora';">Sora — futurista limpa</div>
+    <div class="fopt" data-font="Geist" style="font-family:'Geist';">Geist — sóbria, tudo igual</div>
+  </div>
+  <div class="pt">Fonte · corpo</div>
+  <div class="row" id="fbody" style="flex-direction:column; gap:5px;">
+    <div class="fopt on" data-font="Inter" style="font-family:'Inter';">Inter — padrão de mercado</div>
+    <div class="fopt" data-font="Geist" style="font-family:'Geist';">Geist — a atual do site</div>
+  </div>
+  <div class="pt">Fonte · dados/mono</div>
+  <div class="row" id="fmono" style="flex-direction:column; gap:5px;">
+    <div class="fopt on" data-font="JetBrains Mono" style="font-family:'JetBrains Mono';">JetBrains Mono</div>
+    <div class="fopt" data-font="Geist Mono" style="font-family:'Geist Mono';">Geist Mono</div>
+  </div>
+  <div style="color:#777; font-size:10px; line-height:1.5;">Clique para trocar ao vivo.</div>
+</div>
+<style>
+  .fopt { font-size:12px; color:#aaa; cursor:pointer; padding:5px 9px; border-radius:8px; border:1px solid transparent; width:100%; }
+  .fopt:hover { color:#fff; background:#151515; }
+  .fopt.on { color:#fff; border-color:#444; background:#141414; }
+</style>
+
+<script>
+  const root = document.documentElement.style;
+  document.querySelectorAll('#reds .sw').forEach(sw => sw.addEventListener('click', () => {
+    document.querySelectorAll('#reds .sw').forEach(s => s.classList.remove('on'));
+    sw.classList.add('on');
+    root.setProperty('--red', sw.dataset.red);
+    root.setProperty('--red-soft', sw.dataset.soft);
+    root.setProperty('--red-rgb', sw.dataset.rgb);
+  }));
+  document.querySelectorAll('#blacks .sw').forEach(sw => sw.addEventListener('click', () => {
+    document.querySelectorAll('#blacks .sw').forEach(s => s.classList.remove('on'));
+    sw.classList.add('on');
+    root.setProperty('--bg', sw.dataset.bg);
+    root.setProperty('--raised', sw.dataset.raised);
+    root.setProperty('--overlay', sw.dataset.overlay);
+  }));
+  const fontVar = { fdisplay:'--f-display', fbody:'--f-body', fmono:'--f-mono' };
+  Object.keys(fontVar).forEach(id => {
+    document.querySelectorAll('#'+id+' .fopt').forEach(o => o.addEventListener('click', () => {
+      document.querySelectorAll('#'+id+' .fopt').forEach(x => x.classList.remove('on'));
+      o.classList.add('on');
+      root.setProperty(fontVar[id], "'" + o.dataset.font + "'");
+    }));
+  });
+</script>
+</body>
+</html>
