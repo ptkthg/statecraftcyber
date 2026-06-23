@@ -8,18 +8,25 @@
   --color-body: var(--text-body);
   --color-dim: var(--text-dim);
   --color-brand: var(--primary);
+  --color-brand-soft: var(--primary-soft);
+  --color-cold: var(--cold);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-jetbrains-mono);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-sora);
 }
 
 :root {
-  --bg: #0A0A0A;
-  --bg-raised: #111113;
-  --bg-overlay: #1A1A1D;
+  --bg: #0B0B0D;
+  --bg-raised: #131316;
+  --bg-overlay: #1B1B20;
   --text: #F4F4F5;
-  --text-body: #B8B8C0;
-  --text-dim: #76767F;
-  --primary: #E50914;
+  --text-body: #C2C2CB;
+  --text-dim: #8E8E99;
+  --primary: #FF2D46;
+  --primary-soft: #FF6B7A;
+  --primary-rgb: 255, 45, 70;
+  --cold: #7FA3B8;
+  --line: rgba(255, 255, 255, 0.05);
 }
 
 html {
@@ -178,7 +185,7 @@ body {
 
 /* Links */
 .article-content a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
-.article-content a:hover { color: #ff3344; text-decoration-color: transparent; }
+.article-content a:hover { color: var(--primary-soft); text-decoration-color: transparent; }
 
 /* Negrito e itálico */
 .article-content strong, .article-content b { color: var(--text); font-weight: 700; }
@@ -266,7 +273,7 @@ body {
 }
 .briefing-prose pre code { background: none; padding: 0; color: #e2e8f0; font-size: 0.8125rem; }
 .briefing-prose a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
-.briefing-prose a:hover { color: #ff3344; }
+.briefing-prose a:hover { color: var(--primary-soft); }
 .briefing-prose blockquote {
   border-left: 3px solid rgba(229,9,20,0.35);
   padding: 0.5rem 1rem;
@@ -323,7 +330,7 @@ body {
 }
 .prose-like pre code { background: none; padding: 0; color: #e2e8f0; }
 .prose-like a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
-.prose-like a:hover { color: #ff3344; }
+.prose-like a:hover { color: var(--primary-soft); }
 .prose-like blockquote {
   border-left: 4px solid rgba(229,9,20,0.4);
   padding: 0.75rem 1.25rem; margin: 1.5rem 0;
