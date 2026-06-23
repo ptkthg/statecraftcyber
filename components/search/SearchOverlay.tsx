@@ -124,7 +124,7 @@ export function SearchOverlay() {
             )}
 
             {query.length >= 2 && !loading && error && (
-              <p className="px-4 py-8 text-sm text-red-400 text-center">{error}</p>
+              <p className="px-4 py-8 text-sm text-brand-soft text-center">{error}</p>
             )}
 
             {query.length >= 2 && !loading && !error && results.length === 0 && (

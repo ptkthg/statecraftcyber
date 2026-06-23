@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
     <main className="min-h-screen bg-canvas flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-center gap-2 mb-8">
-          <Shield size={18} className="text-red-500" />
+          <Shield size={18} className="text-brand" />
           <span className="text-sm font-bold text-white">Statecraft Admin</span>
         </div>
 
@@ -70,13 +70,13 @@ export default function AdminLoginPage() {
             </div>
 
             {error && (
-              <p role="alert" className="text-xs text-red-400">{error}</p>
+              <p role="alert" className="text-xs text-brand-soft">{error}</p>
             )}
 
             <button
               type="submit"
               disabled={loading || !password}
-              className="w-full py-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-raised"
+              className="w-full py-2.5 bg-brand hover:bg-brand disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-raised"
             >
               {loading ? "Verificando..." : "Entrar"}
             </button>

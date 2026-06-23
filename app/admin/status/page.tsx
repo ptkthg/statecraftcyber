@@ -53,7 +53,7 @@ export default async function AdminStatusPage() {
   const lastRun = cronLogs[0];
 
   const stats = [
-    { label: "Briefings publicados", value: briefingCount, color: "text-red-400" },
+    { label: "Briefings publicados", value: briefingCount, color: "text-brand-soft" },
     { label: "IOCs coletados", value: iocCount.toLocaleString("pt-BR"), color: "text-orange-400" },
     { label: "CVEs em cache", value: cveCount, color: "text-yellow-400" },
     { label: "Notícias cacheadas", value: newsCount, color: "text-blue-400" },
@@ -65,7 +65,7 @@ export default async function AdminStatusPage() {
       <div className="border-b border-white/[0.04] sticky top-0 bg-canvas/95 backdrop-blur z-10">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Shield size={14} className="text-red-500" />
+            <Shield size={14} className="text-brand" />
             <span className="text-xs font-bold text-white">Admin</span>
             <span className="text-[#555]">/</span>
             <span className="text-xs text-body">Status</span>
@@ -123,9 +123,9 @@ export default async function AdminStatusPage() {
                 <div className="flex items-center gap-1.5">
                   {lastRun.success
                     ? <CheckCircle size={13} className="text-green-400" />
-                    : <XCircle size={13} className="text-red-400" />
+                    : <XCircle size={13} className="text-brand-soft" />
                   }
-                  <span className={`text-xs font-bold ${lastRun.success ? "text-green-400" : "text-red-400"}`}>
+                  <span className={`text-xs font-bold ${lastRun.success ? "text-green-400" : "text-brand-soft"}`}>
                     {lastRun.success ? "Sucesso" : "Falha"}
                   </span>
                 </div>
@@ -140,7 +140,7 @@ export default async function AdminStatusPage() {
               </div>
               <div>
                 <p className="text-xs text-dim mb-1">Erros</p>
-                <p className={`text-sm font-bold ${lastRun.errors.length ? "text-red-400" : "text-dim"}`}>
+                <p className={`text-sm font-bold ${lastRun.errors.length ? "text-brand-soft" : "text-dim"}`}>
                   {lastRun.errors.length || "—"}
                 </p>
               </div>
@@ -164,7 +164,7 @@ export default async function AdminStatusPage() {
                 <p className="text-xs text-dim mb-1.5">Erros</p>
                 <div className="space-y-1">
                   {lastRun.errors.map((e, i) => (
-                    <p key={i} className="text-xs text-red-400 font-mono bg-red-600/[0.06] px-3 py-1.5 rounded border border-red-600/10">
+                    <p key={i} className="text-xs text-brand-soft font-mono bg-brand/[0.06] px-3 py-1.5 rounded border border-brand/10">
                       {e}
                     </p>
                   ))}
@@ -197,14 +197,14 @@ export default async function AdminStatusPage() {
                 <div className="flex items-center">
                   {log.success
                     ? <CheckCircle size={12} className="text-green-400" />
-                    : <XCircle size={12} className="text-red-400" />
+                    : <XCircle size={12} className="text-brand-soft" />
                   }
                 </div>
                 <span className="text-xs text-body font-mono">{formatDate(log.runAt)}</span>
                 <span className="text-xs font-bold text-white text-center">{log.briefingsCreated}</span>
                 <span className="text-xs font-mono text-dim">{formatDuration(log.durationMs)}</span>
                 <span className="text-xs text-dim">{log.sources.length}</span>
-                <span className={`text-xs font-bold ${log.errors.length ? "text-red-400" : "text-dim"}`}>
+                <span className={`text-xs font-bold ${log.errors.length ? "text-brand-soft" : "text-dim"}`}>
                   {log.errors.length || "—"}
                 </span>
               </div>

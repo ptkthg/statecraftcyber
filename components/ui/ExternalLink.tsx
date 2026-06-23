@@ -16,7 +16,7 @@ export function ExternalLink({ href, children, showIcon = true, className = "", 
       href={href}
       target="_blank"
       rel="noopener noreferrer nofollow"
-      className={`inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500 rounded ${className}`}
+      className={`inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand rounded ${className}`}
       {...rest}
     >
       {children}

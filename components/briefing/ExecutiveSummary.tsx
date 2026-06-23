@@ -4,14 +4,14 @@ interface Props {
 }
 
 const SEVERITY_SUMMARY: Record<string, string> = {
-  critical: "border-red-600 bg-red-600/[0.04]",
+  critical: "border-brand bg-brand/[0.04]",
   high:     "border-orange-500 bg-orange-500/[0.03]",
   medium:   "border-yellow-500 bg-yellow-500/[0.03]",
   low:      "border-blue-500 bg-blue-500/[0.03]",
 };
 
 const SEVERITY_LABEL_COLOR: Record<string, string> = {
-  critical: "text-red-500",
+  critical: "text-brand",
   high:     "text-orange-400",
   medium:   "text-yellow-400",
   low:      "text-blue-400",

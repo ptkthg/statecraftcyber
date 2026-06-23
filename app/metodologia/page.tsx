@@ -60,8 +60,8 @@ function Section({ id, icon: Icon, title, children }: {
   return (
     <section id={id} className="mb-14 scroll-mt-20">
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-8 h-8 rounded-lg bg-red-600/10 border border-red-600/20 flex items-center justify-center flex-shrink-0">
-          <Icon size={14} className="text-red-500" aria-hidden />
+        <div className="w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center flex-shrink-0">
+          <Icon size={14} className="text-brand" aria-hidden />
         </div>
         <h2 className="text-xl font-bold tracking-tight text-white">{title}</h2>
       </div>
@@ -78,7 +78,7 @@ export default function MetodologiaPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-canvas" aria-hidden />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 mb-4">
-            <ShieldCheck size={14} className="text-red-500" aria-hidden />
+            <ShieldCheck size={14} className="text-brand" aria-hidden />
             <span className="text-xs font-semibold text-dim uppercase tracking-widest">Transparência</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-4 leading-tight">Metodologia</h1>
@@ -119,7 +119,7 @@ export default function MetodologiaPage() {
               <div key={i} className="flex flex-wrap items-start gap-4 px-5 py-4 border-b border-white/[0.04] last:border-0">
                 <div className="w-36 flex-shrink-0">
                   <p className="text-xs font-bold text-white">{s.name}</p>
-                  <p className="text-xs text-red-400 font-medium mt-0.5">{s.type}</p>
+                  <p className="text-xs text-brand-soft font-medium mt-0.5">{s.type}</p>
                 </div>
                 <p className="text-xs text-dim leading-relaxed flex-1">{s.detail}</p>
               </div>
@@ -135,8 +135,8 @@ export default function MetodologiaPage() {
           <div className="space-y-3">
             {PIPELINE.map((p) => (
               <div key={p.step} className="flex gap-4 p-5 bg-raised border border-white/[0.06] rounded-xl">
-                <div className="w-6 h-6 rounded-full bg-red-600/15 border border-red-600/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-red-400">{p.step}</span>
+                <div className="w-6 h-6 rounded-full bg-brand/15 border border-brand/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-xs font-bold text-brand-soft">{p.step}</span>
                 </div>
                 <div>
                   <p className="text-sm font-bold text-white mb-1">{p.title}</p>
@@ -197,7 +197,7 @@ export default function MetodologiaPage() {
           <div className="bg-raised border border-white/[0.06] rounded-xl overflow-hidden">
             {IOC_NORMALIZATION.map((n, i) => (
               <div key={i} className="flex items-start gap-4 px-5 py-3.5 border-b border-white/[0.04] last:border-0">
-                <span className="w-16 text-xs font-bold text-red-400 font-mono flex-shrink-0 mt-0.5">{n.type}</span>
+                <span className="w-16 text-xs font-bold text-brand-soft font-mono flex-shrink-0 mt-0.5">{n.type}</span>
                 <p className="text-xs text-dim leading-relaxed">{n.rule}</p>
               </div>
             ))}
@@ -236,8 +236,8 @@ export default function MetodologiaPage() {
             ))}
           </div>
 
-          <div className="mt-6 p-5 bg-red-600/[0.06] border border-red-600/20 rounded-xl">
-            <p className="text-xs text-red-300 leading-relaxed font-medium">
+          <div className="mt-6 p-5 bg-brand/[0.06] border border-brand/20 rounded-xl">
+            <p className="text-xs text-brand-soft leading-relaxed font-medium">
               Dados de Threat Intelligence devem ser validados em fontes primárias antes de qualquer
               ação crítica em produção. A Statecraft é uma ferramenta de apoio à análise, não um sistema de resposta automática.
             </p>

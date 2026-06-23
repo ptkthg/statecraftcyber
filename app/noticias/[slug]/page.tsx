@@ -23,13 +23,13 @@ const getCachedArticles = unstable_cache(
 
 const TYPE_STYLES: Record<ArticleType, { label: string; cls: string }> = {
   "Vulnerabilidade": { label: "Vulnerabilidade", cls: "text-orange-400 bg-orange-600/10 border-orange-600/25" },
-  "Ransomware":      { label: "Ransomware",      cls: "text-red-400 bg-red-600/10 border-red-600/25" },
+  "Ransomware":      { label: "Ransomware",      cls: "text-brand-soft bg-brand/10 border-brand/25" },
   "Phishing":        { label: "Phishing",         cls: "text-yellow-400 bg-yellow-600/10 border-yellow-600/25" },
   "APT":             { label: "APT",              cls: "text-purple-400 bg-purple-600/10 border-purple-600/25" },
   "Malware":         { label: "Malware",          cls: "text-rose-400 bg-rose-600/10 border-rose-600/25" },
   "Vazamento":       { label: "Vazamento",        cls: "text-blue-400 bg-blue-600/10 border-blue-600/25" },
   "Supply Chain":    { label: "Supply Chain",     cls: "text-amber-400 bg-amber-600/10 border-amber-600/25" },
-  "Ataque":          { label: "Ataque",           cls: "text-red-300 bg-red-700/10 border-red-700/25" },
+  "Ataque":          { label: "Ataque",           cls: "text-brand-soft bg-brand/10 border-brand/25" },
   "Alerta Oficial":  { label: "Alerta Oficial",   cls: "text-green-400 bg-green-600/10 border-green-600/25" },
   "Ameaça":          { label: "Ameaça",           cls: "text-slate-400 bg-slate-600/10 border-slate-600/25" },
 };
@@ -59,7 +59,7 @@ function ArticleBodySkeleton({ article }: { article: NewsArticle }) {
     <div>
       {/* Status de geração */}
       <div className="flex items-center gap-2.5 px-4 py-3.5 bg-raised border border-white/[0.06] rounded-xl mb-8">
-        <Loader2 size={14} className="text-red-500 animate-spin flex-shrink-0" />
+        <Loader2 size={14} className="text-brand animate-spin flex-shrink-0" />
         <div>
           <p className="text-xs text-dim">Gerando notícia em português...</p>
           <p className="text-xs text-dim mt-0.5">A IA está redigindo o artigo completo. Aguarde alguns segundos.</p>
@@ -74,7 +74,7 @@ function ArticleBodySkeleton({ article }: { article: NewsArticle }) {
       </div>
 
       {/* Lead placeholder */}
-      <div className="space-y-2.5 mb-10 pl-5 border-l-2 border-red-600/20">
+      <div className="space-y-2.5 mb-10 pl-5 border-l-2 border-brand/20">
         <div className="h-4 bg-white/[0.04] rounded animate-pulse w-full" />
         <div className="h-4 bg-white/[0.04] rounded animate-pulse w-11/12" />
         <div className="h-4 bg-white/[0.04] rounded animate-pulse w-4/5" />
@@ -117,7 +117,7 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
   html = html.replace(
     /\b(CVE-\d{4}-\d{4,7})\b/gi,
     '<a href="https://nvd.nist.gov/vuln/detail/$1" target="_blank" rel="noopener noreferrer" ' +
-    'class="font-mono font-bold text-red-400 hover:text-red-300 no-underline hover:underline transition-colors">$1</a>'
+    'class="font-mono font-bold text-brand-soft hover:text-brand-soft no-underline hover:underline transition-colors">$1</a>'
   );
 
   const isAi = enriched.content.length > 100 && enriched.content !== (article.content ?? "");
@@ -162,7 +162,7 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
           <>
             <span className="text-dim">|</span>
             <span className="flex items-center gap-1 text-xs text-dim">
-              <Sparkles size={9} className="text-red-600" />
+              <Sparkles size={9} className="text-brand" />
               {enriched.fromCache ? "Cache" : "Gerado por IA"}
             </span>
           </>
@@ -172,7 +172,7 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
       {/* Lide (parágrafo de abertura destacado) */}
       <p
         style={{ fontFamily: "var(--font-lora), Georgia, serif" }}
-        className="text-lg text-body leading-relaxed mb-8 pl-5 border-l-[3px] border-red-600/50 italic"
+        className="text-lg text-body leading-relaxed mb-8 pl-5 border-l-[3px] border-brand/50 italic"
       >
         {displaySummary}
       </p>
@@ -180,9 +180,9 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
       {/* Divisor decorativo */}
       <div className="flex items-center gap-3 mb-10">
         <div className="h-px flex-1 bg-white/[0.06]" />
-        <div className="w-1.5 h-1.5 rounded-full bg-red-600" />
-        <div className="w-1 h-1 rounded-full bg-red-600/50" />
-        <div className="w-1 h-1 rounded-full bg-red-600/25" />
+        <div className="w-1.5 h-1.5 rounded-full bg-brand" />
+        <div className="w-1 h-1 rounded-full bg-brand/50" />
+        <div className="w-1 h-1 rounded-full bg-brand/25" />
         <div className="h-px flex-1 bg-white/[0.06]" />
       </div>
 
@@ -236,7 +236,7 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
           href={article.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-lg transition-all flex-shrink-0"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-brand hover:bg-brand text-white text-xs font-semibold rounded-lg transition-all flex-shrink-0"
         >
           Acessar <ExternalLink size={12} />
         </a>
@@ -248,7 +248,7 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
 // ── Briefings relacionados (cross-link) ───────────────────────────────────────
 
 const SEVERITY_CONFIG: Record<string, { label: string; dot: string; text: string }> = {
-  critical: { label: "Crítico", dot: "bg-red-500",    text: "text-red-400" },
+  critical: { label: "Crítico", dot: "bg-brand",    text: "text-brand-soft" },
   high:     { label: "Alto",    dot: "bg-orange-400", text: "text-orange-400" },
   medium:   { label: "Médio",   dot: "bg-yellow-400", text: "text-yellow-400" },
   low:      { label: "Baixo",   dot: "bg-blue-400",   text: "text-blue-400" },
@@ -278,7 +278,7 @@ async function RelatedBriefings({ cves, tags }: { cves: string[]; tags: string[]
     return (
       <section className="mt-10 mb-2">
         <div className="flex items-center gap-2 mb-4">
-          <Shield size={13} className="text-red-500" />
+          <Shield size={13} className="text-brand" />
           <h2
             className="text-sm font-bold tracking-tight text-white"
           >
@@ -310,7 +310,7 @@ async function RelatedBriefings({ cves, tags }: { cves: string[]; tags: string[]
                       <>
                         <span className="text-[#333]">·</span>
                         {matchedCves.slice(0, 2).map((cve: string) => (
-                          <span key={cve} className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold text-red-400 bg-red-600/10 border border-red-600/20">
+                          <span key={cve} className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold text-brand-soft bg-brand/10 border border-brand/20">
                             {cve}
                           </span>
                         ))}
@@ -469,7 +469,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 href={`https://nvd.nist.gov/vuln/detail/${cve}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-2 py-0.5 rounded text-xs font-mono font-bold text-red-400 bg-red-600/10 border border-red-600/20 hover:bg-red-600/20 hover:border-red-500/40 transition-colors"
+                className="px-2 py-0.5 rounded text-xs font-mono font-bold text-brand-soft bg-brand/10 border border-brand/20 hover:bg-brand/20 hover:border-brand/40 transition-colors"
               >
                 {cve}
               </a>
@@ -484,9 +484,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
         {/* Alerta alta relevância */}
         {article.importance >= 5 && (
-          <div className="flex items-center gap-3 p-4 bg-red-600/[0.06] border border-red-600/20 rounded-xl mb-6">
-            <AlertCircle size={15} className="text-red-500 flex-shrink-0" />
-            <p className="text-xs text-red-300 leading-relaxed">
+          <div className="flex items-center gap-3 p-4 bg-brand/[0.06] border border-brand/20 rounded-xl mb-6">
+            <AlertCircle size={15} className="text-brand flex-shrink-0" />
+            <p className="text-xs text-brand-soft leading-relaxed">
               Classificada como <strong>alta relevância</strong> pelo sistema de threat intelligence.
             </p>
           </div>

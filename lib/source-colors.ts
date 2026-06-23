@@ -7,7 +7,7 @@ export const SOURCE_COLORS: Record<string, SourceColor> = {
   // ── Vendor Labs ──────────────────────────────────────────────────────────────
   "Microsoft Security Blog": { dot: "bg-blue-500",    badge: "text-blue-400 bg-blue-600/10 border-blue-600/20" },
   "Google Mandiant Blog":    { dot: "bg-orange-500",  badge: "text-orange-400 bg-orange-600/10 border-orange-600/20" },
-  "Palo Alto Unit 42":       { dot: "bg-red-500",     badge: "text-red-400 bg-red-600/10 border-red-600/20" },
+  "Palo Alto Unit 42":       { dot: "bg-brand",     badge: "text-brand-soft bg-brand/10 border-brand/20" },
   "CrowdStrike Blog":        { dot: "bg-rose-600",    badge: "text-rose-300 bg-rose-600/10 border-rose-600/20" },
   "Cisco Talos":             { dot: "bg-sky-500",     badge: "text-sky-400 bg-sky-600/10 border-sky-600/20" },
   "Securelist":              { dot: "bg-emerald-500", badge: "text-emerald-400 bg-emerald-600/10 border-emerald-600/20" },

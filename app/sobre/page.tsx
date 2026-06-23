@@ -55,7 +55,7 @@ export default function SobrePage() {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-canvas" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-1.5 h-1.5 rounded-full bg-red-600" />
+            <div className="w-1.5 h-1.5 rounded-full bg-brand" />
             <span className="text-xs font-semibold text-dim uppercase tracking-widest">Sobre o Projeto</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6 max-w-2xl leading-tight">
@@ -100,7 +100,7 @@ export default function SobrePage() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 mt-6 text-sm font-medium text-body hover:text-white border border-white/10 hover:border-white/20 px-4 py-2.5 rounded-lg transition-all group"
             >
-              <ExternalLink size={13} className="text-red-500" />
+              <ExternalLink size={13} className="text-brand" />
               Ver portfólio completo
               <ArrowRight size={13} className="opacity-0 group-hover:opacity-100 translate-x-0 group-hover:translate-x-0.5 transition-all" />
             </a>
@@ -109,8 +109,8 @@ export default function SobrePage() {
           <div className="space-y-3">
             <div className="bg-raised border border-white/[0.06] rounded-xl p-5">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-red-600/10 border border-red-600/20 flex items-center justify-center">
-                  <Shield size={15} className="text-red-500" />
+                <div className="w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
+                  <Shield size={15} className="text-brand" />
                 </div>
                 <h3 className="text-sm font-bold text-white">Blue Team & Defesa</h3>
               </div>
@@ -121,8 +121,8 @@ export default function SobrePage() {
 
             <div className="bg-raised border border-white/[0.06] rounded-xl p-5">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-red-600/10 border border-red-600/20 flex items-center justify-center">
-                  <Database size={15} className="text-red-500" />
+                <div className="w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center">
+                  <Database size={15} className="text-brand" />
                 </div>
                 <h3 className="text-sm font-bold text-white">Threat Intelligence</h3>
               </div>
@@ -159,11 +159,11 @@ export default function SobrePage() {
               return (
                 <div key={i} className="relative">
                   {i < pipeline.length - 1 && (
-                    <div className="hidden lg:block absolute top-6 left-full w-full h-[1px] bg-gradient-to-r from-red-600/20 to-transparent z-10" />
+                    <div className="hidden lg:block absolute top-6 left-full w-full h-[1px] bg-gradient-to-r from-brand/20 to-transparent z-10" />
                   )}
                   <div className="bg-raised border border-white/[0.06] rounded-xl p-5">
-                    <div className="w-9 h-9 rounded-lg bg-red-600/10 border border-red-600/20 flex items-center justify-center mb-3">
-                      <Icon size={16} className="text-red-500" />
+                    <div className="w-9 h-9 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center mb-3">
+                      <Icon size={16} className="text-brand" />
                     </div>
                     <div className="text-xs font-bold text-dim font-mono mb-1">{String(i + 1).padStart(2, "0")}</div>
                     <h3 className="text-sm font-bold text-white mb-2">{step.label}</h3>
@@ -229,7 +229,7 @@ export default function SobrePage() {
           </p>
           <Link
             href="/threat-briefings"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-sm transition-all"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-brand hover:bg-brand text-white font-bold rounded-lg text-sm transition-all"
           >
             Ver Threat Briefings <ArrowRight size={14} />
           </Link>
