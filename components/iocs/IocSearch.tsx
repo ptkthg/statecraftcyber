@@ -10,6 +10,9 @@ import {
   CheckCircle, XCircle, Info,
 } from "lucide-react";
 import type { EnrichedIoc } from "@/lib/types";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { FilterPill } from "@/components/ui/FilterPill";
+import { Pagination } from "@/components/ui/Pagination";
 
 interface Stats {
   total: number;
@@ -40,16 +43,16 @@ const TYPE_FILTERS = [
 ];
 
 const TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string; bg: string; border: string }> = {
-  ip:     { label: "IP",      icon: Globe,  color: "text-red-400",    bg: "bg-red-600/10",    border: "border-red-600/20" },
+  ip:     { label: "IP",      icon: Globe,  color: "text-brand-soft",    bg: "bg-brand/10",    border: "border-brand/20" },
   domain: { label: "DOM",     icon: Link2,  color: "text-orange-400", bg: "bg-orange-600/10", border: "border-orange-600/20" },
   hash:   { label: "HASH",    icon: Hash,   color: "text-purple-400", bg: "bg-purple-600/10", border: "border-purple-600/20" },
   url:    { label: "URL",     icon: Link2,  color: "text-yellow-400", bg: "bg-yellow-600/10", border: "border-yellow-600/20" },
   email:  { label: "E-MAIL",  icon: Mail,   color: "text-blue-400",   bg: "bg-blue-600/10",   border: "border-blue-600/20" },
-  c2:     { label: "C2",      icon: Shield, color: "text-red-500",    bg: "bg-red-600/15",    border: "border-red-600/25" },
+  c2:     { label: "C2",      icon: Shield, color: "text-brand",    bg: "bg-brand/15",    border: "border-brand/25" },
 };
 
 const SEVERITY_DOT: Record<string, string> = {
-  critical: "bg-red-500",
+  critical: "bg-brand",
   high:     "bg-orange-400",
   medium:   "bg-yellow-400",
   low:      "bg-blue-400",
@@ -203,7 +206,7 @@ function ToastNotice({ toast, onDismiss }: { toast: Toast; onDismiss: () => void
   const icons = { success: CheckCircle, error: XCircle, info: Info };
   const colors = {
     success: "text-green-400 bg-green-600/10 border-green-600/20",
-    error:   "text-red-400 bg-red-600/10 border-red-600/20",
+    error:   "text-brand-soft bg-brand/10 border-brand/20",
     info:    "text-dim bg-white/[0.04] border-white/[0.08]",
   };
   const Icon = icons[toast.type];
@@ -424,10 +427,10 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
     return () => clearTimeout(debounceRef.current);
   }, [query, typeFilter, fetchIocs]);
 
-  const loadMore = () => {
-    const next = page + 1;
-    setPage(next);
-    fetchIocs(query, typeFilter, next, true);
+  const goToPage = (n: number) => {
+    setPage(n);
+    fetchIocs(query, typeFilter, n, false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const clearSearch = () => {
@@ -435,55 +438,48 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
     inputRef.current?.focus();
   };
 
-  const hasMore = results.length < total;
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT));
 
   return (
-    <>
-      <section className="relative py-14 border-b border-white/[0.04] overflow-hidden" aria-labelledby="ioc-heading">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-canvas" aria-hidden />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 mb-4" aria-hidden>
-            <div className="w-1.5 h-1.5 rounded-full bg-red-600 blink" />
-            <span className="text-xs font-semibold text-dim uppercase tracking-widest">
-              Threat Intelligence
-            </span>
-          </div>
-          <h1 id="ioc-heading" className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-3">Busca de IOCs</h1>
-          <p className="text-dim text-base leading-relaxed mb-8 max-w-xl">
-            Cole um endereço IP, domínio, hash ou URL para verificar se aparece em algum briefing de ameaça.
-          </p>
+    <div className="max-w-[1140px] mx-auto px-6 pt-8 pb-16">
+      <PageHeader
+        title={<>Indicadores <span className="text-dim text-lg ml-1 font-sans">IOC</span></>}
+        description="Cole um endereço IP, domínio, hash ou URL para verificar se aparece em algum briefing de ameaça."
+        meta={[
+          { text: "pipeline ativo", live: true },
+          { text: `${initialStats.total.toLocaleString("pt-BR")} indicadores coletados` },
+        ]}
+      />
 
-          <div className="relative max-w-2xl">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-dim" aria-hidden />
-            <label htmlFor="ioc-search" className="sr-only">Buscar IOCs</label>
-            <input
-              id="ioc-search"
-              ref={inputRef}
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="185.220.101.45, update-win32[.]net, a3f7c9d2..."
-              autoComplete="off"
-              className="w-full bg-raised border border-white/[0.10] focus:border-white/20 focus-visible:outline-none rounded-xl pl-10 pr-10 py-3.5 text-sm text-white placeholder-dim transition-colors font-mono"
-            />
-            {query && (
-              <button
-                onClick={clearSearch}
-                aria-label="Limpar busca"
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-dim hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 rounded"
-              >
-                <X size={14} aria-hidden />
-              </button>
-            )}
-          </div>
+      <div>
+        <div className="relative mb-4">
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-dim" aria-hidden />
+          <label htmlFor="ioc-search" className="sr-only">Buscar IOCs</label>
+          <input
+            id="ioc-search"
+            ref={inputRef}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="185.220.101.45, update-win32[.]net, a3f7c9d2..."
+            autoComplete="off"
+            className="w-full rounded-full bg-raised border border-white/[0.05] focus:border-white/15 focus-visible:outline-none pl-11 pr-10 py-3 text-sm text-ink placeholder-dim transition-colors font-mono"
+          />
+          {query && (
+            <button
+              onClick={clearSearch}
+              aria-label="Limpar busca"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-dim hover:text-white transition-colors"
+            >
+              <X size={14} aria-hidden />
+            </button>
+          )}
         </div>
-      </section>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
         <div className="flex flex-wrap items-center gap-4 mb-6" role="status" aria-live="polite" aria-label="Estatísticas de IOCs">
           <div className="flex items-center gap-2 text-xs text-dim">
-            <AlertTriangle size={11} className="text-red-500" aria-hidden />
+            <AlertTriangle size={11} className="text-brand" aria-hidden />
             <span className="font-mono font-bold text-white">{stats.total.toLocaleString("pt-BR")}</span>
             <span>IOCs coletados</span>
           </div>
@@ -506,23 +502,12 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
         </div>
 
         {/* Type filters */}
-        <div className="flex flex-wrap gap-1.5 mb-4" role="group" aria-label="Filtrar por tipo de IOC">
+        <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Filtrar por tipo de IOC">
           {TYPE_FILTERS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setTypeFilter(f.key)}
-              aria-pressed={typeFilter === f.key}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 ${
-                typeFilter === f.key
-                  ? "bg-white/10 border-white/20 text-white font-semibold"
-                  : "bg-raised border-white/[0.06] text-dim hover:text-white hover:border-white/[0.12]"
-              }`}
-            >
+            <FilterPill key={f.key} active={typeFilter === f.key} onClick={() => setTypeFilter(f.key)}>
               {f.label}
-              {f.key && stats.byType[f.key] ? (
-                <span className="ml-1.5 text-[9px] opacity-60">{stats.byType[f.key]}</span>
-              ) : null}
-            </button>
+              {f.key && stats.byType[f.key] ? <span className="ml-1.5 opacity-50">{stats.byType[f.key]}</span> : null}
+            </FilterPill>
           ))}
         </div>
 
@@ -530,7 +515,7 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
         <ExportToolbar query={query} typeFilter={typeFilter} />
 
         {/* Table */}
-        <div className="bg-raised border border-white/[0.06] rounded-xl overflow-hidden" role="region" aria-label="Lista de IOCs">
+        <div className="bg-raised border border-white/[0.05] rounded-[20px] overflow-hidden" role="region" aria-label="Lista de IOCs">
           <div className="hidden sm:flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.02]" role="row" aria-hidden>
             <span className="w-14 text-[9px] font-bold text-dim uppercase tracking-wider">Tipo</span>
             <span className="flex-1 text-[9px] font-bold text-dim uppercase tracking-wider">Indicador</span>
@@ -560,16 +545,12 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
           )}
         </div>
 
-        {hasMore && !loading && (
-          <div className="mt-6 flex items-center justify-center">
-            <button
-              onClick={loadMore}
-              className="px-6 py-2.5 bg-raised border border-white/[0.08] hover:border-white/20 text-sm text-dim hover:text-white rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
-            >
-              Carregar mais ({total - results.length} restantes)
-            </button>
-          </div>
-        )}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPage={(n) => goToPage(n)}
+          className="mt-8"
+        />
 
         {loading && results.length > 0 && (
           <div className="mt-4 text-center text-xs text-dim" aria-live="polite">Carregando...</div>
@@ -580,6 +561,6 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
           a fonte original de cada indicador. Dados atualizados a cada atualização do pipeline.
         </p>
       </div>
-    </>
+    </div>
   );
 }
