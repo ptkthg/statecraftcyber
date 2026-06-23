@@ -1,11 +1,8 @@
 import Link from "next/link";
-import { ArrowRight, ChevronRight, BadgeCheck, Languages, Fingerprint, Crosshair } from "lucide-react";
 import { unstable_cache } from "next/cache";
-import RadarMap from "@/components/radar/RadarMap";
-import BriefingCard from "@/components/threat/BriefingCard";
-import NewsSection from "@/components/news/NewsSection";
+import { BentoCard } from "@/components/ui/BentoCard";
+import { getHomeStats, classifyNewsTitle } from "@/lib/home-stats";
 import { fetchNewsArticles } from "@/lib/news-feeds";
-import type { Briefing } from "@/data/briefings";
 
 const getCachedHomeNews = unstable_cache(
   async () => {
@@ -21,9 +18,9 @@ const getCachedHomeNews = unstable_cache(
         const map = new Map(cached.map((c) => [c.slug, c]));
         return articles
           .map((a) => { const c = map.get(a.slug); return c ? { ...a, title: c.title, summary: c.summary } : a; })
-          .slice(0, 7);
+          .slice(0, 8);
       } catch {
-        return articles.slice(0, 7);
+        return articles.slice(0, 8);
       }
     } catch {
       return [];
@@ -32,54 +29,6 @@ const getCachedHomeNews = unstable_cache(
   ["home-news"],
   { revalidate: 120 }
 );
-
-async function getFeaturedBriefings(): Promise<Briefing[]> {
-  try {
-    const { prisma } = await import("@/lib/prisma");
-    const rows = await prisma.briefing.findMany({
-      where: { status: "published" },
-      orderBy: { createdAt: "desc" },
-      take: 3,
-      select: {
-        id: true, slug: true, title: true, summary: true,
-        severity: true, category: true, tags: true,
-        readingTime: true, createdAt: true, affectedRegions: true,
-      },
-    });
-    return rows.map((b) => ({
-      id: b.id,
-      slug: b.slug,
-      title: b.title,
-      summary: b.summary,
-      severity: b.severity as Briefing["severity"],
-      category: b.category as Briefing["category"],
-      region: (b.affectedRegions[0] ?? "Global") as Briefing["region"],
-      date: b.createdAt.toISOString(),
-      readingTime: b.readingTime,
-      author: "IA Statecraft",
-      tags: b.tags,
-    }));
-  } catch {
-    return [];
-  }
-}
-
-async function getStats() {
-  try {
-    const { prisma } = await import("@/lib/prisma");
-    const [total, latest] = await Promise.all([
-      prisma.briefing.count({ where: { status: "published" } }),
-      prisma.briefing.findFirst({
-        where: { status: "published" },
-        orderBy: { createdAt: "desc" },
-        select: { createdAt: true },
-      }),
-    ]);
-    return { total, latestAt: latest?.createdAt ?? null };
-  } catch {
-    return { total: 0, latestAt: null };
-  }
-}
 
 function formatTimeAgo(date: Date): string {
   const diff = Date.now() - date.getTime();
@@ -91,176 +40,138 @@ function formatTimeAgo(date: Date): string {
 }
 
 export default async function HomePage() {
-  const [featuredBriefings, homeNews, stats] = await Promise.all([
-    getFeaturedBriefings(),
-    getCachedHomeNews(),
-    getStats(),
-  ]);
-
-  const lastUpdate = stats.latestAt ? formatTimeAgo(new Date(stats.latestAt)) : null;
+  const [stats, news] = await Promise.all([getHomeStats(), getCachedHomeNews()]);
+  const alerts = news.filter((n) => classifyNewsTitle(n.title) === "alert").slice(0, 3);
+  const context = news.filter((n) => classifyNewsTitle(n.title) === "context").slice(0, 3);
+  const heroHref = stats.latestBriefingSlug ? `/threat-briefings/${stats.latestBriefingSlug}` : "/threat-briefings";
 
   return (
     <main className="min-h-screen bg-canvas">
-      {/* Hero Section */}
-      <section className="relative min-h-[80vh] overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-canvas via-canvas/80 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-canvas to-transparent" />
+      <div className="mx-auto grid max-w-[1140px] grid-cols-1 gap-4 px-6 pb-24 pt-28 md:grid-cols-2 lg:grid-cols-4">
 
-        <div className="absolute right-0 top-0 bottom-0 w-1/2 hidden md:flex items-center justify-end opacity-40">
-          <div className="w-full max-w-[600px] pr-8">
-            <RadarMap />
+        {/* HERO 2x2 */}
+        <BentoCard className="md:col-span-2 lg:row-span-2 min-h-[330px] justify-end
+          bg-[radial-gradient(ellipse_at_85%_15%,rgba(var(--primary-rgb),0.10),transparent_55%),radial-gradient(rgba(255,255,255,0.028)_1px,transparent_1px)] bg-[length:auto,22px_22px]">
+          {stats.lastRunAt && (
+            <span className="absolute left-6 top-6 flex items-center gap-2 font-mono text-[11.5px] text-body">
+              <span className="h-[7px] w-[7px] rounded-full bg-brand pulse-dot" aria-hidden />
+              atualizado {formatTimeAgo(stats.lastRunAt)}
+            </span>
+          )}
+          <div className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.1em] text-cold">
+            Threat intel global com contexto para o Brasil
           </div>
-        </div>
+          <h1 className="font-display mb-4 text-[27px] font-bold leading-[1.22] tracking-tight text-ink">
+            Briefings de ameaças cibernéticas em português para SOC, GRC e times de segurança.
+          </h1>
+          <Link href={heroHref}
+            className="inline-flex w-fit items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-[13.5px] font-bold text-white transition-colors hover:bg-brand-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30">
+            Ver briefing mais recente →
+          </Link>
+        </BentoCard>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-36 pb-24 w-full">
-          <div className="max-w-2xl">
-            <Link href="/threat-briefings" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-red-600/30 bg-red-950/20 mb-8 hover:border-red-500/50 transition-colors">
-              <div className="w-2 h-2 rounded-full bg-red-600 blink" />
-              <span className="text-xs font-semibold text-red-400 tracking-wider uppercase">
-                Monitoramento contínuo de ameaças
-              </span>
-            </Link>
-
-            <h1
-              className="text-5xl md:text-6xl font-bold tracking-tight text-white leading-tight mb-6"
-            >
-              Inteligência{" "}
-              <span className="text-red-600">Cibernética</span>
-              {" "}para Proteger o Território Digital
-            </h1>
-
-            <p className="text-body text-lg leading-relaxed mb-8 max-w-xl">
-              A Statecraft agrega inteligência de ameaças de fontes abertas globais e entrega
-              briefings operacionais em PT-BR, para que sua equipe saiba o que está acontecendo antes de ser impactada.
-            </p>
-
-            <div className="flex items-center gap-4 flex-wrap">
-              <Link
-                href="/threat-briefings"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-canvas"
-              >
-                Ver Threat Briefings
-                <ArrowRight size={16} />
-              </Link>
-              <Link
-                href="/sobre"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-white/[0.05] hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30 focus:ring-offset-2 focus:ring-offset-canvas"
-              >
-                Sobre a Statecraft
-                <ChevronRight size={16} />
-              </Link>
-            </div>
-
-            {(lastUpdate || stats.total > 0) && (
-              <div className="flex items-center gap-3 mt-6 text-xs font-mono text-dim">
-                {lastUpdate && <span>Último briefing: {lastUpdate}</span>}
-                {lastUpdate && stats.total > 0 && <span className="text-white/20">·</span>}
-                {stats.total > 0 && (
-                  <span>{stats.total} briefing{stats.total !== 1 ? "s" : ""} publicados</span>
-                )}
-              </div>
+        {/* CRÍTICOS 2x2 */}
+        <BentoCard href="/threat-briefings?sev=critical" action="Ver críticos ativos"
+          label="Críticos ativos agora" labelClassName="text-brand-soft" period="últimas 24h"
+          className="md:col-span-2 lg:row-span-2 border-[rgba(var(--primary-rgb),0.3)]
+            bg-[radial-gradient(ellipse_at_top_left,rgba(var(--primary-rgb),0.08),transparent_55%)]">
+          <div className="font-display text-[40px] font-bold leading-none text-ink">
+            {stats.criticalCount}
+            {stats.criticalDelta24h > 0 && (
+              <span className="ml-2 text-[15px] font-semibold text-body">+{stats.criticalDelta24h} nas últimas 24h</span>
             )}
           </div>
-        </div>
-      </section>
-
-      {/* Briefings em Destaque */}
-      <section className="py-20 border-t border-white/[0.04]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <div className="text-xs font-semibold text-dim uppercase tracking-widest mb-2">
-                Inteligência de Ameaças
+          <div className="mt-4">
+            {stats.criticalLatest.map((b) => (
+              <div key={b.slug} className="flex items-baseline justify-between gap-3 border-t border-white/[0.05] py-3">
+                <span className="text-sm font-semibold text-ink">{b.title}</span>
+                <span aria-hidden className="font-mono text-[11px] text-dim">{formatTimeAgo(b.createdAt)}</span>
               </div>
-              <h2 className="text-2xl font-bold tracking-tight text-white">Últimos Threat Briefings</h2>
-            </div>
-            <Link
-              href="/threat-briefings"
-              className="hidden sm:flex items-center gap-1 text-sm text-dim hover:text-white transition-colors"
-            >
-              Ver todos <ArrowRight size={14} />
-            </Link>
+            ))}
+            {stats.criticalLatest.length === 0 && (
+              <p className="py-4 text-sm text-dim">Nenhum briefing crítico nos últimos 7 dias.</p>
+            )}
           </div>
+        </BentoCard>
 
-          {featuredBriefings.length > 0 ? (
-            <div className="grid md:grid-cols-3 gap-4">
-              {featuredBriefings.map((briefing) => (
-                <BriefingCard key={briefing.id} briefing={briefing} variant="featured" />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-dim text-sm">
-              Nenhum briefing publicado ainda.{" "}
-              <Link href="/threat-briefings" className="text-dim hover:text-white transition-colors">
-                Ver todos os briefings
-              </Link>
-            </div>
-          )}
+        {/* MÉTRICAS (4 cards 1x1) — número grande + rótulo, sem microcopy */}
+        <BentoCard href="/threat-briefings" action="Explorar briefings" className="min-h-[150px]">
+          <div className="font-display text-4xl font-bold tracking-tight">{stats.briefingsTotal}</div>
+          <div className="mt-1.5 text-[13px] font-semibold text-ink">briefings publicados</div>
+        </BentoCard>
+        <BentoCard href="/cves" action="Ver CVEs recentes" className="min-h-[150px]">
+          <div className="font-display text-4xl font-bold tracking-tight">{stats.cvesToday}</div>
+          <div className="mt-1.5 text-[13px] font-semibold text-ink">CVEs analisadas hoje</div>
+        </BentoCard>
+        <BentoCard href="/iocs" action="Ver IOCs" className="min-h-[150px]">
+          <div className="font-display text-4xl font-bold tracking-tight">{stats.iocsTotal.toLocaleString("pt-BR")}</div>
+          <div className="mt-1.5 text-[13px] font-semibold text-ink">IOCs ativos</div>
+        </BentoCard>
+        <BentoCard className="min-h-[150px]">
+          <div className="font-display pt-2 text-[22px] font-bold text-cold">● Operacional</div>
+          <div className="mt-1.5 text-[13px] font-semibold text-ink">pipeline de coleta</div>
+        </BentoCard>
 
-          <div className="mt-6 sm:hidden text-center">
-            <Link
-              href="/threat-briefings"
-              className="inline-flex items-center gap-1 text-sm text-dim hover:text-white transition-colors"
-            >
-              Ver todos os briefings <ArrowRight size={14} />
-            </Link>
+        {/* CVEs POR DIA 2x1 */}
+        <BentoCard href="/cves" action="Ver CVEs recentes" label="Vulnerabilidades por dia" period="últimos 7 dias" className="md:col-span-2">
+          <div className="mt-1">
+            {stats.cvesPerDay.map((d, i) => {
+              const max = Math.max(...stats.cvesPerDay.map((x) => x.count), 1);
+              const isPeak = d.count === max && d.count > 0;
+              return (
+                <div key={i} className="flex items-center gap-2.5 py-1 font-mono text-[11px] text-dim">
+                  <b className="w-7 font-medium">{d.day}</b>
+                  <span className="flex-1">
+                    <span className={`block h-2 rounded ${isPeak ? "bg-gradient-to-r from-brand to-[rgba(var(--primary-rgb),0.3)]" : "bg-gradient-to-r from-[rgba(127,163,184,0.85)] to-[rgba(127,163,184,0.25)]"}`}
+                      style={{ width: `${Math.max((d.count / max) * 100, 2)}%` }} />
+                  </span>
+                  {d.count}
+                </div>
+              );
+            })}
           </div>
-        </div>
-      </section>
+        </BentoCard>
 
-      <NewsSection articles={homeNews} />
-
-      {/* O que é a Statecraft */}
-      <section className="py-24 border-t border-white/[0.04]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="text-xs font-semibold text-dim uppercase tracking-widest mb-4">
-                O que fazemos
+        {/* REGIÕES 2x1 — só barras, sem linha-resumo */}
+        <BentoCard href="/threat-briefings" action="Ver análise por região" label="Regiões afetadas" period="últimos 7 dias" className="md:col-span-2">
+          <div className="mt-1">
+            {stats.regions.map((r) => (
+              <div key={r.region} className="grid grid-cols-[80px_1fr_90px] items-center gap-3 border-t border-white/[0.05] py-1.5 text-[12.5px]">
+                <span className="font-semibold text-ink">{r.region}</span>
+                <span className="flex h-2 gap-[3px]">
+                  {r.critical > 0 && <i className="rounded-[3px] bg-brand" style={{ width: `${r.critical * 17}%` }} />}
+                  {r.medium > 0 && <i className="rounded-[3px] bg-yellow-600/80" style={{ width: `${r.medium * 17}%` }} />}
+                  {r.low > 0 && <i className="rounded-[3px] bg-white/[0.18]" style={{ width: `${r.low * 17}%` }} />}
+                </span>
+                <span className="text-right font-mono text-[11px] text-dim">{r.critical}C · {r.medium}M · {r.low}B</span>
               </div>
-              <h2 className="text-3xl font-bold tracking-tight text-white mb-5 leading-snug">
-                Threat intelligence acessível para times de segurança
-              </h2>
-              <p className="text-body text-sm leading-relaxed mb-4">
-                A Statecraft agrega inteligência de ameaças de fontes abertas e especializadas:
-                CISA KEV, OTX AlienVault, NVD e outros feeds globais, organizando tudo em briefings
-                legíveis, com contexto técnico e recomendações acionáveis.
-              </p>
-              <p className="text-body text-sm leading-relaxed mb-6">
-                Cada briefing inclui IOCs, técnicas MITRE ATT&CK, scores de severidade e links diretos
-                para as fontes primárias, para que analistas possam investigar sem perder tempo rastreando
-                fontes manualmente.
-              </p>
-              <Link
-                href="/sobre"
-                className="inline-flex items-center gap-1 text-sm text-dim hover:text-white font-medium transition-colors"
-              >
-                Saiba mais sobre a Statecraft <ArrowRight size={14} />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { icon: BadgeCheck, title: "Fontes verificadas", desc: "CISA KEV, OTX, NVD e feeds globais atualizados continuamente." },
-                { icon: Languages, title: "Briefings em PT-BR", desc: "Conteúdo técnico em português, sem necessidade de tradução manual." },
-                { icon: Fingerprint, title: "IOCs estruturados", desc: "IPs, domínios, hashes e URLs prontos para importar no seu SIEM." },
-                { icon: Crosshair, title: "MITRE ATT&CK", desc: "Técnicas mapeadas para que você saiba exatamente onde defender." },
-              ].map((item, i) => {
-                const Icon = item.icon;
-                return (
-                  <div key={i} className="bg-raised border border-white/[0.04] rounded-xl p-5 hover:bg-overlay transition-colors">
-                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mb-3">
-                      <Icon size={15} className="text-dim" />
-                    </div>
-                    <h3 className="text-sm font-bold text-white mb-1">{item.title}</h3>
-                    <p className="text-xs text-body leading-relaxed">{item.desc}</p>
-                  </div>
-                );
-              })}
-            </div>
+            ))}
+            {stats.regions.length === 0 && <p className="py-3 text-sm text-dim">Sem dados regionais nos últimos 7 dias.</p>}
           </div>
-        </div>
-      </section>
+        </BentoCard>
+
+        {/* ALERTAS OPERACIONAIS 2x1 + NOTÍCIAS 2x1 — só títulos */}
+        <BentoCard href="/noticias?tab=alertas" action="Ver todos os alertas" label="Alertas operacionais" labelClassName="text-brand-soft" period="exigem ação" className="md:col-span-2">
+          <div className="mt-1">
+            {alerts.map((n) => (
+              <div key={n.slug} className="flex gap-3 border-t border-white/[0.05] py-2.5 text-[13.5px]">
+                <span className="flex-1 leading-snug text-body">{n.title} <span aria-hidden className="text-dim">›</span></span>
+              </div>
+            ))}
+            {alerts.length === 0 && <p className="py-3 text-sm text-dim">Nenhum alerta operacional agora.</p>}
+          </div>
+        </BentoCard>
+        <BentoCard href="/noticias?tab=contexto" action="Ver todas as notícias" label="Notícias relevantes" period="contexto" className="md:col-span-2">
+          <div className="mt-1">
+            {context.map((n) => (
+              <div key={n.slug} className="flex gap-3 border-t border-white/[0.05] py-2.5 text-[13.5px]">
+                <span className="flex-1 leading-snug text-body">{n.title} <span aria-hidden className="text-dim">›</span></span>
+              </div>
+            ))}
+            {context.length === 0 && <p className="py-3 text-sm text-dim">Sem notícias no momento.</p>}
+          </div>
+        </BentoCard>
+      </div>
     </main>
   );
 }
