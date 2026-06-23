@@ -353,29 +353,29 @@ export default async function BriefingPage({
               severity={briefing.severity}
             />
 
-            {/* Scores row — always rendered */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+            {/* Scores — card único com colunas divididas */}
+            <div className="mb-4 flex divide-x divide-white/[0.05] rounded-[20px] border border-white/[0.05] bg-raised">
               {briefing.cvssScore && (
-                <div className="bg-raised border border-white/[0.06] rounded-lg p-4 text-center">
-                  <div className="text-xs text-dim uppercase tracking-wider mb-1">CVSS v3</div>
-                  <div className={`text-3xl font-bold ${briefing.cvssScore >= 9 ? "text-brand" : briefing.cvssScore >= 7 ? "text-orange-400" : "text-yellow-400"}`}>
+                <div className="flex-1 px-5 py-4 text-center">
+                  <div className="text-[10px] text-dim uppercase tracking-wider mb-1">CVSS v3</div>
+                  <div className={`font-display text-3xl font-bold leading-none ${briefing.cvssScore >= 9 ? "text-brand" : briefing.cvssScore >= 7 ? "text-orange-400" : "text-yellow-400"}`}>
                     {briefing.cvssScore.toFixed(1)}
                   </div>
-                  <div className="text-xs text-dim mt-1">{cvssLabel(briefing.cvssScore)}</div>
+                  <div className="text-[11px] text-dim mt-1.5">{cvssLabel(briefing.cvssScore)}</div>
                 </div>
               )}
               {briefing.epssScore != null && (
-                <div className="bg-raised border border-white/[0.06] rounded-lg p-4 text-center">
-                  <div className="text-xs text-dim uppercase tracking-wider mb-1">EPSS</div>
-                  <div className={`text-3xl font-bold ${epssColor(briefing.epssScore)}`}>
+                <div className="flex-1 px-5 py-4 text-center">
+                  <div className="text-[10px] text-dim uppercase tracking-wider mb-1">EPSS</div>
+                  <div className="font-display text-3xl font-bold leading-none text-cold">
                     {(briefing.epssScore * 100).toFixed(1)}%
                   </div>
-                  <div className="text-xs text-dim mt-1">{epssLabel(briefing.epssScore)}</div>
+                  <div className="text-[11px] text-dim mt-1.5">{epssLabel(briefing.epssScore)}</div>
                 </div>
               )}
-              <div className={`bg-raised border border-white/[0.06] rounded-lg p-4 text-center ${!briefing.cvssScore && briefing.epssScore == null ? "col-span-2 lg:col-span-3" : ""}`}>
-                <div className="text-xs text-dim uppercase tracking-wider mb-1">Confiança</div>
-                <div className={`text-2xl font-bold ${briefing.confidence === "high" ? "text-green-400" : briefing.confidence === "medium" ? "text-yellow-400" : "text-dim"}`}>
+              <div className="flex-1 px-5 py-4 text-center">
+                <div className="text-[10px] text-dim uppercase tracking-wider mb-1">Confiança</div>
+                <div className={`font-display text-2xl font-bold leading-none mt-1 ${briefing.confidence === "high" ? "text-green-400" : briefing.confidence === "medium" ? "text-yellow-400" : "text-dim"}`}>
                   {CONFIDENCE_LABELS[briefing.confidence]}
                 </div>
               </div>

@@ -58,7 +58,7 @@ export default function SobrePage() {
             <div className="w-1.5 h-1.5 rounded-full bg-brand" />
             <span className="text-xs font-semibold text-dim uppercase tracking-widest">Sobre o Projeto</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6 max-w-2xl leading-tight">
+          <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight text-white mb-6 max-w-2xl leading-tight">
             Threat intelligence<br />em português, em tempo real
           </h1>
           <p className="text-body max-w-2xl text-base leading-relaxed">
@@ -76,7 +76,7 @@ export default function SobrePage() {
         <div className="grid md:grid-cols-2 gap-12 items-start">
           <div>
             <div className="text-xs font-semibold text-dim uppercase tracking-widest mb-4">O Criador</div>
-            <h2 className="text-2xl font-bold tracking-tight text-white mb-5 leading-snug">
+            <h2 className="text-2xl font-display font-bold tracking-tight text-white mb-5 leading-snug">
               Patrick Santos
             </h2>
             <p className="text-sm text-body leading-relaxed mb-3">
@@ -148,7 +148,7 @@ export default function SobrePage() {
         {/* Como a plataforma funciona */}
         <div>
           <div className="text-xs font-semibold text-dim uppercase tracking-widest mb-4">Como Funciona</div>
-          <h2 className="text-2xl font-bold tracking-tight text-white mb-3">Do feed bruto ao briefing acionável</h2>
+          <h2 className="text-2xl font-display font-bold tracking-tight text-white mb-3">Do feed bruto ao briefing acionável</h2>
           <p className="text-sm text-body mb-8 max-w-2xl leading-relaxed">
             A plataforma roda um pipeline automatizado que coleta dados de fontes abertas,
             normaliza e enriquece cada ameaça e publica briefings em português atualizados continuamente.
@@ -178,7 +178,7 @@ export default function SobrePage() {
         {/* Fontes */}
         <div>
           <div className="text-xs font-semibold text-dim uppercase tracking-widest mb-4">Fontes de Dados</div>
-          <h2 className="text-2xl font-bold tracking-tight text-white mb-3">De onde vem a inteligência</h2>
+          <h2 className="text-2xl font-display font-bold tracking-tight text-white mb-3">De onde vem a inteligência</h2>
           <p className="text-sm text-body mb-8 max-w-2xl leading-relaxed">
             Todos os feeds são públicos e de alta credibilidade. Cada briefing referencia sua fonte
             original para rastreabilidade completa: você sempre sabe de onde veio o dado.
@@ -205,7 +205,7 @@ export default function SobrePage() {
         {/* Stack técnica */}
         <div>
           <div className="text-xs font-semibold text-dim uppercase tracking-widest mb-4">Stack Técnica</div>
-          <h2 className="text-2xl font-bold tracking-tight text-white mb-8">Construído com</h2>
+          <h2 className="text-2xl font-display font-bold tracking-tight text-white mb-8">Construído com</h2>
           <div className="flex flex-wrap gap-3">
             {[
               "Next.js 15", "TypeScript", "Tailwind CSS", "PostgreSQL", "Prisma",
@@ -223,7 +223,7 @@ export default function SobrePage() {
 
         {/* CTA */}
         <div className="bg-raised border border-white/[0.06] rounded-2xl p-10 text-center">
-          <h2 className="text-2xl font-bold tracking-tight text-white mb-3">Veja a plataforma em ação</h2>
+          <h2 className="text-2xl font-display font-bold tracking-tight text-white mb-3">Veja a plataforma em ação</h2>
           <p className="text-body text-sm leading-relaxed mb-6 max-w-md mx-auto">
             Briefings de threat intelligence atualizados em tempo real, em português, sem cadastro.
           </p>

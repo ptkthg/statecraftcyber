@@ -63,7 +63,7 @@ function Section({ id, icon: Icon, title, children }: {
         <div className="w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center flex-shrink-0">
           <Icon size={14} className="text-brand" aria-hidden />
         </div>
-        <h2 className="text-xl font-bold tracking-tight text-white">{title}</h2>
+        <h2 className="text-xl font-display font-bold tracking-tight text-white">{title}</h2>
       </div>
       {children}
     </section>
@@ -81,7 +81,7 @@ export default function MetodologiaPage() {
             <ShieldCheck size={14} className="text-brand" aria-hidden />
             <span className="text-xs font-semibold text-dim uppercase tracking-widest">Transparência</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-4 leading-tight">Metodologia</h1>
+          <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight text-white mb-4 leading-tight">Metodologia</h1>
           <p className="text-body text-base leading-relaxed max-w-2xl mb-6">
             Como a Statecraft coleta, processa e apresenta dados de threat intelligence.
             Esta página documenta as fontes, o pipeline de dados, o papel da IA e as limitações do sistema.

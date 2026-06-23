@@ -42,7 +42,7 @@ export default function AdminLoginPage() {
         </div>
 
         <div className="bg-raised border border-white/[0.08] rounded-2xl p-8">
-          <h1 className="text-lg font-bold tracking-tight text-white mb-1">Acesso restrito</h1>
+          <h1 className="text-lg font-display font-bold tracking-tight text-white mb-1">Acesso restrito</h1>
           <p className="text-xs text-dim mb-6">Painel operacional interno.</p>
 
           <form onSubmit={submit} className="space-y-4">

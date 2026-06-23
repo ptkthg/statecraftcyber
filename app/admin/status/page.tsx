@@ -93,7 +93,7 @@ export default async function AdminStatusPage() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <h1 className="text-2xl font-bold tracking-tight text-white mb-1">Status Operacional</h1>
+        <h1 className="text-2xl font-display font-bold tracking-tight text-white mb-1">Status Operacional</h1>
         <p className="text-xs text-body mb-8">
           Dados do banco. Atualizado a cada carregamento.
         </p>
