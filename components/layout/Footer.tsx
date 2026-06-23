@@ -9,14 +9,14 @@ export default function Footer() {
           {/* Brand */}
           <div className="max-w-xs">
             <Link href="/" className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-full border-2 border-red-600 flex items-center justify-center">
-                <div className="w-4 h-4 rounded-full border border-red-600/60 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-600" />
+              <div className="w-8 h-8 rounded-full border-2 border-brand flex items-center justify-center">
+                <div className="w-4 h-4 rounded-full border border-brand/60 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand" />
                 </div>
               </div>
               <div className="leading-none">
-                <div className="text-sm font-black tracking-widest text-white uppercase">
-                  ST<span className="text-red-600">A</span>TECRAFT
+                <div className="font-display text-sm font-bold tracking-widest text-white uppercase">
+                  ST<span className="text-brand">A</span>TECRAFT
                 </div>
                 <div className="text-[9px] font-medium tracking-[0.2em] text-dim uppercase">
                   Cyber Intelligence
