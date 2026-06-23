@@ -12,6 +12,17 @@
 
 ---
 
+## AJUSTES DE DESIGN 2026-06-23 (override — aplicar em TODAS as tasks de UI 5-10)
+
+Feedback do usuário, prevalece sobre o mockup onde conflitar:
+
+1. **Menos pré-informação nos cards.** Mostrar número + título; **cortar os microtextos/resumos descritivos** dos cards (ex.: na home, remover linhas como "{briefingsWeek} novos nesta semana", "{cvesKevToday} com exploração conhecida", "coletados de 19 fontes", `criticalSummary`, e o resumo de regiões). O card atrai o interesse; o clique entrega o conteúdo. Manter footlink + período.
+2. **Texto longo SÓ em Notícias.** Home, briefings (listagem), CVEs, IOCs ficam enxutos — nada de parágrafos. Só `/noticias` pode ter resumo/corpo.
+3. **Visual mais limpo, simples e ainda convidativo.** Menos densidade, mais respiro (espaçamento maior, menos linhas por card).
+4. **Notícias (substitui a estrutura da Task 9 Step 1):** uma página `/noticias` com **abas no topo — "Alertas operacionais" / "Contexto"** (usar `classifyNewsTitle`); dentro de cada aba, notícias **agrupadas por cabeçalhos de data** (dia) e **paginadas** (‹ 1 2 3 ›). Sem o layout 2fr/1fr com sidebar. Aba ativa via query param (`?tab=`/`?page=`), server-rendered.
+
+---
+
 ## Tabela de migração de tokens (usar em TODAS as tasks)
 
 | Antigo | Novo |
