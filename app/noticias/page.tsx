@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { fetchNewsArticles } from "@/lib/news-feeds";
 import NewsExplorer from "@/components/news/NewsExplorer";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 const getCachedNews = unstable_cache(
   async () => {
@@ -32,40 +33,34 @@ export const metadata = {
     "Cobertura jornalística do cenário global de cibersegurança, reescrita em português pela IA Statecraft a partir de 19 fontes especializadas.",
 };
 
-export default async function NoticiasPage() {
-  const initialArticles = await getCachedNews();
+export default async function NoticiasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const [initialArticles, { tab }] = await Promise.all([getCachedNews(), searchParams]);
 
   return (
     <main className="min-h-screen bg-canvas pt-16">
-      {/* Hero */}
-      <section className="relative py-14 border-b border-white/[0.04] overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-canvas" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-1.5 h-1.5 rounded-full bg-red-600 blink" />
-            <span className="text-xs font-semibold text-dim uppercase tracking-widest">Monitoramento Ativo</span>
-          </div>
-          <div>
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-2">Notícias</h1>
-            <p className="text-body text-sm leading-relaxed max-w-xl mb-1">
-              Cobertura jornalística do cenário global de segurança, reescrita em português pela IA Statecraft a partir de 19 fontes especializadas.
-            </p>
-            <p className="text-xs text-dim max-w-xl leading-relaxed">
-              Para análises técnicas com IOCs e recomendações operacionais, veja os{" "}
-              <a href="/threat-briefings" className="text-dim hover:text-white transition-colors">
-                Threat Briefings
-              </a>.
-            </p>
-            {initialArticles.length > 0 && (
-              <p className="text-xs text-dim mt-3">
-                <span className="font-mono font-bold text-dim">{initialArticles.length}</span> artigos monitorados
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
+      <div className="max-w-[1140px] mx-auto px-6 pt-8">
+        <PageHeader
+          title="Notícias"
+          description="Cobertura do cenário global de segurança, reescrita em português pela IA Statecraft a partir de 19 fontes especializadas."
+          meta={
+            initialArticles.length > 0
+              ? [
+                  { text: "monitoramento ativo", live: true },
+                  { text: `${initialArticles.length} artigos monitorados` },
+                ]
+              : undefined
+          }
+        />
+      </div>
 
-      <NewsExplorer initialArticles={initialArticles} />
+      <NewsExplorer
+        initialArticles={initialArticles}
+        initialTab={tab === "contexto" ? "contexto" : "alertas"}
+      />
     </main>
   );
 }

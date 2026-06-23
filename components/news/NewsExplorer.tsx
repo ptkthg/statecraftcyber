@@ -3,9 +3,15 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronRight, Globe, MapPin, Clock, RefreshCw, Newspaper } from "lucide-react";
+import { ChevronRight, Globe, MapPin, RefreshCw, Newspaper } from "lucide-react";
 import type { NewsArticle, ArticleType } from "@/lib/news-feeds";
 import { getSourceColor } from "@/lib/source-colors";
+import { classifyNewsTitle } from "@/lib/home-stats";
+import { FilterPill } from "@/components/ui/FilterPill";
+import { Tag } from "@/components/ui/Tag";
+import { Pagination } from "@/components/ui/Pagination";
+
+const PAGE_SIZE = 16;
 
 const ARTICLE_TYPES: (ArticleType | "")[] = [
   "", "Vulnerabilidade", "Ransomware", "Phishing", "APT",
@@ -41,7 +47,7 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d atrás`;
 }
 
-function ArticleRow({ article }: { article: NewsArticle }) {
+function ArticleRow({ article, alert }: { article: NewsArticle; alert: boolean }) {
   const colors = getSourceColor(article.source);
 
   return (
@@ -49,15 +55,9 @@ function ArticleRow({ article }: { article: NewsArticle }) {
       href={`/noticias/${article.slug}`}
       className="group flex gap-4 p-4 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.015] transition-colors"
     >
-      <div className="relative flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden hidden sm:flex items-center justify-center bg-raised">
+      <div className="relative flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden hidden sm:flex items-center justify-center bg-canvas">
         {article.imageUrl ? (
-          <Image
-            src={article.imageUrl}
-            alt=""
-            fill
-            sizes="80px"
-            className="object-cover"
-          />
+          <Image src={article.imageUrl} alt="" fill sizes="80px" className="object-cover" />
         ) : (
           <Globe size={18} className="text-dim/40" aria-hidden />
         )}
@@ -68,33 +68,23 @@ function ArticleRow({ article }: { article: NewsArticle }) {
             <span className={`w-1 h-1 rounded-full ${colors.dot}`} />
             {article.source.replace("Blog", "").replace("Google ", "").trim()}
           </span>
-          {article.type && (
-            <span className="px-1.5 py-0.5 rounded border text-xs font-medium text-dim bg-white/[0.03] border-white/[0.06]">
-              {article.type}
-            </span>
-          )}
+          {alert && <Tag variant="alert">Alerta operacional</Tag>}
+          {article.type && <Tag variant="plain">{article.type}</Tag>}
           {article.sourceRegion === "Brasil" && (
-            <span className="flex items-center gap-0.5 text-xs text-green-500">
-              <MapPin size={9} />BR
-            </span>
+            <span className="flex items-center gap-0.5 text-xs text-cold"><MapPin size={9} />BR</span>
           )}
-          <span className="flex items-center gap-0.5 text-xs text-dim">
-            <Clock size={9} />{timeAgo(article.publishedAt)}
-          </span>
+          <span className="font-mono text-[11px] text-dim">{timeAgo(article.publishedAt)}</span>
         </div>
-        <h3 className="text-sm font-semibold text-white leading-snug transition-colors line-clamp-2 mb-1.5">
-          {article.title}
-        </h3>
+        <h3 className="text-sm font-semibold text-ink leading-snug line-clamp-2 mb-1.5">{article.title}</h3>
+        {article.summary && (
+          <p className="text-xs text-dim leading-relaxed line-clamp-2 mb-1.5">{article.summary}</p>
+        )}
         <div className="flex flex-wrap gap-1">
           {article.cves.slice(0, 2).map((cve) => (
-            <span key={cve} className="px-1.5 py-0.5 rounded text-xs font-mono font-bold text-red-400 bg-red-600/10 border border-red-600/20">
-              {cve}
-            </span>
+            <span key={cve} className="px-1.5 py-0.5 rounded text-xs font-mono font-bold text-brand-soft bg-[rgba(var(--primary-rgb),0.12)]">{cve}</span>
           ))}
           {article.tags.slice(0, 2).map((tag) => (
-            <span key={tag} className="px-1.5 py-0.5 rounded text-xs text-dim bg-white/[0.04] border border-white/[0.06]">
-              #{tag}
-            </span>
+            <span key={tag} className="px-1.5 py-0.5 rounded text-xs text-dim bg-white/[0.04]">#{tag}</span>
           ))}
         </div>
       </div>
@@ -103,17 +93,17 @@ function ArticleRow({ article }: { article: NewsArticle }) {
   );
 }
 
-function DateGroup({ label, articles }: { label: string; articles: NewsArticle[] }) {
+function DateGroup({ label, articles, alert }: { label: string; articles: NewsArticle[]; alert: boolean }) {
   return (
-    <section className="mb-8">
+    <section className="mb-7">
       <div className="flex items-center gap-3 mb-3">
-        <span className="text-xs font-bold text-dim uppercase tracking-widest">{label}</span>
+        <span className="text-[11px] font-bold text-dim uppercase tracking-widest">{label}</span>
         <div className="h-px flex-1 bg-white/[0.06]" />
-        <span className="text-xs text-dim font-mono">{articles.length}</span>
+        <span className="font-mono text-[11px] text-dim">{articles.length}</span>
       </div>
-      <div className="bg-raised border border-white/[0.06] rounded-xl overflow-hidden">
+      <div className="bg-raised border border-white/[0.05] rounded-[20px] overflow-hidden">
         {articles.map((article) => (
-          <ArticleRow key={article.slug} article={article} />
+          <ArticleRow key={article.slug} article={article} alert={alert} />
         ))}
       </div>
     </section>
@@ -122,13 +112,16 @@ function DateGroup({ label, articles }: { label: string; articles: NewsArticle[]
 
 interface Props {
   initialArticles: NewsArticle[];
+  initialTab?: "alertas" | "contexto";
 }
 
-export default function NewsExplorer({ initialArticles }: Props) {
+export default function NewsExplorer({ initialArticles, initialTab = "alertas" }: Props) {
   const [articles, setArticles] = useState<NewsArticle[]>(initialArticles);
   const [refreshing, setRefreshing] = useState(false);
+  const [tab, setTab] = useState<"alertas" | "contexto">(initialTab);
   const [region, setRegion] = useState<"" | "Brasil" | "Global">("");
   const [articleType, setArticleType] = useState<ArticleType | "">("");
+  const [page, setPage] = useState(1);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -143,17 +136,30 @@ export default function NewsExplorer({ initialArticles }: Props) {
     }
   };
 
+  const isAlert = tab === "alertas";
+
   const filtered = useMemo(() => {
     return articles.filter((a) => {
+      if ((classifyNewsTitle(a.title) === "alert") !== isAlert) return false;
       if (region && a.sourceRegion !== region) return false;
       if (articleType && a.type !== articleType) return false;
       return true;
     });
-  }, [articles, region, articleType]);
+  }, [articles, isAlert, region, articleType]);
+
+  const tabCounts = useMemo(() => {
+    let alert = 0, context = 0;
+    for (const a of articles) classifyNewsTitle(a.title) === "alert" ? alert++ : context++;
+    return { alert, context };
+  }, [articles]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const grouped = useMemo(() => {
     const map = new Map<string, NewsArticle[]>();
-    for (const a of filtered) {
+    for (const a of pageItems) {
       const d = new Date(a.publishedAt);
       d.setHours(0, 0, 0, 0);
       const key = d.toISOString();
@@ -163,90 +169,69 @@ export default function NewsExplorer({ initialArticles }: Props) {
     return [...map.entries()]
       .sort((a, b) => b[0].localeCompare(a[0]))
       .map(([key, arts]) => ({ label: formatDateLabel(key), articles: arts }));
-  }, [filtered]);
+  }, [pageItems]);
 
   const typeCounts = useMemo(() => {
+    const base = articles.filter((a) => (classifyNewsTitle(a.title) === "alert") === isAlert);
     return Object.fromEntries(
-      ARTICLE_TYPES.map((t) => [t, t ? articles.filter((a) => a.type === t).length : articles.length])
+      ARTICLE_TYPES.map((t) => [t, t ? base.filter((a) => a.type === t).length : base.length])
     );
-  }, [articles]);
+  }, [articles, isAlert]);
+
+  const reset = () => setPage(1);
+  const switchTab = (t: "alertas" | "contexto") => { setTab(t); setArticleType(""); setPage(1); };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Filtros */}
-      <div className="flex flex-col gap-4 mb-8">
-        <div>
-          <div className="text-xs font-bold text-dim uppercase tracking-widest mb-2">Tipo</div>
-          <div className="flex flex-wrap gap-1.5">
-            {ARTICLE_TYPES.map((t) => {
-              const count = typeCounts[t] ?? 0;
-              if (t && !count) return null;
-              return (
-                <button
-                  key={t || "all"}
-                  onClick={() => setArticleType(t)}
-                  aria-pressed={articleType === t}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 ${
-                    articleType === t
-                      ? "bg-white/10 border-white/20 text-white font-semibold"
-                      : "bg-raised border-white/[0.06] text-dim hover:text-white hover:border-white/[0.12]"
-                  }`}
-                >
-                  {getTypeLabel(t || "")}
-                  <span className="ml-1.5 text-xs opacity-50">{count}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="text-xs font-bold text-dim uppercase tracking-widest mr-1">Região</div>
-          {(["", "Global", "Brasil"] as const).map((r) => {
-            const count = r
-              ? articles.filter((a) => a.sourceRegion === r).length
-              : articles.length;
-            return (
-              <button
-                key={r || "all-r"}
-                onClick={() => setRegion(r)}
-                aria-pressed={region === r}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 ${
-                  region === r
-                    ? "bg-white/10 border-white/20 text-white font-semibold"
-                    : "bg-raised border-white/[0.06] text-dim hover:text-white hover:border-white/[0.12]"
-                }`}
-              >
-                {r === "Global" && <Globe size={10} />}
-                {r === "Brasil" && <MapPin size={10} />}
-                {r === "" ? "Todas" : r}
-                <span className="text-xs opacity-50">{count}</span>
-              </button>
-            );
-          })}
-
+    <div className="max-w-[1140px] mx-auto px-6 py-8">
+      {/* Abas */}
+      <div className="mb-6 flex items-center gap-1 border-b border-white/[0.06]">
+        {([["alertas", "Alertas operacionais", tabCounts.alert], ["contexto", "Contexto", tabCounts.context]] as const).map(([key, label, count]) => (
           <button
-            onClick={refresh}
-            disabled={refreshing}
-            aria-label={refreshing ? "Atualizando notícias..." : "Atualizar notícias"}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-dim hover:text-white border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all ml-auto focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:opacity-50"
+            key={key}
+            onClick={() => switchTab(key)}
+            aria-pressed={tab === key}
+            className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+              tab === key
+                ? key === "alertas" ? "border-brand text-white" : "border-white text-white"
+                : "border-transparent text-dim hover:text-white"
+            }`}
           >
-            <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} aria-hidden />
-            {refreshing ? "Atualizando..." : "Atualizar"}
+            {label}
+            <span className="ml-1.5 font-mono text-[11px] text-dim">{count}</span>
           </button>
+        ))}
+        <button
+          onClick={refresh}
+          disabled={refreshing}
+          aria-label="Atualizar notícias"
+          className="ml-auto flex items-center gap-1.5 text-xs text-dim hover:text-white transition-colors disabled:opacity-50"
+        >
+          <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} aria-hidden />
+          <span className="hidden sm:inline">{refreshing ? "Atualizando..." : "Atualizar"}</span>
+        </button>
+      </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-dim">
-            <Newspaper size={10} aria-hidden />
-            <span className="font-mono font-bold text-white">{filtered.length}</span>
-            <span>artigos</span>
-          </div>
-        </div>
+      {/* Filtros secundários */}
+      <div className="mb-7 flex flex-wrap items-center gap-2">
+        {ARTICLE_TYPES.map((t) => {
+          const count = typeCounts[t] ?? 0;
+          if (t && !count) return null;
+          return (
+            <FilterPill key={t || "all"} active={articleType === t} onClick={() => { setArticleType(t); reset(); }}>
+              {getTypeLabel(t || "")} <span className="opacity-50">{count}</span>
+            </FilterPill>
+          );
+        })}
+        <span className="mx-1 h-4 w-px bg-white/[0.08]" />
+        {(["", "Global", "Brasil"] as const).map((r) => (
+          <FilterPill key={r || "all-r"} active={region === r} onClick={() => { setRegion(r); reset(); }}>
+            {r === "" ? "Todas regiões" : r}
+          </FilterPill>
+        ))}
       </div>
 
       <div className="relative">
-        {refreshing && (
-          <div className="absolute inset-0 bg-canvas/70 z-10 rounded-xl pointer-events-none" aria-hidden />
-        )}
+        {refreshing && <div className="absolute inset-0 bg-canvas/70 z-10 rounded-xl pointer-events-none" aria-hidden />}
 
         {articles.length === 0 ? (
           <div className="py-24 text-center">
@@ -255,35 +240,27 @@ export default function NewsExplorer({ initialArticles }: Props) {
             <p className="text-xs text-dim max-w-xs mx-auto leading-relaxed">
               As fontes RSS podem estar temporariamente indisponíveis. Tente atualizar em instantes.
             </p>
-            <button
-              onClick={refresh}
-              disabled={refreshing}
-              className="mt-4 flex items-center gap-1.5 px-4 py-2 text-xs text-dim hover:text-white border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all mx-auto"
-            >
-              <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} aria-hidden />
-              Tentar novamente
-            </button>
           </div>
         ) : grouped.length === 0 ? (
           <div className="py-20 text-center">
-            <p className="text-sm text-dim">Nenhuma notícia com esses filtros.</p>
-            <button
-              onClick={() => { setArticleType(""); setRegion(""); }}
-              className="mt-3 text-xs text-dim hover:text-white transition-colors"
-            >
+            <p className="text-sm text-dim">Nenhuma notícia nesta aba com esses filtros.</p>
+            <button onClick={() => { setArticleType(""); setRegion(""); reset(); }} className="mt-3 text-xs text-cold hover:text-white transition-colors">
               Limpar filtros
             </button>
           </div>
         ) : (
           grouped.map(({ label, articles: arts }) => (
-            <DateGroup key={label} label={label} articles={arts} />
+            <DateGroup key={label} label={label} articles={arts} alert={isAlert} />
           ))
         )}
       </div>
 
-      <p className="mt-6 text-center text-xs text-dim leading-relaxed max-w-lg mx-auto">
-        Artigos coletados de RSS feeds e reescritos em PT-BR por IA. Clique para ler a cobertura completa gerada pela Statecraft.
-      </p>
+      <Pagination
+        page={safePage}
+        totalPages={totalPages}
+        onPage={(n) => { setPage(n); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+        className="mt-6"
+      />
     </div>
   );
 }
