@@ -7,7 +7,19 @@ import { filterNewItems, generateContentHash } from "@/lib/deduplication";
 import { normalizeIoc } from "@/lib/threat-intel/normalize-ioc";
 import type { Ioc } from "@/lib/types";
 
-const MAX_HOURLY = parseInt(process.env.MAX_HOURLY_BRIEFINGS ?? "3", 10);
+// Limite de briefings gerados por execução. Cada geração é uma chamada de IA
+// (~7s); no plano Hobby a função tem 60s, então mantemos o lote pequeno e
+// orquestramos o volume diário por múltiplas chamadas (ver GitHub Actions).
+const ENV_MAX = parseInt(process.env.MAX_HOURLY_BRIEFINGS || "", 10);
+const DEFAULT_MAX = Number.isFinite(ENV_MAX) && ENV_MAX > 0 ? ENV_MAX : 4;
+const HARD_CAP = 5; // teto de segurança para não estourar os 60s do Hobby
+
+function resolveMaxHourly(req: NextRequest): number {
+  const q = parseInt(req.nextUrl.searchParams.get("max") ?? "", 10);
+  const wanted = Number.isFinite(q) && q > 0 ? q : DEFAULT_MAX;
+  return Math.max(1, Math.min(wanted, HARD_CAP));
+}
+
 const AUTO_PUBLISH = process.env.AUTO_PUBLISH === "true";
 
 export const maxDuration = 60; // Hobby plan limit
@@ -33,6 +45,7 @@ async function handleCron(req: NextRequest) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
+  const MAX_HOURLY = resolveMaxHourly(req);
   const startedAt = Date.now();
   const runErrors: string[] = [];
   let briefingsCreated = 0;
