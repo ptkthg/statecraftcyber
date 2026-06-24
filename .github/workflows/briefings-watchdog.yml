@@ -1,0 +1,100 @@
+name: Briefings — watchdog (verifica e auto-corrige)
+
+# Roda sozinho a cada 6h. Verifica /api/health (cron.lastRun); se a geração
+# estiver parada, ela mesma dispara o pipeline em lotes pequenos (cabe nos 60s
+# do Hobby). Só abre uma issue se NÃO conseguir recuperar — caso contrário,
+# fecha a issue automaticamente. Cobre os dois modos de falha conhecidos:
+# mismatch de CRON_SECRET (401) e timeout de 60s (504, mitigado pelo ?max).
+on:
+  schedule:
+    - cron: "0 */6 * * *" # a cada 6 horas
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Forçar geração mesmo se estiver fresco"
+        required: false
+        default: "false"
+
+permissions:
+  issues: write
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    env:
+      HEALTH_URL: https://statecraftcyber.vercel.app/api/health
+      CRON_URL: https://statecraftcyber.vercel.app/api/cron/update-briefings
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      STALE_HOURS: "22" # considerar parado se lastRun for mais antigo que isso
+      BATCH: "4" # briefings por chamada (teto da rota é 5 p/ caber nos 60s)
+      ROUNDS: "3" # quantas chamadas em sequência ao auto-corrigir
+      ISSUE_TITLE: "⚠️ Geração de briefings parada (watchdog)"
+    steps:
+      - name: Verificar saúde
+        id: check
+        run: |
+          last=$(curl -sS --max-time 30 "$HEALTH_URL" | jq -r '.cron.lastRun // empty')
+          echo "lastRun=$last"
+          stale=true
+          ageH="?"
+          if [ -n "$last" ]; then
+            now=$(date -u +%s); le=$(date -u -d "$last" +%s); ageH=$(( (now - le) / 3600 ))
+            echo "Idade do último run: ${ageH}h"
+            if [ "$ageH" -lt "$STALE_HOURS" ]; then stale=false; fi
+          else
+            echo "Sem lastRun no health — tratando como parado."
+          fi
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then stale=true; fi
+          echo "stale=$stale" >> "$GITHUB_OUTPUT"
+          echo "ageH=$ageH" >> "$GITHUB_OUTPUT"
+
+      - name: Auto-corrigir (gerar em lotes pequenos)
+        if: steps.check.outputs.stale == 'true'
+        run: |
+          echo "Geração parece parada (idade=${{ steps.check.outputs.ageH }}h). Disparando $ROUNDS rodadas..."
+          for i in $(seq 1 "$ROUNDS"); do
+            echo "── rodada $i/$ROUNDS (max=$BATCH) ──"
+            code=$(curl -sS -o /tmp/r.json -w "%{http_code}" --max-time 90 \
+              -X POST -H "Authorization: Bearer ${CRON_SECRET}" \
+              "${CRON_URL}?max=${BATCH}" || echo "000")
+            echo "HTTP $code"; cat /tmp/r.json 2>/dev/null; echo
+            sleep 5
+          done
+
+      - name: Verificar recuperação
+        id: verify
+        if: steps.check.outputs.stale == 'true'
+        run: |
+          last=$(curl -sS --max-time 30 "$HEALTH_URL" | jq -r '.cron.lastRun // empty')
+          recovered=false
+          if [ -n "$last" ]; then
+            now=$(date -u +%s); le=$(date -u -d "$last" +%s); ageH=$(( (now - le) / 3600 ))
+            echo "lastRun agora: $last (${ageH}h atrás)"
+            if [ "$ageH" -lt 2 ]; then recovered=true; fi
+          fi
+          echo "recovered=$recovered" >> "$GITHUB_OUTPUT"
+          if [ "$recovered" != "true" ]; then echo "::error::Geração ainda parada após auto-correção"; fi
+
+      - name: Abrir/atualizar issue se NÃO recuperou
+        if: steps.check.outputs.stale == 'true' && steps.verify.outputs.recovered != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          body=$'O watchdog detectou a geração de briefings parada e a auto-correção via `/api/cron/update-briefings` não recuperou.\n\nVerifique manualmente:\n- `CRON_SECRET` bate entre Vercel (produção) e o secret do GitHub?\n- O deploy de produção mais recente é posterior à última troca de `CRON_SECRET`? (mudar o secret exige redeploy)\n- Logs da função `/api/cron/update-briefings` no Vercel.\n\nRun: '"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          n=$(gh issue list --repo "${{ github.repository }}" --state open --search "in:title \"$ISSUE_TITLE\"" --json number --jq '.[0].number // empty')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --repo "${{ github.repository }}" --body "$body"
+          else
+            gh issue create --repo "${{ github.repository }}" --title "$ISSUE_TITLE" --body "$body"
+          fi
+
+      - name: Fechar issue se recuperou
+        if: steps.verify.outputs.recovered == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(gh issue list --repo "${{ github.repository }}" --state open --search "in:title \"$ISSUE_TITLE\"" --json number --jq '.[0].number // empty')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --repo "${{ github.repository }}" --body "Recuperado automaticamente pelo watchdog ✅"
+            gh issue close "$n" --repo "${{ github.repository }}"
+          fi
