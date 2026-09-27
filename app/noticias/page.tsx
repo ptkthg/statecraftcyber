@@ -1,27 +1,12 @@
 import { unstable_cache } from "next/cache";
 import { fetchNewsArticles } from "@/lib/news-feeds";
+import { localizeNewsArticles } from "@/lib/news-localization";
 import NewsExplorer from "@/components/news/NewsExplorer";
 import { PageHeader } from "@/components/ui/PageHeader";
 
 const getCachedNews = unstable_cache(
   async () => {
-    const articles = await fetchNewsArticles(3);
-
-    try {
-      const { prisma } = await import("@/lib/prisma");
-      const slugs = articles.map((a) => a.slug);
-      const cached = await prisma.newsCache.findMany({
-        where: { slug: { in: slugs } },
-        select: { slug: true, title: true, summary: true },
-      });
-      const cacheMap = new Map(cached.map((c) => [c.slug, c]));
-      return articles.map((a) => {
-        const c = cacheMap.get(a.slug);
-        return c ? { ...a, title: c.title, summary: c.summary } : a;
-      });
-    } catch {
-      return articles;
-    }
+    return localizeNewsArticles(await fetchNewsArticles(3));
   },
   ["noticias-list"],
   { revalidate: 120 }

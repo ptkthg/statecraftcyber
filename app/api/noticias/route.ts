@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchNewsArticles } from "@/lib/news-feeds";
+import { localizeNewsArticles } from "@/lib/news-localization";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -18,25 +19,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const articles = await fetchNewsArticles(3);
-
-    // Merge PT-BR titles from DB cache (batch query)
-    let merged = articles;
-    try {
-      const { prisma } = await import("@/lib/prisma");
-      const slugs = articles.map((a) => a.slug);
-      const cached: { slug: string; title: string; summary: string }[] = await prisma.newsCache.findMany({
-        where: { slug: { in: slugs } },
-        select: { slug: true, title: true, summary: true },
-      });
-      const cacheMap = new Map(cached.map((c) => [c.slug, c]));
-      merged = articles.map((a) => {
-        const c = cacheMap.get(a.slug);
-        return c ? { ...a, title: c.title, summary: c.summary } : a;
-      });
-    } catch {
-      // DB offline — serve original
-    }
+    const merged = await localizeNewsArticles(await fetchNewsArticles(3));
 
     const bySource: Record<string, number> = {};
     for (const a of merged) {

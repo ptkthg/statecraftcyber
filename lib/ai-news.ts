@@ -1,12 +1,5 @@
-import Groq from "groq-sdk";
 import type { NewsArticle } from "./news-feeds";
-
-let _groq: Groq | null = null;
-function getGroq(): Groq | null {
-  if (!process.env.GROQ_API_KEY) return null;
-  if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-  return _groq;
-}
+import { completeNewsJson } from "./news-ai-client";
 
 export interface EnrichedNews {
   title: string;
@@ -30,10 +23,7 @@ function removeTravessoes(s: string): string {
   return s.replace(/[—–]/g, ",").replace(/\s*,\s*/g, ", ").trim();
 }
 
-async function callGroq(article: NewsArticle): Promise<{ title: string; summary: string; content: string } | null> {
-  const groq = getGroq();
-  if (!groq) return null;
-
+async function generateArticle(article: NewsArticle): Promise<{ title: string; summary: string; content: string } | null> {
   const rawContent = article.content
     ? htmlToText(article.content).slice(0, 4000)
     : "";
@@ -55,18 +45,7 @@ Responda APENAS com um objeto JSON válido, sem texto fora do JSON:
 }`;
 
   try {
-    const res = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      response_format: { type: "json_object" },
-      max_tokens: 2500,
-      temperature: 0.4,
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: userPrompt },
-      ],
-    });
-
-    const raw = res.choices[0]?.message?.content?.trim() ?? "{}";
+    const raw = await completeNewsJson(SYSTEM, userPrompt, 2500) ?? "{}";
     const parsed = JSON.parse(raw) as Record<string, unknown>;
 
     if (!parsed.title || !parsed.summary || !parsed.content) return null;
@@ -119,12 +98,16 @@ export async function getEnrichedArticle(article: NewsArticle): Promise<Enriched
   };
 
   const cached = await getFromCache(article.slug);
-  if (cached) return { ...cached, fromCache: true };
+  if (cached && cached.content.length > 100) return { ...cached, fromCache: true };
 
-  const ai = await callGroq(article);
-  if (!ai) return fallback;
+  const ai = await generateArticle(article);
+  if (!ai) {
+    return cached
+      ? { title: cached.title, summary: cached.summary, content: fallback.content, fromCache: true }
+      : fallback;
+  }
 
-  saveToCache(article.slug, ai, article).catch(() => {});
+  await saveToCache(article.slug, ai, article);
 
   return { ...ai, fromCache: false };
 }

@@ -3,25 +3,13 @@ import { unstable_cache } from "next/cache";
 import { BentoCard } from "@/components/ui/BentoCard";
 import { getHomeStats, classifyNewsTitle } from "@/lib/home-stats";
 import { fetchNewsArticles } from "@/lib/news-feeds";
+import { localizeNewsArticles } from "@/lib/news-localization";
 
 const getCachedHomeNews = unstable_cache(
   async () => {
     try {
       const articles = await fetchNewsArticles(3);
-      try {
-        const { prisma } = await import("@/lib/prisma");
-        const slugs = articles.map((a) => a.slug);
-        const cached = await prisma.newsCache.findMany({
-          where: { slug: { in: slugs } },
-          select: { slug: true, title: true, summary: true },
-        });
-        const map = new Map(cached.map((c) => [c.slug, c]));
-        return articles
-          .map((a) => { const c = map.get(a.slug); return c ? { ...a, title: c.title, summary: c.summary } : a; })
-          .slice(0, 8);
-      } catch {
-        return articles.slice(0, 8);
-      }
+      return (await localizeNewsArticles(articles.slice(0, 8))).slice(0, 8);
     } catch {
       return [];
     }

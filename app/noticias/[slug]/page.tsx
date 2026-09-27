@@ -121,8 +121,8 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
   );
 
   const isAi = enriched.content.length > 100 && enriched.content !== (article.content ?? "");
-  const displayTitle = isAi ? enriched.title : article.title;
-  const displaySummary = isAi ? enriched.summary : article.summary;
+  const displayTitle = enriched.title;
+  const displaySummary = enriched.summary;
 
   // Referência ABNT automática
   const accessDate = formatDateAbnt(new Date().toISOString());
