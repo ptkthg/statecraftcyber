@@ -19,16 +19,26 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const merged = await localizeNewsArticles(await fetchNewsArticles(3));
+    const articles = await fetchNewsArticles(3);
+    const merged = await localizeNewsArticles(articles);
 
     const bySource: Record<string, number> = {};
     for (const a of merged) {
       bySource[a.source] = (bySource[a.source] ?? 0) + 1;
     }
 
+    const headers = new Headers({ "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300" });
+    if (req.nextUrl.searchParams.has("diag")) {
+      headers.set("X-News-AI-Configured", [
+        process.env.GROQ_API_KEY ? "groq" : "",
+        process.env.OPENROUTER_API_KEY ? "openrouter" : "",
+      ].filter(Boolean).join(",") || "none");
+      headers.set("X-News-Translated", String(merged.filter((article, index) => article.title !== articles[index].title).length));
+    }
+
     return NextResponse.json(
       { articles: merged, total: merged.length, bySource },
-      { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300" } }
+      { headers }
     );
   } catch (err) {
     console.error("[API /noticias]", err);
