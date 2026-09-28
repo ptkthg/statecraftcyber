@@ -2,6 +2,7 @@ import type { NewsArticle } from "./news-feeds";
 import { completeNewsJson } from "./news-ai-client";
 
 type Preview = Pick<NewsArticle, "slug" | "title" | "summary">;
+export type NewsLocalizationDiagnostics = { cached?: number; missing?: number; generated?: number; failed?: boolean };
 
 const SYSTEM = "Traduza notícias de cibersegurança para português brasileiro. Preserve nomes próprios, produtos, CVEs, números e o sentido da fonte. Não invente fatos. Responda somente com JSON válido.";
 const BATCH_SIZE = 12;
@@ -39,7 +40,10 @@ async function translateBatch(articles: NewsArticle[]): Promise<Map<string, Prev
 }
 
 /** Translate RSS previews once, then reuse the existing NewsCache rows on every surface. */
-export async function localizeNewsArticles(articles: NewsArticle[]): Promise<NewsArticle[]> {
+export async function localizeNewsArticles(
+  articles: NewsArticle[],
+  diagnostics?: NewsLocalizationDiagnostics,
+): Promise<NewsArticle[]> {
   if (articles.length === 0) return articles;
 
   try {
@@ -48,15 +52,19 @@ export async function localizeNewsArticles(articles: NewsArticle[]): Promise<New
       where: { slug: { in: articles.map((article) => article.slug) } },
       select: { slug: true, title: true, summary: true },
     });
+    if (diagnostics) diagnostics.cached = cached.length;
     const translations = new Map(cached.map((item) => [item.slug, item]));
     const missing = articles.filter((article) =>
       article.sourceRegion !== "Brasil" && !translations.has(article.slug)
     );
+    if (diagnostics) diagnostics.missing = missing.length;
+    if (diagnostics) diagnostics.generated = 0;
 
     // Translate only uncached articles; small batches keep the response bounded.
     for (let i = 0; i < missing.length; i += BATCH_SIZE) {
       const batch = missing.slice(i, i + BATCH_SIZE);
       const translated = await translateBatch(batch);
+      if (diagnostics) diagnostics.generated = (diagnostics.generated ?? 0) + translated.size;
       if (translated.size === 0) continue;
       const rows = batch.flatMap((article) => {
         const preview = translated.get(article.slug);
@@ -81,6 +89,7 @@ export async function localizeNewsArticles(articles: NewsArticle[]): Promise<New
       return preview ? { ...article, title: preview.title, summary: preview.summary } : article;
     });
   } catch (error) {
+    if (diagnostics) diagnostics.failed = true;
     console.error("[News localization]", error);
     return articles;
   }

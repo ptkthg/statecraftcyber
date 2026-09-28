@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchNewsArticles } from "@/lib/news-feeds";
-import { localizeNewsArticles } from "@/lib/news-localization";
+import { localizeNewsArticles, type NewsLocalizationDiagnostics } from "@/lib/news-localization";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const articles = await fetchNewsArticles(3);
-    const merged = await localizeNewsArticles(articles);
+    const diagnostics: NewsLocalizationDiagnostics = {};
+    const merged = await localizeNewsArticles(articles, diagnostics);
 
     const bySource: Record<string, number> = {};
     for (const a of merged) {
@@ -34,6 +35,10 @@ export async function GET(req: NextRequest) {
         process.env.OPENROUTER_API_KEY ? "openrouter" : "",
       ].filter(Boolean).join(",") || "none");
       headers.set("X-News-Translated", String(merged.filter((article, index) => article.title !== articles[index].title).length));
+      headers.set("X-News-Cache-Count", String(diagnostics.cached ?? -1));
+      headers.set("X-News-Missing-Count", String(diagnostics.missing ?? -1));
+      headers.set("X-News-Generated-Count", String(diagnostics.generated ?? -1));
+      headers.set("X-News-Failed", String(!!diagnostics.failed));
     }
 
     return NextResponse.json(
