@@ -1,79 +1,77 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ExternalLink, Search, X, RefreshCw, ShieldAlert } from "lucide-react";
+import { ArrowRight, ArrowUpRight, FilterX, Radar, RefreshCw, Search, ShieldAlert, X } from "lucide-react";
 import type { CveEntry, VulnType } from "@/lib/cves/fetch-cves";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { FilterPill } from "@/components/ui/FilterPill";
-import { Tag } from "@/components/ui/Tag";
 import { Pagination } from "@/components/ui/Pagination";
+import styles from "./cve-explorer.module.css";
 
 interface Props {
   initialCves: CveEntry[];
   initialUpdatedAt: string;
 }
 
-const PAGE_SIZE = 12;
+type Severity = "" | "CRITICAL" | "HIGH" | "MEDIUM";
+type SortMode = "triage" | "epss" | "cvss" | "recent";
 
+const PAGE_SIZE = 12;
 const VULN_TYPES: VulnType[] = [
   "Execução de Código", "Injeção", "Estouro de Buffer", "Autenticação",
   "Exposição de Dados", "Travessia de Caminho", "Negação de Serviço",
   "Escalada de Privilégio", "Criptografia", "Outro",
 ];
-
-const SEV_LABEL: Record<string, string> = {
-  CRITICAL: "Crítico", HIGH: "Alto", MEDIUM: "Médio", LOW: "Baixo",
-};
-
-function cvssColor(score: number | null): string {
-  if (!score) return "text-dim";
-  if (score >= 9) return "text-brand";
-  if (score >= 7) return "text-orange-400";
-  return "text-yellow-400";
-}
+const SEV_ORDER: Record<string, number> = { CRITICAL: 3, HIGH: 2, MEDIUM: 1, LOW: 0 };
 
 function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const h = Math.floor(diff / 3_600_000);
-  if (h < 1) return "< 1h atrás";
-  if (h < 24) return `${h}h atrás`;
-  return `${Math.floor(h / 24)}d atrás`;
+  const diff = Math.max(0, Date.now() - new Date(iso).getTime());
+  const hours = Math.floor(diff / 3_600_000);
+  if (hours < 1) return "há menos de 1h";
+  if (hours < 24) return `há ${hours}h`;
+  return `há ${Math.floor(hours / 24)}d`;
 }
 
-function CveRow({ cve }: { cve: CveEntry }) {
+function sortCves(items: CveEntry[], mode: SortMode): CveEntry[] {
+  return [...items].sort((a, b) => {
+    if (mode === "epss") return (b.epss ?? -1) - (a.epss ?? -1) || (b.cvssScore ?? -1) - (a.cvssScore ?? -1);
+    if (mode === "cvss") return (b.cvssScore ?? -1) - (a.cvssScore ?? -1) || (b.epss ?? -1) - (a.epss ?? -1);
+    if (mode === "recent") return new Date(b.published).getTime() - new Date(a.published).getTime();
+    return Number(b.inCisaKev) - Number(a.inCisaKev)
+      || (SEV_ORDER[b.severity ?? ""] ?? -1) - (SEV_ORDER[a.severity ?? ""] ?? -1)
+      || (b.epss ?? -1) - (a.epss ?? -1)
+      || (b.cvssScore ?? -1) - (a.cvssScore ?? -1);
+  });
+}
+
+function CveRow({ cve, rank }: { cve: CveEntry; rank: number }) {
+  const product = cve.affectedProducts.length
+    ? cve.affectedProducts.slice(0, 2).map((value) => value.replaceAll("_", " ")).join(" · ")
+    : "Produto não informado no NVD";
+
   return (
-    <Link
-      href={`/cves/${cve.id}`}
-      className="group grid grid-cols-[64px_1fr_auto] items-center gap-4 rounded-2xl border border-white/[0.05] bg-raised px-5 py-4 transition-all hover:bg-overlay hover:border-white/10"
-    >
-      {/* CVSS */}
-      <div className="text-center">
-        <div className={`font-display text-[22px] font-bold leading-none ${cvssColor(cve.cvssScore)}`}>
-          {cve.cvssScore?.toFixed(1) ?? "N/A"}
-        </div>
-        <div className="mt-0.5 text-[9px] uppercase tracking-wider text-dim">cvss</div>
+    <Link href={`/cves/${cve.id}`} className={styles.row}>
+      <div className={styles.rowRank} aria-hidden>{String(rank).padStart(2, "0")}</div>
+      <div className={`${styles.rowScore} ${cve.severity === "CRITICAL" ? styles.rowScoreCritical : ""}`}>
+        <strong>{cve.cvssScore?.toFixed(1) ?? "—"}</strong>
+        <span>CVSS {cve.cvssVersion || ""}</span>
       </div>
-
-      {/* Identificação */}
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-mono text-[12.5px] text-cold">{cve.id}</span>
-          {cve.severity && <Tag variant={cve.severity === "CRITICAL" ? "solid" : cve.severity === "LOW" ? "info" : "warn"}>{SEV_LABEL[cve.severity]}</Tag>}
-          {cve.inCisaKev && <Tag variant="alert">CISA KEV</Tag>}
-          <Tag variant="plain">{cve.vulnType}</Tag>
+      <div className={styles.rowMain}>
+        <div className={styles.rowEyebrow}>
+          <span className={styles.rowId}>{cve.id}</span>
+          {cve.inCisaKev && <span className={styles.kevBadge}><ShieldAlert size={11} aria-hidden /> CISA KEV</span>}
         </div>
-        <div className="mt-1 truncate text-[13.5px] font-semibold text-ink">
-          {cve.affectedProducts.length > 0 ? cve.affectedProducts.slice(0, 3).join(", ") : cve.id}
-        </div>
-        <div className="mt-0.5 font-mono text-[11px] text-dim">
-          {cve.epss !== null && <>EPSS {(cve.epss * 100).toFixed(1)}% · </>}
-          publicada {timeAgo(cve.published)}
+        <h3>{product}</h3>
+        <div className={styles.rowMeta}>
+          <span className={styles.typeBadge}>{cve.vulnType}</span>
+          <span>Publicada {timeAgo(cve.published)}</span>
         </div>
       </div>
-
-      {/* Chevron */}
-      <span aria-hidden className="text-dim transition-colors group-hover:text-white">›</span>
+      <div className={styles.rowEpss}>
+        <span>EPSS</span>
+        <strong>{cve.epss == null ? "—" : `${(cve.epss * 100).toFixed(1)}%`}</strong>
+        <small>{cve.epssPercentile == null ? "sem dado" : `percentil ${(cve.epssPercentile * 100).toFixed(0)}`}</small>
+      </div>
+      <span className={styles.rowArrow} aria-hidden><ArrowUpRight size={19} /></span>
     </Link>
   );
 }
@@ -82,142 +80,131 @@ export default function CveExplorer({ initialCves, initialUpdatedAt }: Props) {
   const [cves, setCves] = useState<CveEntry[]>(initialCves);
   const [updatedAt, setUpdatedAt] = useState(initialUpdatedAt);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState(false);
   const [search, setSearch] = useState("");
-  const [severity, setSeverity] = useState<"" | "CRITICAL" | "HIGH" | "MEDIUM">("");
+  const [severity, setSeverity] = useState<Severity>("");
   const [vulnType, setVulnType] = useState<VulnType | "">("");
   const [kevOnly, setKevOnly] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>("triage");
   const [page, setPage] = useState(1);
+
+  const counts = useMemo(() => ({
+    critical: cves.filter((cve) => cve.severity === "CRITICAL").length,
+    high: cves.filter((cve) => cve.severity === "HIGH").length,
+    kev: cves.filter((cve) => cve.inCisaKev).length,
+  }), [cves]);
+
+  const filtered = useMemo(() => sortCves(cves.filter((cve) => {
+    if (severity && cve.severity !== severity) return false;
+    if (vulnType && cve.vulnType !== vulnType) return false;
+    if (kevOnly && !cve.inCisaKev) return false;
+    const query = search.trim().toLocaleLowerCase();
+    if (!query) return true;
+    return cve.id.toLocaleLowerCase().includes(query)
+      || cve.description.toLocaleLowerCase().includes(query)
+      || (cve.ptBrDescription ?? "").toLocaleLowerCase().includes(query)
+      || cve.affectedProducts.some((product) => product.toLocaleLowerCase().includes(query));
+  }), sortMode), [cves, search, severity, vulnType, kevOnly, sortMode]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const hasFilters = Boolean(search || severity || vulnType || kevOnly);
 
   const refresh = async () => {
     setRefreshing(true);
+    setRefreshError(false);
     try {
-      const res = await fetch("/api/cves");
-      if (res.ok) {
-        const data = await res.json() as { cves: CveEntry[]; updatedAt: string };
-        setCves(data.cves);
-        setUpdatedAt(data.updatedAt);
-      }
+      const response = await fetch("/api/cves");
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json() as { cves: CveEntry[]; updatedAt: string };
+      if (!Array.isArray(data.cves) || (data.cves.length === 0 && cves.length > 0)) throw new Error("Coleta vazia");
+      setCves(data.cves);
+      setUpdatedAt(data.updatedAt);
+      setPage(1);
+    } catch {
+      setRefreshError(true);
     } finally {
       setRefreshing(false);
     }
   };
 
-  const filtered = useMemo(() => {
-    return cves.filter((c) => {
-      if (severity && c.severity !== severity) return false;
-      if (vulnType && c.vulnType !== vulnType) return false;
-      if (kevOnly && !c.inCisaKev) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        if (!c.id.toLowerCase().includes(q) && !c.description.toLowerCase().includes(q) &&
-            !c.affectedProducts.some((p) => p.toLowerCase().includes(q))) return false;
-      }
-      return true;
-    });
-  }, [cves, severity, vulnType, kevOnly, search]);
-
-  const counts = useMemo(() => ({
-    CRITICAL: cves.filter((c) => c.severity === "CRITICAL").length,
-    HIGH:     cves.filter((c) => c.severity === "HIGH").length,
-    MEDIUM:   cves.filter((c) => c.severity === "MEDIUM").length,
-    kev:      cves.filter((c) => c.inCisaKev).length,
-  }), [cves]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-  const reset = () => setPage(1);
+  const clearFilters = () => {
+    setSearch("");
+    setSeverity("");
+    setVulnType("");
+    setKevOnly(false);
+    setPage(1);
+  };
 
   return (
-    <div className="max-w-[1140px] mx-auto px-6 pt-8 pb-16">
-      <PageHeader
-        title={<>Vulnerabilidades <span className="text-dim text-lg ml-1 font-sans">CVE</span></>}
-        description="Vulnerabilidades publicadas nos últimos 7 dias com CVSS e EPSS. Entradas com CISA KEV têm exploração ativa confirmada."
-        meta={[
-          { text: "monitoramento ativo", live: true },
-          { text: `${filtered.length} vulnerabilidades · atualizado ${updatedAt ? timeAgo(updatedAt) : "—"}` },
-        ]}
-      />
-
-      {/* Busca + atualizar */}
-      <div className="mb-4 flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-dim" aria-hidden />
-          <label htmlFor="cve-search" className="sr-only">Buscar CVEs</label>
-          <input
-            id="cve-search"
-            type="search"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); reset(); }}
-            placeholder="Buscar por CVE-ID, produto ou palavra-chave..."
-            autoComplete="off"
-            className="w-full rounded-full bg-raised border border-white/[0.05] focus:border-white/15 focus-visible:outline-none pl-11 pr-10 py-2.5 text-sm text-ink placeholder-dim transition-colors"
-          />
-          {search && (
-            <button onClick={() => { setSearch(""); reset(); }} aria-label="Limpar busca" className="absolute right-4 top-1/2 -translate-y-1/2 text-dim hover:text-white">
-              <X size={14} aria-hidden />
-            </button>
-          )}
+    <div className={styles.wrap}>
+      <header className={styles.hero}>
+        <div className={styles.heroTopline}><span><Radar size={15} aria-hidden /> STATECRAFT / RADAR DE VULNERABILIDADES</span><span>Monitoramento · NVD / FIRST / CISA</span></div>
+        <div className={styles.heroContent}>
+          <div>
+            <span className={styles.eyebrow}>Inteligência para priorizar</span>
+            <h1>Vulnerabilidades<span className={styles.heroPeriod}>.</span></h1>
+            <p>Da descoberta à decisão: encontre CVEs recentes, compare os sinais de risco e abra o dossiê técnico de cada uma.</p>
+          </div>
+          <div className={styles.heroCount}><strong>{cves.length}</strong><span>CVEs na janela<br />de monitoramento</span></div>
         </div>
-        <button
-          onClick={refresh}
-          disabled={refreshing}
-          className="flex items-center gap-2 rounded-full border border-white/[0.08] hover:border-white/20 px-4 py-2.5 text-sm text-dim hover:text-white transition-all flex-shrink-0"
-        >
-          <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-          <span className="hidden sm:inline">Atualizar</span>
-        </button>
+        <div className={styles.heroBottom}><span className={styles.liveDot} /> Última coleta {updatedAt ? timeAgo(updatedAt) : "indisponível"}<span className={styles.heroBottomDivider} /> Janela de publicação: 7 dias</div>
+      </header>
+
+      <div className={styles.metricGrid} aria-label="Resumo das vulnerabilidades">
+        <div className={styles.metric}><span>01 / Críticas</span><strong>{counts.critical}</strong><small>Maior severidade técnica</small></div>
+        <div className={styles.metric}><span>02 / Altas</span><strong>{counts.high}</strong><small>Requerem avaliação</small></div>
+        <div className={styles.metric}><span>03 / CISA KEV</span><strong>{counts.kev}</strong><small>Exploração observada</small></div>
+        <div className={styles.metric}><span>04 / Monitoradas</span><strong>{cves.length}</strong><small>Na janela de 7 dias</small></div>
       </div>
 
-      {/* Filtros */}
-      <div className="mb-8 flex flex-wrap items-center gap-2">
-        <FilterPill active={severity === ""} onClick={() => { setSeverity(""); reset(); }}>Todas</FilterPill>
-        <FilterPill active={severity === "CRITICAL"} critical onClick={() => { setSeverity("CRITICAL"); reset(); }}>Crítico ({counts.CRITICAL})</FilterPill>
-        <FilterPill active={severity === "HIGH"} onClick={() => { setSeverity("HIGH"); reset(); }}>Alto ({counts.HIGH})</FilterPill>
-        <FilterPill active={severity === "MEDIUM"} onClick={() => { setSeverity("MEDIUM"); reset(); }}>Médio ({counts.MEDIUM})</FilterPill>
-        <span className="mx-1 h-4 w-px bg-white/[0.08]" />
-        <FilterPill active={kevOnly} critical onClick={() => { setKevOnly(!kevOnly); reset(); }}>
-          <span className="inline-flex items-center gap-1.5"><ShieldAlert size={11} /> Só CISA KEV ({counts.kev})</span>
-        </FilterPill>
-        <select
-          value={vulnType}
-          onChange={(e) => { setVulnType(e.target.value as VulnType | ""); reset(); }}
-          className="rounded-full border border-white/[0.05] bg-raised px-4 py-1.5 text-[12.5px] font-semibold text-dim hover:border-white/15 outline-none cursor-pointer transition-colors"
-        >
-          <option value="">Todos os tipos</option>
-          {VULN_TYPES.filter((t) => cves.some((c) => c.vulnType === t)).map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="text-center py-20 text-dim text-sm">
-          {search || severity || kevOnly ? "Nenhum CVE encontrado com esses filtros." : "Nenhum CVE disponível no momento."}
+      <section className={styles.explorer} aria-labelledby="explorer-title">
+        <div className={styles.explorerHead}>
+          <div><span className={styles.eyebrow}>Explorar registros</span><h2 id="explorer-title">Fila de triagem</h2></div>
+          <p>Use os filtros para encontrar o que afeta seu ambiente.</p>
         </div>
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {pageItems.map((cve) => <CveRow key={cve.id} cve={cve} />)}
+
+        <div className={styles.toolbar}>
+          <div className={styles.searchBox}>
+            <Search size={18} aria-hidden />
+            <label htmlFor="cve-search" className="sr-only">Buscar CVE, produto ou descrição</label>
+            <input id="cve-search" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar CVE, produto ou palavra-chave" autoComplete="off" />
+            {search && <button type="button" onClick={() => { setSearch(""); setPage(1); }} aria-label="Limpar busca"><X size={17} aria-hidden /></button>}
+          </div>
+          <button type="button" onClick={refresh} disabled={refreshing} aria-label="Atualizar vulnerabilidades" className={styles.refreshButton}><RefreshCw size={16} className={refreshing ? "animate-spin" : ""} aria-hidden /> <span>Atualizar</span></button>
         </div>
-      )}
+        {refreshError && <p role="alert" className={styles.refreshError}>Não foi possível atualizar agora. Os resultados anteriores continuam disponíveis.</p>}
 
-      <Pagination
-        page={safePage}
-        totalPages={totalPages}
-        onPage={(n) => { setPage(n); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-        className="mt-8"
-      />
+        <div className={styles.filterArea}>
+          <div className={styles.severityFilters} role="group" aria-label="Filtrar por severidade">
+            {([ ["", "Todas"], ["CRITICAL", `Críticas ${counts.critical}`], ["HIGH", `Altas ${counts.high}`], ["MEDIUM", "Médias"] ] as const).map(([value, label]) => (
+              <button key={value} type="button" aria-pressed={severity === value} className={styles.filterPill} onClick={() => { setSeverity(value); setPage(1); }}>{label}</button>
+            ))}
+          </div>
+          <div className={styles.extraFilters}>
+            <button type="button" aria-pressed={kevOnly} className={styles.kevFilter} onClick={() => { setKevOnly(!kevOnly); setPage(1); }}><ShieldAlert size={14} aria-hidden /> CISA KEV <span>{counts.kev}</span></button>
+            <label className="sr-only" htmlFor="cve-type">Tipo de vulnerabilidade</label>
+            <select id="cve-type" value={vulnType} onChange={(event) => { setVulnType(event.target.value as VulnType | ""); setPage(1); }}>
+              <option value="">Todos os tipos</option>
+              {VULN_TYPES.filter((type) => cves.some((cve) => cve.vulnType === type)).map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </div>
+        </div>
 
-      <div className="mt-8 text-center">
-        <a
-          href="https://nvd.nist.gov/vuln/search"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs text-cold hover:text-white transition-colors"
-        >
-          Base completa no NVD/NIST <ExternalLink size={10} />
-        </a>
-      </div>
+        <div className={styles.resultsHead}>
+          <div><span className={styles.resultCount}>{filtered.length}</span> resultado{filtered.length === 1 ? "" : "s"}{hasFilters && <button type="button" onClick={clearFilters} className={styles.clearButton}><FilterX size={13} aria-hidden /> Limpar filtros</button>}</div>
+          <label>Ordenar por <select value={sortMode} onChange={(event) => { setSortMode(event.target.value as SortMode); setPage(1); }} aria-label="Ordenar vulnerabilidades"><option value="triage">Triagem</option><option value="epss">Maior EPSS</option><option value="cvss">Maior CVSS</option><option value="recent">Mais recentes</option></select></label>
+        </div>
+
+        {filtered.length === 0 ? <div className={styles.emptyState}><Radar size={25} aria-hidden /><h3>{hasFilters ? "Nenhum resultado nesta combinação" : "Nenhuma CVE disponível"}</h3><p>{hasFilters ? "Ajuste os termos ou remova os filtros para ampliar a busca." : "A coleta ainda não retornou vulnerabilidades para esta janela."}</p>{hasFilters && <button type="button" onClick={clearFilters}>Limpar filtros <ArrowRight size={14} aria-hidden /></button>}</div> : <div className={styles.list}>
+          {pageItems.map((cve, index) => <CveRow key={cve.id} cve={cve} rank={(safePage - 1) * PAGE_SIZE + index + 1} />)}
+        </div>}
+
+        <Pagination page={safePage} totalPages={totalPages} onPage={(number) => { setPage(number); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="mt-8" />
+      </section>
+
+      <footer className={styles.footnote}><p>CVSS expressa severidade técnica; EPSS estima a probabilidade de exploração nos 30 dias seguintes à data do score. O catálogo CISA KEV registra vulnerabilidades com exploração observada.</p><a href="https://nvd.nist.gov/vuln/search" target="_blank" rel="noopener noreferrer">Consultar base completa no NVD <ArrowUpRight size={15} aria-hidden /></a></footer>
     </div>
   );
 }

@@ -92,7 +92,7 @@ export default async function HomePage() {
           <div className="font-display text-4xl font-bold tracking-tight">{stats.briefingsTotal}</div>
           <div className="mt-1.5 text-[13px] font-semibold text-ink">briefings publicados</div>
         </BentoCard>
-        <BentoCard href="/cves" action="Ver CVEs recentes" className="min-h-[150px]">
+        <BentoCard href="/cves" action="Abrir radar de CVEs" className="min-h-[150px] border-brand/20 bg-[radial-gradient(ellipse_at_90%_10%,rgba(var(--primary-rgb),0.09),transparent_65%)]">
           <div className="font-display text-4xl font-bold tracking-tight">{stats.cvesToday}</div>
           <div className="mt-1.5 text-[13px] font-semibold text-ink">CVEs analisadas hoje</div>
         </BentoCard>
