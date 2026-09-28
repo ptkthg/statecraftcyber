@@ -65,9 +65,7 @@ describe("news localization", () => {
       .mockResolvedValueOnce(JSON.stringify({ articles: [
         { slug: "first", title: "Primeira", summary: "Resumo um" },
       ] }))
-      .mockResolvedValueOnce(JSON.stringify({ articles: [
-        { slug: "second", title: "Segunda", summary: "Resumo dois" },
-      ] }));
+      .mockResolvedValueOnce(JSON.stringify({ title: "Segunda", summary: "Resumo dois" }));
 
     const result = await localizeNewsArticles([article("first"), article("second")]);
 

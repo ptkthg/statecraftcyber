@@ -33,6 +33,24 @@ export function parseNewsTranslations(raw: string, articles: Preview[]): Map<str
 }
 
 async function translateBatch(articles: NewsArticle[]): Promise<Map<string, Preview>> {
+  if (articles.length === 1) {
+    const article = articles[0];
+    const prompt = `Traduza para português brasileiro o título e o resumo da notícia abaixo. Preserve nomes próprios, produtos, CVEs e números. Não invente fatos. Responda somente com {"title":"...","summary":"..."}.\n\nTítulo: ${article.title}\nResumo: ${article.summary.slice(0, 500)}`;
+    const raw = await completeNewsJson(SYSTEM, prompt, 1000);
+    if (!raw) return new Map();
+    try {
+      const data = JSON.parse(raw) as { title?: unknown; summary?: unknown };
+      if (typeof data.title === "string" && data.title.trim() && typeof data.summary === "string" && data.summary.trim()) {
+        return new Map([[article.slug, {
+          slug: article.slug,
+          title: data.title.trim().slice(0, 200),
+          summary: data.summary.trim().slice(0, 800),
+        }]]);
+      }
+    } catch { /* invalid response */ }
+    return parseNewsTranslations(raw, articles);
+  }
+
   const prompt = `Traduza o título e o resumo de cada notícia para PT-BR. Mantenha os slugs exatamente iguais. Resumos devem ter no máximo 350 caracteres. Não acrescente informação nem traduza nomes de empresas, produtos ou CVEs. Se o texto já estiver em português, apenas preserve-o.\n\nResponda no formato {"articles":[{"slug":"...","title":"...","summary":"..."}]}.\n\n${JSON.stringify(articles.map(({ slug, title, summary }) => ({ slug, title, summary: summary.slice(0, 400) })))}`;
   const raw = await completeNewsJson(SYSTEM, prompt, 3500);
   return raw ? parseNewsTranslations(raw, articles) : new Map();
