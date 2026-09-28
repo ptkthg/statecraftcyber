@@ -5,7 +5,7 @@ import { campaigns } from "@/data/campaigns";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = "https://statecraftcyber.vercel.app";
 
-  const [briefingsResult, newsResult] = await Promise.allSettled([
+  const [briefingsResult, newsResult, cvesResult] = await Promise.allSettled([
     prisma.briefing.findMany({
       where: { status: "published" },
       select: { slug: true, updatedAt: true },
@@ -17,9 +17,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       orderBy: { enrichedAt: "desc" },
       take: 200,
     }),
+    prisma.cveCache.findMany({
+      select: { id: true, lastModified: true },
+      orderBy: { published: "desc" },
+      take: 200,
+    }),
   ]);
   const briefings = briefingsResult.status === "fulfilled" ? briefingsResult.value : [];
   const newsArticles = newsResult.status === "fulfilled" ? newsResult.value : [];
+  const cves = cvesResult.status === "fulfilled" ? cvesResult.value : [];
 
   const staticRoutes = ["/", "/threat-briefings", "/campanhas", "/noticias", "/cves", "/iocs", "/sobre", "/metodologia"].map(
     (r) => ({
@@ -51,5 +57,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticRoutes, ...campaignRoutes, ...briefingRoutes, ...newsRoutes];
+  const cveRoutes = cves.map((cve) => ({
+    url: `${base}/cves/${cve.id}`,
+    lastModified: cve.lastModified,
+    changeFrequency: "weekly" as const,
+    priority: 0.6,
+  }));
+
+  return [...staticRoutes, ...campaignRoutes, ...briefingRoutes, ...newsRoutes, ...cveRoutes];
 }

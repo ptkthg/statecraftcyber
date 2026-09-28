@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
             type: "cve",
             id: r.id,
             title: r.id,
-            href: `/cves?q=${encodeURIComponent(r.id)}`,
+            href: `/cves/${r.id}`,
             meta: r.severity ? r.severity.toUpperCase() : "N/A",
             rank: r.id.toLowerCase() === q.toLowerCase() ? 1 : 0.3,
             isMono: true,

@@ -100,7 +100,7 @@ export default async function CampaignPage({ params }: Props) {
             </Section>
           </div>
           <aside className="space-y-5">
-            {campaign.cves.length > 0 && <Section title="Vulnerabilidades associadas"><ul className="space-y-4">{campaign.cves.map((cve) => <li key={cve.id}><SourceLink href={`https://nvd.nist.gov/vuln/detail/${cve.id}`}>{cve.id}</SourceLink><p className="mt-1 text-xs leading-relaxed text-dim">{cve.context}</p></li>)}</ul></Section>}
+            {campaign.cves.length > 0 && <Section title="Vulnerabilidades associadas"><ul className="space-y-4">{campaign.cves.map((cve) => <li key={cve.id}><Link href={`/cves/${cve.id}`} className="font-mono text-sm text-brand-soft underline decoration-brand/30 underline-offset-4 hover:text-white">{cve.id}</Link><p className="mt-1 text-xs leading-relaxed text-dim">{cve.context}</p></li>)}</ul></Section>}
             <Section title="Ações recomendadas"><ol className="list-inside list-decimal space-y-3 text-sm leading-relaxed text-body">{campaign.actions.map((action) => <li key={action}>{action}</li>)}</ol></Section>
             <Section title="Fontes primárias"><ul className="space-y-4">{campaign.sources.map((source) => <li key={source.url}><SourceLink href={source.url}>{source.name}</SourceLink><p className="mt-1 text-xs text-dim">{source.date}</p></li>)}</ul><p className="mt-5 text-xs text-dim">Revisão editorial: {campaign.reviewedAt.split("-").reverse().join("/")}.</p></Section>
           </aside>

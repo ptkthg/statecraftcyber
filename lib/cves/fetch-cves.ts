@@ -361,10 +361,7 @@ export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; up
   (async () => {
     try {
       const { prisma } = await import("../prisma");
-      // Remove stale entries (older than 8h)
-      await prisma.cveCache.deleteMany({
-        where: { fetchedAt: { lt: new Date(Date.now() - 8 * 3_600_000) } },
-      });
+      // Keep older records so individual CVE links remain available.
       for (const cve of entries) {
         await prisma.cveCache.upsert({
           where: { id: cve.id },

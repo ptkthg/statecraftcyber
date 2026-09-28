@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { ExternalLink, Search, X, RefreshCw, ShieldAlert } from "lucide-react";
 import type { CveEntry, VulnType } from "@/lib/cves/fetch-cves";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -42,10 +43,8 @@ function timeAgo(iso: string): string {
 
 function CveRow({ cve }: { cve: CveEntry }) {
   return (
-    <a
-      href={cve.nvdUrl}
-      target="_blank"
-      rel="noopener noreferrer"
+    <Link
+      href={`/cves/${cve.id}`}
       className="group grid grid-cols-[64px_1fr_auto] items-center gap-4 rounded-2xl border border-white/[0.05] bg-raised px-5 py-4 transition-all hover:bg-overlay hover:border-white/10"
     >
       {/* CVSS */}
@@ -75,7 +74,7 @@ function CveRow({ cve }: { cve: CveEntry }) {
 
       {/* Chevron */}
       <span aria-hidden className="text-dim transition-colors group-hover:text-white">›</span>
-    </a>
+    </Link>
   );
 }
 
