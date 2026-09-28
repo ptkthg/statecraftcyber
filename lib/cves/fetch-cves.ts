@@ -46,7 +46,7 @@ ${JSON.stringify(input)}`;
 
   try {
     const res = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: process.env.GROQ_MODEL ?? "openai/gpt-oss-120b",
       response_format: { type: "json_object" },
       max_tokens: 4000,
       temperature: 0.2,

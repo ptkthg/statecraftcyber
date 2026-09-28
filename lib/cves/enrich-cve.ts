@@ -414,7 +414,7 @@ async function fetchGithubAdvisory(cve: string): Promise<string | null> {
  *   - Failed/slow fetchers return null and are skipped silently
  *
  * Token budget: enriched context adds ~250–450 tokens on average.
- * Groq llama-3.3-70b-versatile context window: 128k tokens — no concern.
+ * Groq GPT-OSS 120B context window: 128k tokens — no concern.
  *
  * @param cve  - CVE identifier, e.g. "CVE-2024-21887"
  * @returns    - CveEnrichment with aggregated context block

@@ -59,4 +59,20 @@ describe("news localization", () => {
       skipDuplicates: true,
     });
   });
+
+  it("retries an article omitted from a partially translated batch", async () => {
+    mocks.completeNewsJson
+      .mockResolvedValueOnce(JSON.stringify({ articles: [
+        { slug: "first", title: "Primeira", summary: "Resumo um" },
+      ] }))
+      .mockResolvedValueOnce(JSON.stringify({ articles: [
+        { slug: "second", title: "Segunda", summary: "Resumo dois" },
+      ] }));
+
+    const result = await localizeNewsArticles([article("first"), article("second")]);
+
+    expect(result.map((item) => item.title)).toEqual(["Primeira", "Segunda"]);
+    expect(mocks.completeNewsJson).toHaveBeenCalledTimes(2);
+    expect(mocks.createMany.mock.calls[0][0].data).toHaveLength(2);
+  });
 });

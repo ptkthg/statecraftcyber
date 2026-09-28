@@ -1,16 +1,12 @@
 import Groq from "groq-sdk";
 
 let groq: Groq | null = null;
-let lastError = "";
-
-export function getLastNewsAiError(): string { return lastError; }
 
 export async function completeNewsJson(
   system: string,
   prompt: string,
   maxTokens: number,
 ): Promise<string | null> {
-  lastError = "";
   if (process.env.GROQ_API_KEY) {
     try {
       groq ??= new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -30,7 +26,6 @@ export async function completeNewsJson(
         return content;
       }
     } catch (error) {
-      lastError = `groq:${(error as { status?: number }).status ?? "invalid"}`;
       console.warn("[News AI] Groq:", (error as Error).message);
     }
   }
@@ -64,7 +59,6 @@ export async function completeNewsJson(
     JSON.parse(content);
     return content;
   } catch (error) {
-    lastError += ` openrouter:${(error as Error).message.match(/HTTP \d+/)?.[0] ?? "invalid"}`;
     console.warn("[News AI] OpenRouter:", (error as Error).message);
     return null;
   }

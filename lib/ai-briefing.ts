@@ -234,7 +234,7 @@ export async function generateAiBriefing(
     if (groq) {
       try {
         const response = await groq.chat.completions.create({
-          model: "llama-3.3-70b-versatile",
+          model: process.env.GROQ_MODEL ?? "openai/gpt-oss-120b",
           max_tokens: 2000,
           temperature: 0.3,
           response_format: { type: "json_object" },
