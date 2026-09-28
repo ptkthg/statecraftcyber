@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchNewsArticles } from "@/lib/news-feeds";
 import { localizeNewsArticles, type NewsLocalizationDiagnostics } from "@/lib/news-localization";
+import { getLastNewsAiError } from "@/lib/news-ai-client";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest) {
       headers.set("X-News-Missing-Count", String(diagnostics.missing ?? -1));
       headers.set("X-News-Generated-Count", String(diagnostics.generated ?? -1));
       headers.set("X-News-Failed", String(!!diagnostics.failed));
+      headers.set("X-News-AI-Error", getLastNewsAiError());
     }
 
     return NextResponse.json(
