@@ -15,7 +15,7 @@ export async function completeNewsJson(
     try {
       groq ??= new Groq({ apiKey: process.env.GROQ_API_KEY });
       const response = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model: process.env.GROQ_NEWS_MODEL ?? "openai/gpt-oss-120b",
         response_format: { type: "json_object" },
         max_tokens: maxTokens,
         temperature: 0.2,
