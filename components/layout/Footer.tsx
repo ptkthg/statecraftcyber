@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Mail, Shield } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -41,6 +40,11 @@ export default function Footer() {
                 <li>
                   <Link href="/noticias" className="text-sm text-dim hover:text-white transition-colors">
                     Notícias
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/campanhas" className="text-sm text-dim hover:text-white transition-colors">
+                    Campanhas
                   </Link>
                 </li>
                 <li>

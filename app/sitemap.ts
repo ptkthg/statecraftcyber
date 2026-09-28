@@ -1,10 +1,11 @@
 import { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
+import { campaigns } from "@/data/campaigns";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = "https://statecraftcyber.vercel.app";
 
-  const [briefings, newsArticles] = await Promise.all([
+  const [briefingsResult, newsResult] = await Promise.allSettled([
     prisma.briefing.findMany({
       where: { status: "published" },
       select: { slug: true, updatedAt: true },
@@ -17,8 +18,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       take: 200,
     }),
   ]);
+  const briefings = briefingsResult.status === "fulfilled" ? briefingsResult.value : [];
+  const newsArticles = newsResult.status === "fulfilled" ? newsResult.value : [];
 
-  const staticRoutes = ["/", "/threat-briefings", "/noticias", "/cves", "/iocs", "/sobre", "/metodologia"].map(
+  const staticRoutes = ["/", "/threat-briefings", "/campanhas", "/noticias", "/cves", "/iocs", "/sobre", "/metodologia"].map(
     (r) => ({
       url: `${base}${r}`,
       lastModified: new Date(),
@@ -41,5 +44,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
-  return [...staticRoutes, ...briefingRoutes, ...newsRoutes];
+  const campaignRoutes = campaigns.map((campaign) => ({
+    url: `${base}/campanhas/${campaign.slug}`,
+    lastModified: new Date(`${campaign.reviewedAt}T12:00:00Z`),
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
+
+  return [...staticRoutes, ...campaignRoutes, ...briefingRoutes, ...newsRoutes];
 }

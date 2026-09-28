@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { label: "Visão geral", href: "/" },
   { label: "Briefings", href: "/threat-briefings" },
+  { label: "Campanhas", href: "/campanhas" },
   { label: "Notícias", href: "/noticias" },
   { label: "Vulnerabilidades", href: "/cves", hint: "CVE" },
   { label: "Indicadores", href: "/iocs", hint: "IOC" },
@@ -63,7 +64,7 @@ export default function Header() {
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden xl:flex items-center gap-1">
             {navItems.map((item) => {
               const active =
                 item.href === "/"
@@ -88,7 +89,7 @@ export default function Header() {
           </nav>
 
           {/* Search */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden xl:flex items-center gap-2">
             <button
               onClick={() => window.dispatchEvent(new Event("open-search"))}
               className="flex items-center gap-2 border border-white/15 rounded-full px-4 py-1.5 text-[13px] font-semibold text-ink hover:bg-overlay transition-colors"
@@ -102,7 +103,7 @@ export default function Header() {
 
           {/* Mobile menu button */}
           <button
-            className="md:hidden text-white p-2"
+            className="xl:hidden text-white p-2"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label={mobileOpen ? "Fechar menu de navegação" : "Abrir menu de navegação"}
             aria-expanded={mobileOpen}
@@ -115,7 +116,7 @@ export default function Header() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div id="mobile-nav" className="md:hidden bg-canvas border-t border-white/5">
+        <div id="mobile-nav" className="xl:hidden bg-canvas border-t border-white/5">
           <div className="px-4 py-4 space-y-1">
             {navItems.map((item) => {
               const active =

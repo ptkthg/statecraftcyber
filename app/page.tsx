@@ -82,6 +82,11 @@ export default async function HomePage() {
           </div>
         </BentoCard>
 
+        <BentoCard href="/campanhas" action="Explorar campanhas" label="Campanhas em acompanhamento" period="análise com fontes" className="md:col-span-2 lg:col-span-4 min-h-[160px] border-brand/20 bg-[radial-gradient(ellipse_at_90%_20%,rgba(var(--primary-rgb),0.08),transparent_55%)]">
+          <p className="max-w-2xl font-display text-xl font-bold text-ink">Da notícia ao contexto: atores, técnicas, indicadores e cronologia em um só lugar.</p>
+          <p className="mt-2 text-sm text-body">Três casos documentados com referências às investigações originais.</p>
+        </BentoCard>
+
         {/* MÉTRICAS (4 cards 1x1) — número grande + rótulo, sem microcopy */}
         <BentoCard href="/threat-briefings" action="Explorar briefings" className="min-h-[150px]">
           <div className="font-display text-4xl font-bold tracking-tight">{stats.briefingsTotal}</div>
