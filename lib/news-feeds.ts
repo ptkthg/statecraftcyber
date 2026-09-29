@@ -38,27 +38,28 @@ export interface FeedConfig {
 export const FEEDS: FeedConfig[] = [
   // ── Threat Research / Vendor Labs ────────────────────────────────────────────
   { name: "Microsoft Security Blog", url: "https://www.microsoft.com/en-us/security/blog/feed/",                  region: "Global" },
-  { name: "Google Mandiant Blog",    url: "https://www.mandiant.com/resources/blog/rss.xml",                      region: "Global" },
+  { name: "Google Threat Intelligence", url: "https://feeds.feedburner.com/threatintelligence/pvexyqv7v0v",      region: "Global" },
   { name: "Palo Alto Unit 42",       url: "https://unit42.paloaltonetworks.com/feed/",                            region: "Global" },
   { name: "CrowdStrike Blog",        url: "https://www.crowdstrike.com/blog/feed/",                               region: "Global" },
-  { name: "Cisco Talos",             url: "https://blog.talosintelligence.com/feeds/posts/default",               region: "Global" },
+  { name: "Cisco Talos",             url: "https://blog.talosintelligence.com/rss/",                               region: "Global" },
   { name: "Securelist",              url: "https://securelist.com/feed/",                                         region: "Global" },
   { name: "Check Point Research",    url: "https://research.checkpoint.com/feed/",                                region: "Global" },
   { name: "Malwarebytes Labs",       url: "https://blog.malwarebytes.com/feed/",                                  region: "Global" },
+  { name: "Cloudflare Security",     url: "https://blog.cloudflare.com/tag/security/rss",                        region: "Global" },
+  { name: "SentinelLabs",            url: "https://www.sentinelone.com/labs/feed/",                                region: "Global" },
+  { name: "Elastic Security Labs",   url: "https://www.elastic.co/security-labs/rss.xml",                         region: "Global" },
   // ── Notícias gerais de segurança ─────────────────────────────────────────────
   { name: "The Hacker News",         url: "https://feeds.feedburner.com/TheHackersNews",                          region: "Global" },
   { name: "BleepingComputer",        url: "https://www.bleepingcomputer.com/feed/",                               region: "Global" },
   { name: "Krebs on Security",       url: "https://krebsonsecurity.com/feed/",                                    region: "Global" },
   { name: "Dark Reading",            url: "https://www.darkreading.com/rss.xml",                                  region: "Global" },
   // ── Governo / CERT ───────────────────────────────────────────────────────────
-  { name: "CISA Alerts",             url: "https://www.cisa.gov/uscert/ncas/alerts.xml",                          region: "Global" },
+  { name: "CISA Advisories",         url: "https://www.cisa.gov/cybersecurity-advisories/all.xml",                region: "Global" },
   { name: "SANS ISC",                url: "https://isc.sans.edu/rssfeed.xml",                                     region: "Global" },
   { name: "CERT.br",                 url: "https://www.cert.br/rss/certbr-rss.xml",                               region: "Brasil" },
-  { name: "CTIR Gov",                url: "https://www.gov.br/ctir/pt-br/assuntos/alertas/RSS",                   region: "Brasil" },
   // ── Brasil ───────────────────────────────────────────────────────────────────
-  { name: "Tempest Security",        url: "https://www.tempest.com.br/feed/",                                     region: "Brasil" },
   { name: "TI Safe",                 url: "https://www.tisafe.com/blog/feed/",                                    region: "Brasil" },
-  { name: "ANPD",                    url: "https://www.gov.br/anpd/pt-br/RSS",                                    region: "Brasil" },
+  { name: "WeLiveSecurity Brasil",   url: "https://www.welivesecurity.com/pt/rss/feed",                           region: "Brasil" },
 ];
 
 type RssItem = {
@@ -163,7 +164,7 @@ function scoreImportance(title: string, cves: string[], region: "Brasil" | "Glob
 }
 
 const OFFICIAL_ALERT_SOURCES = new Set([
-  "CERT.br", "CTIR Gov", "CISA Alerts", "SANS ISC", "ANPD",
+  "CERT.br", "CISA Advisories", "SANS ISC",
 ]);
 
 export function classifyType(title: string, cves: string[], source: string): ArticleType {

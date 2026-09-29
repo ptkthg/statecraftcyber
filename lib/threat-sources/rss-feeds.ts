@@ -18,8 +18,8 @@ const FEEDS: FeedConfig[] = [
     defaultSectors: ["Corporativo", "Identidade", "Nuvem"],
   },
   {
-    name: "Google Mandiant Blog",
-    url: "https://www.mandiant.com/resources/blog/rss.xml",
+    name: "Google Threat Intelligence",
+    url: "https://feeds.feedburner.com/threatintelligence/pvexyqv7v0v",
     defaultRegions: ["Global"],
     defaultSectors: ["Corporativo", "Governo", "Infraestrutura Crítica"],
   },
@@ -42,10 +42,22 @@ const FEEDS: FeedConfig[] = [
     defaultSectors: ["Geral", "PME", "Governo Brasileiro"],
   },
   {
-    name: "CTIR Gov",
-    url: "https://www.gov.br/ctir/pt-br/assuntos/alertas/RSS",
+    name: "SentinelLabs",
+    url: "https://www.sentinelone.com/labs/feed/",
+    defaultRegions: ["Global"],
+    defaultSectors: ["Corporativo", "Governo", "Endpoint"],
+  },
+  {
+    name: "Elastic Security Labs",
+    url: "https://www.elastic.co/security-labs/rss.xml",
+    defaultRegions: ["Global"],
+    defaultSectors: ["Corporativo", "Endpoint"],
+  },
+  {
+    name: "WeLiveSecurity Brasil",
+    url: "https://www.welivesecurity.com/pt/rss/feed",
     defaultRegions: ["Brasil"],
-    defaultSectors: ["Governo Brasileiro", "Infraestrutura Crítica"],
+    defaultSectors: ["Corporativo", "PME"],
   },
 ];
 

@@ -15,7 +15,7 @@ const getCachedNews = unstable_cache(
 export const metadata = {
   title: "Notícias | Statecraft Cyber Intelligence",
   description:
-    "Cobertura jornalística do cenário global de cibersegurança, reescrita em português pela IA Statecraft a partir de 19 fontes especializadas.",
+    "Cobertura jornalística do cenário global de cibersegurança, reescrita em português pela IA Statecraft a partir de 20 fontes especializadas.",
 };
 
 export default async function NoticiasPage({
@@ -30,7 +30,7 @@ export default async function NoticiasPage({
       <div className="max-w-[1140px] mx-auto px-6 pt-8">
         <PageHeader
           title="Notícias"
-          description="Cobertura do cenário global de segurança, reescrita em português pela IA Statecraft a partir de 19 fontes especializadas."
+          description="Cobertura do cenário global de segurança, reescrita em português pela IA Statecraft a partir de 20 fontes especializadas."
           meta={
             initialArticles.length > 0
               ? [

@@ -10,7 +10,7 @@ Plataforma de threat intelligence em português construída do zero como projeto
 
 - **Threat Briefings** — fichas técnicas geradas por IA (Groq / LLaMA 3.3 70B) a cada hora, com severidade, IOCs, CVEs e recomendações diretas para o Blue Team
 - **CVEs** — vulnerabilidades das últimas 72h com CVSS, EPSS, CISA KEV e classificação por tipo (Execução de Código, Injeção, Estouro de Buffer etc.)
-- **Notícias** — 19 feeds RSS de fontes globais (CISA, Krebs, The Hacker News, CERT.br, SANS ISC e outras), classificadas por tipo de ameaça e região. Quando o usuário abre um artigo, a IA Statecraft enriquece o conteúdo sob demanda, gerando uma matéria jornalística completa em PT-BR. O resultado é cacheado em `NewsCache` para servir leituras subsequentes sem nova chamada ao LLM
+- **Notícias** — 20 feeds RSS de fontes internacionais e brasileiras (CISA, Krebs, Google Threat Intelligence, CERT.br, WeLiveSecurity Brasil e outras), classificadas por tipo de ameaça e região. Quando o usuário abre um artigo, a IA Statecraft enriquece o conteúdo sob demanda, gerando uma matéria jornalística completa em PT-BR. O resultado é cacheado em `NewsCache` para servir leituras subsequentes sem nova chamada ao LLM
 - **IOC Search** — busca de indicadores de comprometimento extraídos dos briefings, com suporte a IP, domínio, hash, URL e e-mail
 - **Health Endpoint** — `/api/health` para monitoramento de disponibilidade e integridade do banco
 - **Sobre** — contexto técnico da plataforma e do pipeline de dados
@@ -26,7 +26,7 @@ Plataforma de threat intelligence em português construída do zero como projeto
 | IA | Groq API (LLaMA 3.3 70B) |
 | Sanitização | isomorphic-dompurify + marked |
 | Fontes de ameaça | NVD API, CISA KEV, OTX AlienVault, EPSS (FIRST.org) |
-| Feeds de notícias | 19 fontes RSS globais |
+| Feeds de notícias | 20 fontes RSS internacionais e brasileiras |
 | Deploy | Vercel (app) + cron-job.org (scheduler horário externo, plano Hobby) |
 
 ---
@@ -154,7 +154,7 @@ npx prisma migrate reset
 | CISA KEV | Vulnerabilidades exploradas | `www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json` |
 | EPSS (FIRST.org) | Score de exploração | `api.first.org/data/v1/epss` |
 | AlienVault OTX | IOCs e pulsos | `otx.alienvault.com/api/v1` |
-| 19x RSS feeds | Notícias | CISA, Krebs on Security, The Hacker News, CERT.br, SANS ISC, Bleeping Computer e outros |
+| 20x RSS feeds | Notícias | CISA, Google Threat Intelligence, Cisco Talos, CERT.br, Elastic Security Labs e outros |
 
 ---
 

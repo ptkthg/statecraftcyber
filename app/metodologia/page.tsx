@@ -16,7 +16,7 @@ const SOURCES = [
   { name: "CISA KEV",          type: "Exploits conhecidos",       detail: "Known Exploited Vulnerabilities Catalog" },
   { name: "EPSS (FIRST.org)",  type: "Score de exploração",       detail: "Probabilidade de exploração em 30 dias" },
   { name: "AlienVault OTX",    type: "IOCs e pulsos",             detail: "Open Threat Exchange — feeds de indicadores" },
-  { name: "19× RSS feeds",     type: "Notícias",                  detail: "CISA, Krebs, The Hacker News, CERT.br, SANS ISC, Bleeping Computer e outros" },
+  { name: "20× RSS feeds",     type: "Notícias",                  detail: "CISA, Google Threat Intelligence, Cisco Talos, CERT.br, Elastic Security Labs e outros" },
 ];
 
 const PIPELINE = [
