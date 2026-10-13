@@ -18,9 +18,6 @@ export function useSearch(query: string): UseSearchReturn {
 
   useEffect(() => {
     if (query.length < 2) {
-      setResults([]);
-      setTotal(0);
-      setError(null);
       return;
     }
 
@@ -53,5 +50,5 @@ export function useSearch(query: string): UseSearchReturn {
     };
   }, [query]);
 
-  return { results, total, loading, error };
+  return query.length < 2 ? { results: [], total: 0, loading: false, error: null } : { results, total, loading, error };
 }

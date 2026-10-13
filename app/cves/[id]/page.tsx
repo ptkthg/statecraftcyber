@@ -63,10 +63,10 @@ export default async function CveDetailPage({ params }: Props) {
   const cve = await getCveDetail(id);
 
   if (!cve) return (
-    <main className="min-h-screen bg-canvas pt-16">
+    <main className="article-page min-h-screen bg-canvas pt-16">
       <div className="mx-auto max-w-[1180px] px-5 py-16 sm:px-8">
         <Link href="/cves" className={styles.backLink}><ArrowLeft size={15} aria-hidden /> Voltar às vulnerabilidades</Link>
-        <div className={`${styles.hero} mt-7 p-8 md:p-12`}>
+        <div className={`${styles.hero} cve-editorial-hero mt-7 p-8 md:p-12`}>
           <span className={styles.eyebrow}>Registro indisponível</span>
           <h1 className="mt-3 font-display text-3xl font-bold text-ink">{id}</h1>
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-body">Ainda não foi possível consultar os detalhes desta CVE. Tente novamente mais tarde ou consulte o registro original.</p>
@@ -92,7 +92,7 @@ export default async function CveDetailPage({ params }: Props) {
     : cve.vulnType !== "Outro" ? cve.vulnType : "Ficha técnica de vulnerabilidade";
 
   return (
-    <main className="min-h-screen bg-canvas pb-24 pt-16">
+    <main className="article-page min-h-screen bg-canvas pb-24 pt-16">
       <div className="mx-auto max-w-[1180px] px-5 pt-8 sm:px-8">
         <nav aria-label="Navegação da ficha" className="mb-6 flex flex-wrap items-center gap-2 font-mono text-[11px] text-dim">
           <Link href="/cves" className={styles.backLink}><ArrowLeft size={14} aria-hidden /> Vulnerabilidades</Link>
@@ -100,7 +100,7 @@ export default async function CveDetailPage({ params }: Props) {
           <span className="text-ink">{id}</span>
         </nav>
 
-        <header className={styles.hero}>
+        <header className={`${styles.hero} cve-editorial-hero`}>
           <div className={styles.heroTopline}>
             <div className="flex items-center gap-2"><Radar size={15} aria-hidden /><span>Statecraft / Dossiê técnico</span></div>
             <span className="hidden sm:inline">Registro de vulnerabilidade</span>

@@ -10,7 +10,6 @@ import {
   CheckCircle, XCircle, Info,
 } from "lucide-react";
 import type { EnrichedIoc } from "@/lib/types";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { Pagination } from "@/components/ui/Pagination";
 
@@ -442,15 +441,6 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
 
   return (
     <div className="max-w-[1140px] mx-auto px-6 pt-8 pb-16">
-      <PageHeader
-        title={<>Indicadores <span className="text-dim text-lg ml-1 font-sans">IOC</span></>}
-        description="Cole um endereço IP, domínio, hash ou URL para verificar se aparece em algum briefing de ameaça."
-        meta={[
-          { text: "pipeline ativo", live: true },
-          { text: `${initialStats.total.toLocaleString("pt-BR")} indicadores coletados` },
-        ]}
-      />
-
       <div>
         <div className="relative mb-4">
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-dim" aria-hidden />

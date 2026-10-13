@@ -1,11 +1,20 @@
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/PageHeader";
+import EditorialHero from "@/components/editorial/EditorialHero";
 import BriefingExplorer, { type BriefingItem } from "@/components/threat/BriefingExplorer";
 import type { Ioc, LiveIoc } from "@/lib/types";
+import { getLivePreview } from "@/lib/live-preview";
 
 export const revalidate = 300; // revalida a cada 5 min
 
 async function getBriefings(): Promise<{ briefings: BriefingItem[]; trending: BriefingItem[]; latestIocs: LiveIoc[] }> {
+  const preview = await getLivePreview();
+  if (preview) {
+    const briefings: BriefingItem[] = preview.briefings.briefings.map((item) => ({
+      ...item,
+      iocs: preview.iocs.filter((ioc) => ioc.briefingSlug === item.slug),
+    }));
+    return { briefings, trending: briefings.filter((item) => ["critical", "high"].includes(item.severity)).slice(0, 5), latestIocs: preview.briefings.latestIocs };
+  }
   try {
     const rows = await prisma.briefing.findMany({
       where: { status: "published" },
@@ -59,21 +68,9 @@ export default async function ThreatBriefingsPage({
   const criticalCount = briefings.filter((b) => b.severity === "critical").length;
 
   return (
-    <main className="min-h-screen bg-canvas pt-16">
-      <div className="max-w-[1140px] mx-auto px-6 pt-8">
-        <PageHeader
-          title="Threat Briefings"
-          description="Análises operacionais de ameaças ativas com severidade, IOCs e recomendações diretas para o Blue Team."
-          meta={
-            briefings.length > 0
-              ? [
-                  { text: "pipeline ativo · execução horária", live: true },
-                  { text: `${briefings.length} publicados · ${criticalCount} críticos` },
-                ]
-              : undefined
-          }
-        />
-      </div>
+    <main className="editorial-page page-shell">
+      <EditorialHero eyebrow="INTELIGÊNCIA OPERACIONAL" title="Threat Briefings." subtitle={<>Ameaças em contexto.<br />Decisões com base em evidência.</>} description="Briefings de cibersegurança com foco no Brasil e na América Latina, análises operacionais, indicadores técnicos e implicações para governos, empresas e setores estratégicos." image="congresso" imageAlt="Congresso Nacional, fotografia histórica do Acervo Arquivo Nacional" labels={["AMEAÇAS", "INFRAESTRUTURA", "GEOPOLÍTICA", "BRASIL"]} />
+      <div className="section-heading"><h2>ARQUIVO DE BRIEFINGS</h2><span>{briefings.length} PUBLICADOS · {criticalCount} CRÍTICOS</span></div>
 
       <BriefingExplorer
         initialBriefings={briefings}

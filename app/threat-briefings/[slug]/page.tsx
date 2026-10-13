@@ -16,6 +16,8 @@ import { ConfidenceBlock } from "@/components/briefing/ConfidenceBlock";
 import { RichText } from "@/components/briefing/RichText";
 import { CopyButton } from "@/components/briefing/CopyButton";
 import { MITRE_NAMES } from "@/lib/mitre-names";
+import { getLivePreview } from "@/lib/live-preview";
+import PreviewDetail from "@/components/editorial/PreviewDetail";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -97,13 +99,6 @@ function epssLabel(score: number): string {
   return "Risco baixo";
 }
 
-function epssColor(score: number): string {
-  if (score >= 0.7) return "text-brand";
-  if (score >= 0.4) return "text-orange-400";
-  if (score >= 0.1) return "text-yellow-400";
-  return "text-[#888]";
-}
-
 // ── Data fetching ─────────────────────────────────────────────────────────
 
 async function getBriefing(slug: string): Promise<Briefing | null> {
@@ -132,6 +127,11 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const preview = await getLivePreview();
+  if (preview) {
+    const item = preview.briefings.briefings.find((briefing) => briefing.slug === slug);
+    return item ? { title: item.title, description: item.summary.slice(0, 160) } : { title: "Briefing não encontrado" };
+  }
   const briefing = await getBriefing(slug);
   if (!briefing) return { title: "Briefing não encontrado" };
 
@@ -226,6 +226,16 @@ export default async function BriefingPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const preview = await getLivePreview();
+  if (preview) {
+    const item = preview.briefings.briefings.find((briefing) => briefing.slug === slug);
+    if (!item) notFound();
+    const iocs = preview.iocs.filter((ioc) => ioc.briefingSlug === slug);
+    return <PreviewDetail section="Briefings" backHref="/threat-briefings" title={item.title} summary={item.summary} category={item.category} date={item.createdAt} source={item.sourceName} sourceUrl={item.sourceUrl} fullUrl={`${preview.origin}/threat-briefings/${slug}`} capturedAt={preview.capturedAt} image="/editorial/datacenter-ache.webp" imageAlt="Racks de servidores, imagem editorial ilustrativa">
+      {item.cves.length > 0 && <section><h2>CVEs relacionadas</h2><ul>{item.cves.map((cve) => <li key={cve}><code>{cve}</code></li>)}</ul></section>}
+      {iocs.length > 0 && <section><h2>Indicadores relacionados</h2><ul>{iocs.slice(0, 30).map((ioc, index) => <li key={`${ioc.value}-${index}`}><span>{ioc.type}</span><code>{ioc.value}</code></li>)}</ul></section>}
+    </PreviewDetail>;
+  }
   const briefing = await getBriefing(slug);
 
   if (!briefing) notFound();
@@ -242,7 +252,7 @@ export default async function BriefingPage({
   const confidenceReason = sc?.confidenceReason ?? null;
 
   return (
-    <main className="min-h-screen bg-canvas pt-16">
+    <main className="article-page min-h-screen bg-canvas pt-16">
       {/* Breadcrumb */}
       <div className="border-b border-white/[0.04]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-xs text-dim">

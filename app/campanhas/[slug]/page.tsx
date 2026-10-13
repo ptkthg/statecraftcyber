@@ -61,7 +61,7 @@ export default async function CampaignPage({ params }: Props) {
   const related = await getRelatedCoverage(slug);
 
   return (
-    <main className="min-h-screen bg-canvas pt-16">
+    <main className="article-page min-h-screen bg-canvas pt-16">
       <div className="mx-auto max-w-[1140px] px-6 pb-24 pt-9">
         <Link href="/campanhas" className="mb-7 inline-flex items-center gap-2 text-sm text-dim hover:text-white"><ArrowLeft size={15} aria-hidden /> Todas as campanhas</Link>
         <div className="mb-8 border-b border-white/[0.08] pb-8">

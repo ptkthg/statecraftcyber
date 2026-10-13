@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import type { Ioc, EnrichedIoc } from "@/lib/types";
 import IocSearch from "@/components/iocs/IocSearch";
+import EditorialHero from "@/components/editorial/EditorialHero";
+import { getLivePreview, filterPreviewIocs } from "@/lib/live-preview";
 
 export const revalidate = 120;
 
@@ -15,6 +17,11 @@ interface Stats {
 }
 
 async function fetchInitialIocs(): Promise<{ results: EnrichedIoc[]; total: number; stats: Stats }> {
+  const preview = await getLivePreview();
+  if (preview) {
+    const { stats } = filterPreviewIocs(preview.iocs, "", "");
+    return { results: preview.iocs.slice(0, 25), total: preview.iocs.length, stats };
+  }
   try {
     const { prisma } = await import("@/lib/prisma");
 
@@ -97,7 +104,9 @@ export default async function IocPage() {
   const { results, total, stats } = await fetchInitialIocs();
 
   return (
-    <main className="min-h-screen bg-canvas pt-16">
+    <main className="editorial-page page-shell ioc-editorial-page">
+      <EditorialHero eyebrow="INDICADORES / CONSULTA TÉCNICA" title={<>Indicadores<br />em contexto.</>} subtitle="Evidência para investigar." description="Consulte IPs, domínios, hashes e URLs associados aos briefings publicados. Cada indicador preserva sua fonte e relação com a análise original." image="antena" imageAlt="Antena de telecomunicações em Teresópolis, fotografia de Vitor Paladini" labels={["INDICADORES", "FONTES", "CONTEXTO", "BRASIL"]} />
+      <div className="section-heading"><h2>CONSULTA DE IOCs</h2><span>{stats.total.toLocaleString("pt-BR")} REGISTROS INDEXADOS</span></div>
       <IocSearch initialResults={results} initialTotal={total} initialStats={stats} />
     </main>
   );

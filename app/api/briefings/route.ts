@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Ioc, LiveIoc } from "@/lib/types";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+import { getLivePreview } from "@/lib/live-preview";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,16 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const preview = await getLivePreview();
+    if (preview) {
+      const rawLimit = Number.parseInt(req.nextUrl.searchParams.get("limit") ?? "20", 10);
+      const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 50) : 20;
+      return NextResponse.json({
+        briefings: preview.briefings.briefings.slice(0, limit),
+        trending: preview.briefings.trending.slice(0, 5),
+        latestIocs: preview.briefings.latestIocs,
+      });
+    }
     // Importação dinâmica para não quebrar quando o banco não está configurado
     const { prisma } = await import("@/lib/prisma");
 

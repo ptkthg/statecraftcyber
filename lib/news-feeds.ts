@@ -212,7 +212,7 @@ export async function fetchNewsArticles(maxAgeDays = 3): Promise<NewsArticle[]> 
           if (pubDate < cutoff) continue;
 
           const rawSummary = item.contentSnippet ?? cleanHtml(item.content ?? "");
-          const summary = rawSummary.slice(0, 500) || item.title;
+          const summary = rawSummary.slice(0, 900) || item.title;
           const cves = extractCves(`${item.title} ${summary}`);
 
           results.push({

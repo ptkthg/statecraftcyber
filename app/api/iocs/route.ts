@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Ioc, EnrichedIoc } from "@/lib/types";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+import { getLivePreview, filterPreviewIocs } from "@/lib/live-preview";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,17 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const preview = await getLivePreview();
+    if (preview) {
+      const { searchParams } = req.nextUrl;
+      const rawPage = Number.parseInt(searchParams.get("page") ?? "1", 10);
+      const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
+      const type = searchParams.get("type")?.toLowerCase() ?? "";
+      const { filtered, stats } = filterPreviewIocs(preview.iocs, searchParams.get("q") ?? "", type);
+      const limit = 25;
+      const results = filtered.slice((page - 1) * limit, page * limit);
+      return NextResponse.json({ results, total: filtered.length, stats, page, limit, hasMore: page * limit < filtered.length });
+    }
     const { prisma } = await import("@/lib/prisma");
     const { searchParams } = req.nextUrl;
 

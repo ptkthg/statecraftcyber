@@ -51,7 +51,6 @@ const FILTER_TO_SEVERITY: Record<string, string> = {
 };
 
 const SEVERITY_FILTERS = ["Crítico", "Alto", "Médio"];
-const CATEGORY_FILTERS = ["Malware", "Ransomware", "Vulnerabilidade", "APT", "Phishing", "Supply Chain", "LATAM"];
 
 function timeAgo(dateStr: string): string {
   const date = new Date(dateStr);
@@ -116,7 +115,9 @@ export default function BriefingExplorer({ initialBriefings, initialTrending, in
   const latestIocs = initialIocs;
 
   const featured = briefings.find((b) => b.severity === "critical") ?? briefings[0];
-  const rest = briefings.filter((b) => b.id !== featured?.id);
+  const showFeatured = !search && activeFilter === "Todos";
+  const rest = showFeatured ? briefings.filter((b) => b.id !== featured?.id) : briefings;
+  const categoryFilters = [...new Set(briefings.map((b) => b.category))].sort((a, b) => a.localeCompare(b, "pt-BR"));
 
   const filtered = rest.filter((b) => {
     const q = search.toLowerCase();
@@ -162,14 +163,14 @@ export default function BriefingExplorer({ initialBriefings, initialTrending, in
                 <FilterPill key={f} active={activeFilter === f} critical={f === "Crítico"} onClick={() => { setActiveFilter(f); setPage(1); }}>{f}</FilterPill>
               ))}
               <span className="mx-1 h-4 w-px bg-white/[0.08]" />
-              {CATEGORY_FILTERS.map((cat) => (
+              {categoryFilters.map((cat) => (
                 <FilterPill key={cat} active={activeFilter === cat} onClick={() => { setActiveFilter(cat); setPage(1); }}>{cat}</FilterPill>
               ))}
             </div>
           </div>
 
           {/* Featured */}
-          {!search && activeFilter === "Todos" && featured && (
+          {showFeatured && featured && (
             <div className="mb-6">
               <FeaturedCard briefing={featured} />
             </div>

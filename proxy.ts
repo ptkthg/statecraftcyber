@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Edge Runtime: verify HMAC-signed admin token (format: "<exp>.<hex-signature>")
+// Verify HMAC-signed admin token (format: "<exp>.<hex-signature>")
 async function verifyAdminToken(token: string, secret: string): Promise<boolean> {
   const dot = token.indexOf(".");
   if (dot === -1) return false;
@@ -31,7 +31,7 @@ async function verifyAdminToken(token: string, secret: string): Promise<boolean>
   }
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow login page and auth API through without a token check

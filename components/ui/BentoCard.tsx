@@ -39,9 +39,9 @@ export function BentoCard({ children, className, href, action, label, labelClass
     </>
   );
   const base = cn(
-    "relative flex flex-col overflow-hidden rounded-[20px] border border-white/[0.05] bg-raised p-6",
-    "transition-all duration-200",
-    href && "group cursor-pointer hover:-translate-y-0.5 hover:bg-overlay hover:border-white/10 hover:shadow-[0_8px_28px_rgba(0,0,0,0.45)]",
+    "editorial-bento relative flex flex-col overflow-hidden border-b border-line bg-raised p-4",
+    "transition-colors duration-200",
+    href && "group cursor-pointer hover:bg-overlay",
     className
   );
   return href ? <Link href={href} className={base}>{inner}</Link> : <div className={base}>{inner}</div>;

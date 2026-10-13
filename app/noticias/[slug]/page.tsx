@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -9,9 +8,12 @@ import {
   ArrowLeft, ExternalLink, Globe, MapPin, Clock,
   Tag, AlertCircle, Loader2, Sparkles, BookOpen, Shield, ChevronRight,
 } from "lucide-react";
-import { fetchNewsArticles, sanitizeContent, classifyType, type NewsArticle, type ArticleType } from "@/lib/news-feeds";
+import { fetchNewsArticles, sanitizeContent, type NewsArticle, type ArticleType } from "@/lib/news-feeds";
 import { getEnrichedArticle } from "@/lib/ai-news";
 import { getSourceColor } from "@/lib/source-colors";
+import { editorialImageForNews } from "@/lib/editorial-image";
+import { getLivePreview } from "@/lib/live-preview";
+import PreviewDetail from "@/components/editorial/PreviewDetail";
 
 const getCachedArticles = unstable_cache(
   () => fetchNewsArticles(3),
@@ -257,8 +259,7 @@ const SEVERITY_CONFIG: Record<string, { label: string; dot: string; text: string
 async function RelatedBriefings({ cves, tags }: { cves: string[]; tags: string[] }) {
   if (cves.length === 0 && tags.length === 0) return null;
 
-  try {
-    const { prisma } = await import("@/lib/prisma");
+  const { prisma } = await import("@/lib/prisma");
 
     // Build OR conditions: match by CVE first, then by tags
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -271,7 +272,7 @@ async function RelatedBriefings({ cves, tags }: { cves: string[]; tags: string[]
       select: { slug: true, title: true, severity: true, category: true, cves: true, tags: true, createdAt: true },
       orderBy: { createdAt: "desc" },
       take: 3,
-    });
+    }).catch(() => []);
 
     if (briefings.length === 0) return null;
 
@@ -331,9 +332,6 @@ async function RelatedBriefings({ cves, tags }: { cves: string[]; tags: string[]
         </Link>
       </section>
     );
-  } catch {
-    return null;
-  }
 }
 
 // ── Card de relacionados ──────────────────────────────────────────────────────
@@ -345,9 +343,9 @@ function RelatedCard({ article }: { article: NewsArticle }) {
       href={`/noticias/${article.slug}`}
       className="group block bg-raised border border-white/[0.06] rounded-xl overflow-hidden hover:bg-overlay transition-all"
     >
-      {article.imageUrl && (
+      {(
         <div className="relative w-full h-28 overflow-hidden">
-          <Image src={article.imageUrl} alt="" fill sizes="(max-width: 640px) 100vw, 320px" className="object-cover" />
+          <Image src={editorialImageForNews(article).src} alt="" fill sizes="(max-width: 640px) 100vw, 320px" className="object-cover" />
         </div>
       )}
       <div className="p-4">
@@ -369,6 +367,13 @@ function RelatedCard({ article }: { article: NewsArticle }) {
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const preview = await getLivePreview();
+  if (preview) {
+    const item = preview.news.articles.find((article) => article.slug === slug);
+    if (!item) notFound();
+    const image = editorialImageForNews(item);
+    return <PreviewDetail section="Notícias" backHref="/noticias" title={item.title} summary={item.summary} category={item.type || "Cibersegurança"} date={item.publishedAt} source={item.source} sourceUrl={item.url} fullUrl={`${preview.origin}/noticias/${slug}`} capturedAt={preview.capturedAt} image={image.src} imageAlt={image.alt} />;
+  }
   const articles = await getCachedArticles();
   let article: NewsArticle | undefined = articles.find((a) => a.slug === slug);
 
@@ -413,7 +418,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     .slice(0, 3);
 
   return (
-    <main className="min-h-screen bg-canvas pt-16">
+    <main className="article-page min-h-screen bg-canvas pt-16">
       {/* Breadcrumb */}
       <div className="border-b border-white/[0.04]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-xs text-dim">
@@ -493,17 +498,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         )}
 
         {/* Imagem hero */}
-        {article.imageUrl && (
+        {(
           <div className="rounded-xl overflow-hidden mb-8 border border-white/[0.06]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={article.imageUrl}
-              alt={article.title}
-              className="w-full object-cover"
-              style={{ maxHeight: "400px" }}
-            />
+            <div className="relative w-full h-[320px] overflow-hidden"><Image src={editorialImageForNews(article).src} alt={editorialImageForNews(article).alt} fill sizes="(max-width: 900px) 100vw, 850px" className="object-cover grayscale" /></div>
             <div className="px-4 py-2 bg-raised border-t border-white/[0.04]">
-              <p className="text-xs text-dim">Imagem: {article.source}</p>
+              <p className="text-xs text-dim">Ilustração editorial · <Link href="/creditos-visuais">créditos visuais</Link></p>
             </div>
           </div>
         )}
@@ -542,12 +541,17 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const preview = await getLivePreview();
+  if (preview) {
+    const item = preview.news.articles.find((article) => article.slug === slug);
+    return item ? { title: item.title, description: item.summary.slice(0, 160), openGraph: { images: [{ url: editorialImageForNews(item).src }] } } : { title: "Notícia não encontrada" };
+  }
   const articles = await getCachedArticles();
   const article = articles.find((a) => a.slug === slug);
   if (!article) return { title: "Notícia não encontrada" };
   return {
     title: article.title,
     description: article.summary.slice(0, 160),
-    openGraph: article.imageUrl ? { images: [{ url: article.imageUrl }] } : undefined,
+    openGraph: { images: [{ url: editorialImageForNews(article).src }] },
   };
 }

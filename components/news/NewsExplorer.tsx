@@ -3,10 +3,11 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronRight, Globe, MapPin, RefreshCw, Newspaper } from "lucide-react";
+import { ChevronRight, MapPin, RefreshCw, Newspaper } from "lucide-react";
 import type { NewsArticle, ArticleType } from "@/lib/news-feeds";
 import { getSourceColor } from "@/lib/source-colors";
 import { classifyNewsTitle } from "@/lib/home-stats";
+import { editorialImageForNews } from "@/lib/editorial-image";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { Tag } from "@/components/ui/Tag";
 import { Pagination } from "@/components/ui/Pagination";
@@ -56,11 +57,7 @@ function ArticleRow({ article, alert }: { article: NewsArticle; alert: boolean }
       className="group flex gap-4 p-4 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.015] transition-colors"
     >
       <div className="relative flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden hidden sm:flex items-center justify-center bg-canvas">
-        {article.imageUrl ? (
-          <Image src={article.imageUrl} alt="" fill sizes="80px" className="object-cover" />
-        ) : (
-          <Globe size={18} className="text-dim/40" aria-hidden />
-        )}
+        <Image src={editorialImageForNews(article).src} alt="" fill sizes="80px" className="object-cover" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -75,9 +72,9 @@ function ArticleRow({ article, alert }: { article: NewsArticle; alert: boolean }
           )}
           <span className="font-mono text-[11px] text-dim">{timeAgo(article.publishedAt)}</span>
         </div>
-        <h3 className="text-sm font-semibold text-ink leading-snug line-clamp-2 mb-1.5">{article.title}</h3>
+        <h3 className="news-row-title">{article.title}</h3>
         {article.summary && (
-          <p className="text-xs text-dim leading-relaxed line-clamp-2 mb-1.5">{article.summary}</p>
+          <p className="news-row-summary">{article.summary}</p>
         )}
         <div className="flex flex-wrap gap-1">
           {article.cves.slice(0, 2).map((cve) => (
@@ -149,7 +146,10 @@ export default function NewsExplorer({ initialArticles, initialTab = "alertas" }
 
   const tabCounts = useMemo(() => {
     let alert = 0, context = 0;
-    for (const a of articles) classifyNewsTitle(a.title) === "alert" ? alert++ : context++;
+    for (const a of articles) {
+      if (classifyNewsTitle(a.title) === "alert") alert++;
+      else context++;
+    }
     return { alert, context };
   }, [articles]);
 

@@ -31,7 +31,7 @@ const PIPELINE = [
 const PRIORITIZATION = [
   { label: "CVSS ≥ 9.0 (Critical)",  weight: "Prioridade máxima" },
   { label: "CISA KEV",               weight: "Forçado para o topo — exploração confirmada" },
-  { label: "EPSS > 0,5 (50%)",       weight: "Alta probabilidade de exploração ativa" },
+  { label: "EPSS > 0,5 (50%)",       weight: "Maior probabilidade estimada de exploração em 30 dias; não confirma exploração" },
   { label: "CVSS 7.0–8.9 (High)",    weight: "Incluído na fila padrão" },
   { label: "CVSS < 7.0 (Medium/Low)",weight: "Baixa prioridade — incluído se houver espaço" },
 ];
@@ -72,7 +72,7 @@ function Section({ id, icon: Icon, title, children }: {
 
 export default function MetodologiaPage() {
   return (
-    <main className="min-h-screen bg-canvas pt-16">
+    <main className="article-page methodology-page min-h-screen bg-canvas pt-16">
       {/* Hero */}
       <section className="relative py-14 border-b border-white/[0.04] overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-canvas" aria-hidden />

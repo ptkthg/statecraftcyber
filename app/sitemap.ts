@@ -27,7 +27,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const newsArticles = newsResult.status === "fulfilled" ? newsResult.value : [];
   const cves = cvesResult.status === "fulfilled" ? cvesResult.value : [];
 
-  const staticRoutes = ["/", "/threat-briefings", "/campanhas", "/noticias", "/cves", "/iocs", "/sobre", "/metodologia"].map(
+  const staticRoutes = ["/", "/threat-briefings", "/campanhas", "/noticias", "/cves", "/iocs", "/sobre", "/metodologia", "/creditos-visuais"].map(
     (r) => ({
       url: `${base}${r}`,
       lastModified: new Date(),

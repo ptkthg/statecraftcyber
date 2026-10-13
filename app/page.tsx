@@ -1,170 +1,38 @@
 import Link from "next/link";
-import { unstable_cache } from "next/cache";
-import { BentoCard } from "@/components/ui/BentoCard";
-import { getHomeStats, classifyNewsTitle } from "@/lib/home-stats";
+import { prisma } from "@/lib/prisma";
+import { campaigns } from "@/data/campaigns";
 import { fetchNewsArticles } from "@/lib/news-feeds";
 import { localizeNewsArticles } from "@/lib/news-localization";
+import EditorialHero from "@/components/editorial/EditorialHero";
+import StoryTile from "@/components/editorial/StoryTile";
+import Image from "next/image";
+import { getLivePreview } from "@/lib/live-preview";
 
-const getCachedHomeNews = unstable_cache(
-  async () => {
-    try {
-      const articles = await fetchNewsArticles(3);
-      return (await localizeNewsArticles(articles.slice(0, 8))).slice(0, 8);
-    } catch {
-      return [];
-    }
-  },
-  ["home-news"],
-  { revalidate: 120 }
-);
+export const revalidate = 300;
 
-function formatTimeAgo(date: Date): string {
-  const diff = Date.now() - date.getTime();
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(hours / 24);
-  if (days > 0) return `${days}d atrás`;
-  if (hours > 0) return `${hours}h atrás`;
-  return "há pouco";
-}
+const severityRank = { critical: 4, high: 3, medium: 2, low: 1 };
 
 export default async function HomePage() {
-  const [stats, news] = await Promise.all([getHomeStats(), getCachedHomeNews()]);
-  const alerts = news.filter((n) => classifyNewsTitle(n.title) === "alert").slice(0, 3);
-  const context = news.filter((n) => classifyNewsTitle(n.title) === "context").slice(0, 3);
-  const heroHref = stats.latestBriefingSlug ? `/threat-briefings/${stats.latestBriefingSlug}` : "/threat-briefings";
+  const preview = await getLivePreview();
+  const [briefings, news] = await Promise.all([
+    preview ? Promise.resolve(preview.briefings.briefings.map((item) => ({ ...item, createdAt: new Date(item.createdAt) })).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 30)) : prisma.briefing.findMany({ where: { status: "published" }, orderBy: { createdAt: "desc" }, take: 30, select: { slug: true, title: true, summary: true, severity: true, category: true, createdAt: true, sourceName: true } }).catch(() => []),
+    preview ? Promise.resolve(preview.news.articles.slice(0, 6)) : fetchNewsArticles(3).then((items) => localizeNewsArticles(items.slice(0, 6))).catch(() => []),
+  ]);
+  // Destaque: maior severidade entre os 30 briefings recentes; empate pela data mais recente.
+  const ranked = [...briefings].sort((a, b) => severityRank[b.severity] - severityRank[a.severity] || b.createdAt.getTime() - a.createdAt.getTime());
+  const featured = ranked[0];
+  const observed = ranked.slice(1, 4);
+  const latestNews = news[0];
 
-  return (
-    <main className="min-h-screen bg-canvas">
-      <div className="mx-auto grid max-w-[1140px] grid-cols-1 gap-4 px-6 pb-24 pt-28 md:grid-cols-2 lg:grid-cols-4">
-
-        {/* HERO 2x2 */}
-        <BentoCard className="md:col-span-2 lg:row-span-2 min-h-[330px] justify-end
-          bg-[radial-gradient(ellipse_at_85%_15%,rgba(var(--primary-rgb),0.10),transparent_55%),radial-gradient(rgba(255,255,255,0.028)_1px,transparent_1px)] bg-[length:auto,22px_22px]">
-          {stats.lastRunAt && (
-            <span className="absolute left-6 top-6 flex items-center gap-2 font-mono text-[11.5px] text-body">
-              <span className="h-[7px] w-[7px] rounded-full bg-brand pulse-dot" aria-hidden />
-              atualizado {formatTimeAgo(stats.lastRunAt)}
-            </span>
-          )}
-          <div className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.1em] text-cold">
-            Threat intel global com contexto para o Brasil
-          </div>
-          <h1 className="font-display mb-4 text-[27px] font-bold leading-[1.22] tracking-tight text-ink">
-            Briefings de ameaças cibernéticas em português para SOC, GRC e times de segurança.
-          </h1>
-          <Link href={heroHref}
-            className="inline-flex w-fit items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-[13.5px] font-bold text-white transition-colors hover:bg-brand-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30">
-            Ver briefing mais recente →
-          </Link>
-        </BentoCard>
-
-        {/* CRÍTICOS 2x2 */}
-        <BentoCard href="/threat-briefings?sev=critical" action="Ver críticos ativos"
-          label="Críticos ativos agora" labelClassName="text-brand-soft" period="últimas 24h"
-          className="md:col-span-2 lg:row-span-2 border-[rgba(var(--primary-rgb),0.3)]
-            bg-[radial-gradient(ellipse_at_top_left,rgba(var(--primary-rgb),0.08),transparent_55%)]">
-          <div className="font-display text-[40px] font-bold leading-none text-ink">
-            {stats.criticalCount}
-            {stats.criticalDelta24h > 0 && (
-              <span className="ml-2 text-[15px] font-semibold text-body">+{stats.criticalDelta24h} nas últimas 24h</span>
-            )}
-          </div>
-          <div className="mt-4">
-            {stats.criticalLatest.map((b) => (
-              <div key={b.slug} className="flex items-baseline justify-between gap-3 border-t border-white/[0.05] py-3">
-                <span className="text-sm font-semibold text-ink">{b.title}</span>
-                <span aria-hidden className="font-mono text-[11px] text-dim">{formatTimeAgo(b.createdAt)}</span>
-              </div>
-            ))}
-            {stats.criticalLatest.length === 0 && (
-              <p className="py-4 text-sm text-dim">Nenhum briefing crítico nos últimos 7 dias.</p>
-            )}
-          </div>
-        </BentoCard>
-
-        <BentoCard href="/campanhas" action="Explorar campanhas" label="Campanhas em acompanhamento" period="análise com fontes" className="md:col-span-2 lg:col-span-4 min-h-[160px] border-brand/20 bg-[radial-gradient(ellipse_at_90%_20%,rgba(var(--primary-rgb),0.08),transparent_55%)]">
-          <p className="max-w-2xl font-display text-xl font-bold text-ink">Da notícia ao contexto: atores, técnicas, indicadores e cronologia em um só lugar.</p>
-          <p className="mt-2 text-sm text-body">Três casos documentados com referências às investigações originais.</p>
-        </BentoCard>
-
-        {/* MÉTRICAS (4 cards 1x1) — número grande + rótulo, sem microcopy */}
-        <BentoCard href="/threat-briefings" action="Explorar briefings" className="min-h-[150px]">
-          <div className="font-display text-4xl font-bold tracking-tight">{stats.briefingsTotal}</div>
-          <div className="mt-1.5 text-[13px] font-semibold text-ink">briefings publicados</div>
-        </BentoCard>
-        <BentoCard href="/cves" action="Abrir radar de CVEs" className="min-h-[150px] border-brand/20 bg-[radial-gradient(ellipse_at_90%_10%,rgba(var(--primary-rgb),0.09),transparent_65%)]">
-          <div className="font-display text-4xl font-bold tracking-tight">{stats.cvesToday}</div>
-          <div className="mt-1.5 text-[13px] font-semibold text-ink">CVEs analisadas hoje</div>
-        </BentoCard>
-        <BentoCard href="/iocs" action="Ver IOCs" className="min-h-[150px]">
-          <div className="font-display text-4xl font-bold tracking-tight">{stats.iocsTotal.toLocaleString("pt-BR")}</div>
-          <div className="mt-1.5 text-[13px] font-semibold text-ink">IOCs ativos</div>
-        </BentoCard>
-        <BentoCard className="min-h-[150px]">
-          <div className="font-display pt-2 text-[22px] font-bold text-cold">● Operacional</div>
-          <div className="mt-1.5 text-[13px] font-semibold text-ink">pipeline de coleta</div>
-        </BentoCard>
-
-        {/* CVEs POR DIA 2x1 */}
-        <BentoCard href="/cves" action="Ver CVEs recentes" label="Vulnerabilidades por dia" period="últimos 7 dias" className="md:col-span-2">
-          <div className="mt-1">
-            {stats.cvesPerDay.map((d, i) => {
-              const max = Math.max(...stats.cvesPerDay.map((x) => x.count), 1);
-              const isPeak = d.count === max && d.count > 0;
-              return (
-                <div key={i} className="flex items-center gap-2.5 py-1 font-mono text-[11px] text-dim">
-                  <b className="w-7 font-medium">{d.day}</b>
-                  <span className="flex-1">
-                    <span className={`block h-2 rounded ${isPeak ? "bg-gradient-to-r from-brand to-[rgba(var(--primary-rgb),0.3)]" : "bg-gradient-to-r from-[rgba(127,163,184,0.85)] to-[rgba(127,163,184,0.25)]"}`}
-                      style={{ width: `${Math.max((d.count / max) * 100, 2)}%` }} />
-                  </span>
-                  {d.count}
-                </div>
-              );
-            })}
-          </div>
-        </BentoCard>
-
-        {/* REGIÕES 2x1 — só barras, sem linha-resumo */}
-        <BentoCard href="/threat-briefings" action="Ver análise por região" label="Regiões afetadas" period="últimos 7 dias" className="md:col-span-2">
-          <div className="mt-1">
-            {stats.regions.map((r) => (
-              <div key={r.region} className="grid grid-cols-[80px_1fr_90px] items-center gap-3 border-t border-white/[0.05] py-1.5 text-[12.5px]">
-                <span className="font-semibold text-ink">{r.region}</span>
-                <span className="flex h-2 gap-[3px]">
-                  {r.critical > 0 && <i className="rounded-[3px] bg-brand" style={{ width: `${r.critical * 17}%` }} />}
-                  {r.medium > 0 && <i className="rounded-[3px] bg-yellow-600/80" style={{ width: `${r.medium * 17}%` }} />}
-                  {r.low > 0 && <i className="rounded-[3px] bg-white/[0.18]" style={{ width: `${r.low * 17}%` }} />}
-                </span>
-                <span className="text-right font-mono text-[11px] text-dim">{r.critical}C · {r.medium}M · {r.low}B</span>
-              </div>
-            ))}
-            {stats.regions.length === 0 && <p className="py-3 text-sm text-dim">Sem dados regionais nos últimos 7 dias.</p>}
-          </div>
-        </BentoCard>
-
-        {/* ALERTAS OPERACIONAIS 2x1 + NOTÍCIAS 2x1 — só títulos */}
-        <BentoCard href="/noticias?tab=alertas" action="Ver todos os alertas" label="Alertas operacionais" labelClassName="text-brand-soft" period="exigem ação" className="md:col-span-2">
-          <div className="mt-1">
-            {alerts.map((n) => (
-              <div key={n.slug} className="flex gap-3 border-t border-white/[0.05] py-2.5 text-[13.5px]">
-                <span className="flex-1 leading-snug text-body">{n.title} <span aria-hidden className="text-dim">›</span></span>
-              </div>
-            ))}
-            {alerts.length === 0 && <p className="py-3 text-sm text-dim">Nenhum alerta operacional agora.</p>}
-          </div>
-        </BentoCard>
-        <BentoCard href="/noticias?tab=contexto" action="Ver todas as notícias" label="Notícias relevantes" period="contexto" className="md:col-span-2">
-          <div className="mt-1">
-            {context.map((n) => (
-              <div key={n.slug} className="flex gap-3 border-t border-white/[0.05] py-2.5 text-[13.5px]">
-                <span className="flex-1 leading-snug text-body">{n.title} <span aria-hidden className="text-dim">›</span></span>
-              </div>
-            ))}
-            {context.length === 0 && <p className="py-3 text-sm text-dim">Sem notícias no momento.</p>}
-          </div>
-        </BentoCard>
-      </div>
-    </main>
-  );
+  return <main className="editorial-page page-shell home-page">
+    <EditorialHero eyebrow="INTELIGÊNCIA ESTRATÉGICA / BRASIL" title={<>Ameaças globais.<br />Contexto local.</>} description="Inteligência de ameaças, cibersegurança e geopolítica traduzidas em contexto para decisões no Brasil e na América Latina." image="congresso" imageAlt="Congresso Nacional em Brasília, fotografia histórica do Acervo Arquivo Nacional" labels={["ANÁLISE", "GEOPOLÍTICA", "INFRAESTRUTURA", "BRASIL"]} primary={{ label: "Briefings recentes", href: "/threat-briefings" }} secondary={{ label: "Conheça o projeto", href: "/sobre" }} />
+    <section className="editorial-section"><div className="section-heading"><h2>BRIEFING EM DESTAQUE</h2><Link href="/threat-briefings">Ver todos →</Link></div>
+      {featured ? <div className="home-feature"><div className="feature-photo"><Image src="/editorial/datacenter-ache.webp" alt="Racks de servidores; imagem editorial ilustrativa" fill sizes="(max-width: 700px) 100vw, 24vw" /></div><div className="feature-story"><p className="story-meta">{featured.createdAt.toLocaleDateString("pt-BR")} · {featured.category} · {featured.sourceName}</p><h3><Link href={`/threat-briefings/${featured.slug}`}>{featured.title}</Link></h3><p>{featured.summary}</p><Link href={`/threat-briefings/${featured.slug}`} className="editorial-button">Ler briefing completo →</Link></div><aside className="feature-aside"><h4>EM OBSERVAÇÃO</h4>{observed.map((item) => <Link key={item.slug} href={`/threat-briefings/${item.slug}`}>{item.title}<small>{item.severity.toUpperCase()} · {item.sourceName}</small></Link>)}</aside></div> : <div className="editorial-empty">Nenhum briefing publicado no momento. <Link href="/threat-briefings">Consultar o arquivo →</Link></div>}
+    </section>
+    <section className="editorial-section"><div className="section-heading"><h2>EDITORIAS</h2><span>INTELIGÊNCIA EM CONTEXTO</span></div><div className="editorial-three">
+      <StoryTile section="VULNERABILIDADES" title="Radar de CVEs e superfície de ataque" description="Priorize com CVSS, EPSS e catálogo CISA KEV, quando os dados estiverem disponíveis." href="/cves" image="datacenter" imageAlt="Racks de servidores em um datacenter" />
+      <StoryTile section="CAMPANHAS" title={campaigns[0]?.title ?? "Campanhas documentadas"} description={campaigns[0]?.summary} href={campaigns[0] ? `/campanhas/${campaigns[0].slug}` : "/campanhas"} image="antena" imageAlt="Antena de telecomunicações em Teresópolis" />
+      <StoryTile section="NOTÍCIAS" title={latestNews?.title ?? "Acompanhe as notícias de segurança"} description={latestNews?.summary} href={latestNews ? `/noticias/${latestNews.slug}` : "/noticias"} image="porto" imageAlt="Guindastes e navios de carga em um porto" meta={latestNews ? `${latestNews.source} · ${new Date(latestNews.publishedAt).toLocaleDateString("pt-BR")}` : undefined} />
+    </div></section>
+  </main>;
 }

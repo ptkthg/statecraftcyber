@@ -16,10 +16,6 @@ export function SearchOverlay() {
 
   const { results, total, loading, error } = useSearch(query);
 
-  useEffect(() => {
-    setSelectedIdx(-1);
-  }, [results]);
-
   const handleClose = useCallback(() => {
     setIsOpen(false);
     setQuery("");
@@ -83,7 +79,7 @@ export function SearchOverlay() {
             <input
               ref={inputRef}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => { setQuery(e.target.value); setSelectedIdx(-1); }}
               placeholder="Buscar CVEs, IOCs, briefings, notícias…"
               className="flex-1 bg-transparent text-sm text-white placeholder-dim outline-none"
               aria-label="Termo de busca"
