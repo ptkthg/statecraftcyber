@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, FilterX, Radar, RefreshCw, Search, ShieldAlert, X } from "lucide-react";
 import type { CveEntry, VulnType } from "@/lib/cves/fetch-cves";
+import { getCveRowTitle } from "@/lib/cves/row-title";
 import { Pagination } from "@/components/ui/Pagination";
 import styles from "./cve-explorer.module.css";
 
@@ -44,9 +45,7 @@ function sortCves(items: CveEntry[], mode: SortMode): CveEntry[] {
 }
 
 function CveRow({ cve, rank }: { cve: CveEntry; rank: number }) {
-  const product = cve.affectedProducts.length
-    ? cve.affectedProducts.slice(0, 2).map((value) => value.replaceAll("_", " ")).join(" · ")
-    : "Produto não informado no NVD";
+  const title = getCveRowTitle(cve);
 
   return (
     <Link href={`/cves/${cve.id}`} className={styles.row}>
@@ -61,7 +60,7 @@ function CveRow({ cve, rank }: { cve: CveEntry; rank: number }) {
           <span className={styles.severityText}>{cve.severity === "CRITICAL" ? "CRÍTICA" : cve.severity === "HIGH" ? "ALTA" : cve.severity === "MEDIUM" ? "MÉDIA" : cve.severity === "LOW" ? "BAIXA" : "SEM SCORE"}</span>
           {cve.inCisaKev && <span className={styles.kevBadge}><ShieldAlert size={11} aria-hidden /> CISA KEV</span>}
         </div>
-        <h3>{product}</h3>
+        <h3 title={title}>{title}</h3>
         <div className={styles.rowMeta}>
           <span className={styles.typeBadge}>{cve.vulnType}</span>
           <span>Publicada {new Date(cve.published).toLocaleDateString("pt-BR")}</span>
