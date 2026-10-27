@@ -1,6 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { auditStoredBriefing } from "../lib/intelligence/audit";
 import { publicationStatus } from "../lib/intelligence/validation";
+async function main() {
 const apply = process.argv.includes("--apply");
 const arg = process.argv.indexOf("--limit");
 const limit = arg < 0 ? Infinity : Number(process.argv[arg + 1]);
@@ -25,3 +26,5 @@ try {
   }
   console.log(JSON.stringify({mode:apply?"apply":"dry-run",audited:count,withheld}));
 } finally { await prisma.$disconnect(); }
+}
+main().catch((error: Error) => { console.error("[Intelligence audit]", error.message); process.exitCode = 1; });

@@ -182,11 +182,11 @@ Procedimento recomendado:
 6. Executar auditoria sem escrita e revisar as pendências.
 7. Recoletar as fontes e verificar o resultado do cron e os relatórios administrativos.
 
-Nesta execução, nenhum banco de produção foi migrado e nenhum deploy desta fase foi realizado. Não foram feitas chamadas pagas de geração para validar o sistema.
+A implementação inicial foi validada sem alterar produção. A publicação foi autorizada posteriormente, com backup e teste sobre cópia dos dados reais; o resultado está em docs/FASE_01_PUBLICACAO.md.
 
 ## 8. Verificações executadas
 
-- npm test: 179 testes aprovados em 17 arquivos.
+- npm test: 180 testes aprovados em 18 arquivos.
 - npx tsc --noEmit: checagem TypeScript.
 - npm run lint: sem erros; três avisos anteriores à fase, em search-merge.test.ts e ioc-extractor.ts.
 - npx prisma validate: validação do schema.

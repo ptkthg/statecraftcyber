@@ -1,10 +1,11 @@
 FASE 01 — arquivos alterados/adicionados
-Branch: fase-01-confiabilidade
+Origem: fase-01-confiabilidade; produção: main
 
 .gitignore
 __tests__/feodo-tracker.test.ts
 __tests__/fixtures/intelligence.ts
 __tests__/intelligence-audit.test.ts
+__tests__/intelligence-cli.test.ts
 __tests__/intelligence-context.test.ts
 __tests__/intelligence-generation.test.ts
 __tests__/intelligence-public-reads.test.ts
@@ -32,6 +33,7 @@ components/cves/CveExplorer.tsx
 data/mitre-enterprise.json
 docs/FASE_01_ARQUIVOS.txt
 docs/FASE_01_CONFIABILIDADE.md
+docs/FASE_01_PUBLICACAO.md
 eslint.config.mjs
 lib/ai-briefing.ts
 lib/ai-news.ts
