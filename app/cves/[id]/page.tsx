@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft, ArrowUpRight, CalendarClock, ChevronRight, ExternalLink,
-  Fingerprint, Radar, ShieldCheck, ShieldAlert,
+  Fingerprint, ShieldAlert,
 } from "lucide-react";
 import { campaigns } from "@/data/campaigns";
 import { getCveDetail, normalizeCveId } from "@/lib/cves/get-cve-detail";
@@ -31,12 +31,12 @@ function DossierSection({ number, eyebrow, title, children, className = "" }: {
   className?: string;
 }) {
   return (
-    <section className={`${styles.section} ${className}`}>
+    <section id={`secao-${number}`} aria-labelledby={`titulo-${number}`} className={`${styles.section} ${className}`}>
       <div className={styles.sectionHead}>
-        <span className={styles.sectionNumber}>{number}</span>
+        <span className={styles.sectionNumber} aria-hidden="true">{number}</span>
         <div>
           <span className={styles.eyebrow}>{eyebrow}</span>
-          <h2 className="font-display text-xl font-bold tracking-tight text-ink md:text-2xl">{title}</h2>
+          <h2 id={`titulo-${number}`}>{title}</h2>
         </div>
       </div>
       <div className={styles.sectionBody}>{children}</div>
@@ -63,10 +63,10 @@ export default async function CveDetailPage({ params }: Props) {
   const cve = await getCveDetail(id);
 
   if (!cve) return (
-    <main className="article-page min-h-screen bg-canvas pt-16">
-      <div className="mx-auto max-w-[1180px] px-5 py-16 sm:px-8">
+    <main className={styles.page}>
+      <div className={styles.shell}>
         <Link href="/cves" className={styles.backLink}><ArrowLeft size={15} aria-hidden /> Voltar às vulnerabilidades</Link>
-        <div className={`${styles.hero} cve-editorial-hero mt-7 p-8 md:p-12`}>
+        <div className={`${styles.hero} ${styles.unavailable}`}>
           <span className={styles.eyebrow}>Registro indisponível</span>
           <h1 className="mt-3 font-display text-3xl font-bold text-ink">{id}</h1>
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-body">Ainda não foi possível consultar os detalhes desta CVE. Tente novamente mais tarde ou consulte o registro original.</p>
@@ -92,41 +92,41 @@ export default async function CveDetailPage({ params }: Props) {
     : cve.vulnType !== "Outro" ? cve.vulnType : "Ficha técnica de vulnerabilidade";
 
   return (
-    <main className="article-page min-h-screen bg-canvas pb-24 pt-16">
-      <div className="mx-auto max-w-[1180px] px-5 pt-8 sm:px-8">
-        <nav aria-label="Navegação da ficha" className="mb-6 flex flex-wrap items-center gap-2 font-mono text-[11px] text-dim">
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <nav aria-label="Navegação da ficha" className={styles.breadcrumb}>
           <Link href="/cves" className={styles.backLink}><ArrowLeft size={14} aria-hidden /> Vulnerabilidades</Link>
           <ChevronRight size={12} aria-hidden />
-          <span className="text-ink">{id}</span>
+          <span aria-current="page">{id}</span>
         </nav>
 
-        <header className={`${styles.hero} cve-editorial-hero`}>
+        <header className={styles.hero}>
           <div className={styles.heroTopline}>
-            <div className="flex items-center gap-2"><Radar size={15} aria-hidden /><span>Statecraft / Dossiê técnico</span></div>
+            <div><span>Statecraft / Dossiê técnico</span></div>
             <span className="hidden sm:inline">Registro de vulnerabilidade</span>
           </div>
           <div className={styles.heroContent}>
             <div className="min-w-0">
-              <div className="mb-5 flex flex-wrap items-center gap-2">
-                <span className={styles.statusPill}><span className={styles.statusDot} /> CVE documentada</span>
+              <div className={styles.statusLine}>
+                <span className={styles.statusPill}>CVE documentada</span>
                 {cve.inCisaKev && <span className={styles.kevPill}>Exploração confirmada · CISA KEV</span>}
               </div>
               <p className={styles.eyebrow}>Identificador / NVD</p>
               <h1 className={styles.heroTitle}>{id}</h1>
-              <p className="mt-4 max-w-2xl text-base leading-relaxed text-body md:text-lg">{productLine}</p>
-              <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 font-mono text-[11px] text-dim">
+              <p className={styles.productLine}>{productLine}</p>
+              <div className={styles.dates}>
                 <span>PUBLICADA {formatDate(cve.published).toUpperCase()}</span>
                 <span>MODIFICADA {formatDate(cve.lastModified).toUpperCase()}</span>
               </div>
             </div>
-            <div className={styles.scorePanel}>
-              <div className={styles.scoreDial} style={scoreStyle} aria-label={score == null ? "CVSS indisponível" : `CVSS ${score.toFixed(1)} de 10`}>
+            <div className={styles.scorePanel} data-severity={cve.severity ?? "UNKNOWN"}>
+              <div className={styles.scoreDial} aria-label={score == null ? "CVSS indisponível" : `CVSS ${score.toFixed(1)} de 10`}>
                 <div className={styles.scoreCenter}>
-                  <strong>{score?.toFixed(1) ?? "—"}</strong>
-                  <span>CVSS {cve.cvssVersion || ""}</span>
+                  <strong>{score?.toFixed(1) ?? "—"}</strong><span className={styles.scoreScale}>/ 10</span>
+                  <span className={styles.scoreVersion}>CVSS {cve.cvssVersion || ""}</span>
                 </div>
               </div>
-              <span className={styles.scoreCaption}>{cve.severity ? `Severidade ${severityLabel[cve.severity] ?? cve.severity}` : "Severidade não informada"}</span>
+              <div className={styles.scoreTrack} style={scoreStyle} aria-hidden="true"><span /></div><span className={styles.scoreCaption}>{cve.severity ? `Severidade ${severityLabel[cve.severity] ?? cve.severity}` : "Severidade não informada"}</span>
             </div>
           </div>
           <div className={styles.heroFooter}>
@@ -143,19 +143,19 @@ export default async function CveDetailPage({ params }: Props) {
           <div className={styles.signal}><span className={styles.signalLabel}>Prioridade sugerida</span><strong>{cve.aiPriority || "—"}</strong><small>{cve.aiPriority ? "Análise automatizada" : "Ainda não analisada"}</small></div>
         </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(290px,0.85fr)] lg:items-start">
-          <div className="space-y-6">
+        <nav className={styles.sectionIndex} aria-label="Nesta ficha"><span>Nesta ficha</span><a href="#secao-01"><span>01</span> Análise técnica</a><a href="#secao-02"><span>02</span> Resposta</a><a href="#secao-03"><span>03</span> Relações</a><a href="#referencias"><span>04</span> Fontes e exposição</a></nav>
+        <div className={styles.dossierGrid}>
+          <div className={styles.readingColumn}>
             <DossierSection number="01" eyebrow="Entenda a falha" title="Análise técnica">
               {cve.ptBrDescription ? <>
                 <p className={styles.leadText}>{cve.ptBrDescription}</p>
                 {cve.enrichedAt && <p className="mt-5 font-mono text-[11px] text-dim">ANÁLISE EM PORTUGUÊS · {formatDate(cve.enrichedAt).toUpperCase()}</p>}
               </> : <p className="text-sm leading-relaxed text-body">A análise em português ainda não foi gerada para esta CVE. Consulte a descrição original abaixo e o registro do NVD.</p>}
-              {cve.description && <details className={styles.sourceDetails}><summary>Descrição original do NVD <ChevronRight size={15} aria-hidden /></summary><p lang="en" className="pt-4 text-sm leading-relaxed text-body">{cve.description}</p></details>}
+              {cve.description && <details className={styles.sourceDetails} open={!cve.ptBrDescription}><summary>Descrição original do NVD <ChevronRight size={15} aria-hidden /></summary><p lang="en" className="pt-4 text-sm leading-relaxed text-body">{cve.description}</p></details>}
             </DossierSection>
 
             <DossierSection number="02" eyebrow="Próximos passos" title="Resposta recomendada" className={styles.responseSection}>
-              <div className="flex items-start gap-4">
-                <div className={styles.responseIcon}><ShieldCheck size={21} aria-hidden /></div>
+              <div className={styles.responseBody}>
                 <div>
                   {cve.mitigation ? <p className={styles.leadText}>{cve.mitigation}</p> : <p className="text-sm leading-relaxed text-body">Ainda não há uma recomendação específica nesta ficha. Consulte o aviso do fornecedor e as referências do NVD para identificar versões corrigidas e medidas de contenção.</p>}
                   <p className="mt-5 text-xs leading-relaxed text-dim">{cve.mitigation ? "Orientação gerada por IA. Confirme versões afetadas e correções no aviso do fornecedor antes de aplicar mudanças." : "Esta seção será completada quando houver dados suficientes para a análise."}</p>
@@ -172,9 +172,9 @@ export default async function CveDetailPage({ params }: Props) {
             </DossierSection>
           </div>
 
-          <aside className="space-y-6 lg:sticky lg:top-24">
+          <aside id="referencias" aria-label="Fontes e exposição" className={styles.referenceColumn}>
             <div className={styles.sidePanel}>
-              <div className={styles.sideHeading}><span>Ficha de exposição</span><Fingerprint size={18} aria-hidden /></div>
+              <h2 className={styles.sideHeading}>Ficha de exposição</h2>
               <dl className={styles.factList}>
                 <div><dt>Tipo</dt><dd>{cve.vulnType}</dd></div>
                 <div><dt>CWE</dt><dd className="font-mono">{cve.cweId || "Não informada"}</dd></div>
@@ -184,7 +184,7 @@ export default async function CveDetailPage({ params }: Props) {
             </div>
 
             <div className={styles.sidePanel}>
-              <div className={styles.sideHeading}><span>Rastreabilidade</span><ExternalLink size={17} aria-hidden /></div>
+              <h2 className={styles.sideHeading}>Rastreabilidade</h2>
               <a href={cve.nvdUrl} target="_blank" rel="noopener noreferrer" className={styles.sourceLink}><span>Registro no NVD <small>Descrição, métricas e referências</small></span><ArrowUpRight size={17} aria-hidden /></a>
               {cve.inCisaKev && <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener noreferrer" className={styles.sourceLink}><span>Catálogo CISA KEV <small>Exploração confirmada</small></span><ArrowUpRight size={17} aria-hidden /></a>}
               <div className={styles.caveat}><ShieldAlert size={16} className="shrink-0 text-brand-soft" aria-hidden /><p>Dados de apoio à análise. Confirme a exposição do seu ambiente e os avisos oficiais antes de agir.</p></div>
