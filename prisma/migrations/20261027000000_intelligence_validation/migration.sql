@@ -1,3 +1,4 @@
+BEGIN;
 -- Legacy content is retained, but must not imply validation that never occurred.
 ALTER TABLE "Briefing"
   ADD COLUMN "analysisStatus" TEXT NOT NULL DEFAULT 'preliminary',
@@ -29,3 +30,4 @@ ALTER TABLE "NewsCache" ADD COLUMN "qualityReport" JSONB, ADD COLUMN "sourceSnap
 ALTER TABLE "CveCache" ADD COLUMN "qualityReport" JSONB;
 
 -- The structuredContent column is repaired above when absent from migration history.
+COMMIT;
