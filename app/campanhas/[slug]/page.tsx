@@ -1,3 +1,4 @@
+import { PUBLIC_BRIEFING_WHERE } from "@/lib/intelligence/publication";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -30,7 +31,7 @@ const getRelatedCoverage = unstable_cache(async (slug: string) => {
   const [newsResult, briefingResult] = await Promise.allSettled([
     fetchNewsArticles(3),
     prisma.briefing.findMany({
-      where: { status: "published", createdAt: { gte: new Date(Date.now() - 90 * 86400000) } },
+      where: { ...PUBLIC_BRIEFING_WHERE, createdAt: { gte: new Date(Date.now() - 90 * 86400000) } },
       select: { slug: true, title: true, summary: true },
       orderBy: { createdAt: "desc" },
       take: 100,

@@ -1,3 +1,4 @@
+import { PUBLIC_BRIEFING_WHERE } from "@/lib/intelligence/publication";
 import { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { campaigns } from "@/data/campaigns";
@@ -7,7 +8,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const [briefingsResult, newsResult, cvesResult] = await Promise.allSettled([
     prisma.briefing.findMany({
-      where: { status: "published" },
+      where: { ...PUBLIC_BRIEFING_WHERE },
       select: { slug: true, updatedAt: true },
       orderBy: { createdAt: "desc" },
       take: 100,

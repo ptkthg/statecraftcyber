@@ -32,6 +32,7 @@ export function buildCinsItem(ips: string[], now: Date): RawThreatItem | null {
     sourceUrl: "https://cinsscore.com/",
     sourceName: "CINS Score",
     publishedAt: now,
+      publishedAtOrigin: "retrieval",
     cves: [],
     iocs: ips.map((ip) => ({
       type: "ip" as const,
@@ -40,9 +41,10 @@ export function buildCinsItem(ips: string[], now: Date): RawThreatItem | null {
       source: "CINS Score",
     })),
     severity: "medium",
+      severityOrigin: "assessment",
     tags: ["blocklist", "ip", "cins", "ioc-feed"],
-    affectedSectors: ["Geral"],
-    affectedRegions: ["Global"],
+    affectedSectors: [],
+    affectedRegions: [],
   };
 }
 

@@ -1,3 +1,4 @@
+import { PUBLIC_BRIEFING_WHERE, PUBLIC_IOC_WHERE } from "@/lib/intelligence/publication";
 import { NextRequest, NextResponse } from "next/server";
 import type { Ioc, EnrichedIoc } from "@/lib/types";
 import { checkRateLimit } from "@/lib/security/rate-limit";
@@ -43,11 +44,12 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Check if the structured Ioc table has data
-    const iocTableCount = await prisma.ioc.count();
+    const iocTableCount = await prisma.ioc.count({ where: PUBLIC_IOC_WHERE });
 
     if (iocTableCount > 0) {
       // Use structured Ioc table with server-side pagination & filtering
       const where = {
+        ...PUBLIC_IOC_WHERE,
         ...(typeFilter ? { type: typeFilter } : {}),
         ...(q ? { normalized: { contains: q } } : {}),
       };
@@ -65,7 +67,7 @@ export async function GET(req: NextRequest) {
           },
         }),
         prisma.ioc.count({ where }),
-        prisma.ioc.groupBy({ by: ["type"], _count: { type: true } }),
+        prisma.ioc.groupBy({ where: PUBLIC_IOC_WHERE, by: ["type"], _count: { type: true } }),
       ]);
 
       const enriched: EnrichedIoc[] = results.map((ioc) => ({
@@ -100,7 +102,7 @@ export async function GET(req: NextRequest) {
 
     // Fallback: IOCs still stored in Briefing.iocs JSON field
     const briefings = await prisma.briefing.findMany({
-      where: { status: "published" },
+      where: { ...PUBLIC_BRIEFING_WHERE },
       select: {
         slug: true,
         title: true,

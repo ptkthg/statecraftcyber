@@ -83,12 +83,14 @@ export function buildThreatFoxItems(entries: ThreatFoxEntry[], now: Date): RawTh
       sourceUrl: `https://threatfox.abuse.ch/browse/malware/${slug}/`,
       sourceName: "abuse.ch / ThreatFox",
       publishedAt: now,
+      publishedAtOrigin: "retrieval",
       cves: [],
       iocs,
       severity,
+      severityOrigin: "assessment",
       tags: [slug, "malware", "ioc-feed", "threatfox"],
-      affectedSectors: ["Geral"],
-      affectedRegions: ["Global"],
+      affectedSectors: [],
+      affectedRegions: [],
     });
   }
 

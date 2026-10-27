@@ -110,8 +110,8 @@ export const rssFeedsAdapter: SourceAdapter = {
           for (const item of (parsed.items ?? []).slice(0, 5)) {
             if (!item.title || !item.link) continue;
 
-            const pubDate = item.pubDate ? new Date(item.pubDate) : new Date();
-            if (pubDate < cutoff) continue;
+            const pubDate = item.pubDate ? new Date(item.pubDate) : undefined;
+            if (pubDate && pubDate < cutoff) continue;
 
             const rawSummary = item.contentSnippet ?? item.content ?? item.summary ?? "";
             const summary = truncate(cleanHtml(rawSummary), 600);
@@ -131,8 +131,8 @@ export const rssFeedsAdapter: SourceAdapter = {
               iocs: [],
               mitreTechniques: [],
               tags: inferTagsFromTitle(item.title),
-              affectedSectors: feed.defaultSectors ?? ["Corporativo"],
-              affectedRegions: feed.defaultRegions ?? ["Global"],
+              affectedSectors: [],
+              affectedRegions: [],
             });
           }
 

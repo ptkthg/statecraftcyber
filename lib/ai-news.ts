@@ -1,3 +1,4 @@
+import { validateTextFields, validTextReport } from "./intelligence/text-validation";
 import type { NewsArticle } from "./news-feeds";
 import { completeNewsJson } from "./news-ai-client";
 
@@ -41,7 +42,7 @@ Responda APENAS com um objeto JSON válido, sem texto fora do JSON:
 {
   "title": "Manchete jornalística em PT-BR. Máximo 110 caracteres. Use verbo de ação no presente ou passado recente. Não use 'Entenda', 'Saiba mais', 'Veja', 'Conheça'. Escreva como manchete do G1 ou Folha: o fato principal de forma clara e direta.",
   "summary": "Lide jornalístico: 2 a 3 frases que respondem quem, o quê, quando, onde e por que importa. Coloque o fato mais relevante na primeira frase. Seja denso, direto e informativo. Máximo 160 palavras. Sem travessões.",
-  "content": "Notícia completa em markdown. Mínimo 500 palavras. Siga esta estrutura editorial:\n\n1. Parágrafo de abertura: o fato principal com contexto imediato. Quem está envolvido, o que aconteceu, qual o impacto direto.\n2. Contexto: por que esse evento aconteceu, qual o histórico do ator, da organização ou da vulnerabilidade envolvida. Situe o leitor no cenário mais amplo.\n3. Impacto: quem foi afetado, em que escala, quais os riscos para empresas, usuários ou infraestruturas. Dados e estimativas quando disponíveis na fonte.\n4. Detalhes técnicos: como a vulnerabilidade funciona, qual o vetor de ataque, quais sistemas ou versões estão expostos. Use linguagem técnica mas acessível.\n5. Encerramento: desdobramentos esperados, medidas recomendadas ou ações já tomadas. Cite a fonte original.\n\nRegras de escrita:\n- Parágrafos corridos. Sem listas de bullet no corpo principal.\n- Use subtítulos (##) apenas quando houver quebra temática real, não como divisão mecânica.\n- **Negrito** apenas em: nomes de CVE, grupos APT, ferramentas maliciosas e produtos afetados.\n- Tom neutro e objetivo. Sem exageros, sem alarmismo, sem julgamentos editoriais.\n- Não invente dados. Só use o que está na fonte.\n- Sem travessões.\n\nVariedade obrigatória de conectivos e aberturas:\n- Nunca comece dois parágrafos consecutivos com a mesma palavra ou estrutura.\n- Alterne os conectivos de transição: em vez de repetir sempre 'além disso' ou 'no entanto', use também 'nesse contexto', 'paralelamente', 'de forma complementar', 'em resposta a isso', 'até o momento', 'segundo a fonte', 'na prática', 'do ponto de vista técnico', 'para as organizações afetadas', 'o cenário se complica quando', entre outros.\n- Varie a abertura dos parágrafos: alterne entre começar com o sujeito principal, com uma circunstância de tempo ou lugar, com uma consequência, com uma citação indireta da fonte, ou com um dado concreto.\n- O texto deve soar como escrito por um humano com vocabulário amplo, não como um modelo repetindo fórmulas."
+  "content": "Notícia completa em markdown. Extensão limitada às informações efetivamente disponíveis na fonte. Não expanda resumos curtos. Siga esta estrutura editorial:\n\n1. Parágrafo de abertura: o fato principal com contexto imediato. Quem está envolvido, o que aconteceu, qual o impacto direto.\n2. Contexto: por que esse evento aconteceu, qual o histórico do ator, da organização ou da vulnerabilidade envolvida. Situe o leitor no cenário mais amplo.\n3. Impacto: quem foi afetado, em que escala, quais os riscos para empresas, usuários ou infraestruturas. Dados e estimativas quando disponíveis na fonte.\n4. Detalhes técnicos: como a vulnerabilidade funciona, qual o vetor de ataque, quais sistemas ou versões estão expostos. Use linguagem técnica mas acessível.\n5. Encerramento: desdobramentos esperados, medidas recomendadas ou ações já tomadas. Cite a fonte original.\n\nRegras de escrita:\n- Parágrafos corridos. Sem listas de bullet no corpo principal.\n- Use subtítulos (##) apenas quando houver quebra temática real, não como divisão mecânica.\n- **Negrito** apenas em: nomes de CVE, grupos APT, ferramentas maliciosas e produtos afetados.\n- Tom neutro e objetivo. Sem exageros, sem alarmismo, sem julgamentos editoriais.\n- Não invente dados. Só use o que está na fonte.\n- Sem travessões.\n\nVariedade obrigatória de conectivos e aberturas:\n- Nunca comece dois parágrafos consecutivos com a mesma palavra ou estrutura.\n- Alterne os conectivos de transição: em vez de repetir sempre 'além disso' ou 'no entanto', use também 'nesse contexto', 'paralelamente', 'de forma complementar', 'em resposta a isso', 'até o momento', 'segundo a fonte', 'na prática', 'do ponto de vista técnico', 'para as organizações afetadas', 'o cenário se complica quando', entre outros.\n- Varie a abertura dos parágrafos: alterne entre começar com o sujeito principal, com uma circunstância de tempo ou lugar, com uma consequência, com uma citação indireta da fonte, ou com um dado concreto.\n- O texto deve soar como escrito por um humano com vocabulário amplo, não como um modelo repetindo fórmulas."
 }`;
 
   try {
@@ -68,6 +69,8 @@ async function getFromCache(slug: string): Promise<{ title: string; summary: str
     const { prisma } = await import("./prisma");
     const cached = await prisma.newsCache.findUnique({ where: { slug } });
     if (!cached) return null;
+    const snapshot = cached.sourceSnapshot as { title?:string; summary?:string; content?:string } | null;
+    if (!snapshot || !validTextReport(cached.qualityReport, [snapshot.title, snapshot.summary, htmlToText(snapshot.content ?? "")].join("\n"))) return null;
     return { title: cached.title, summary: cached.summary, content: cached.content };
   } catch {
     return null;
@@ -77,10 +80,18 @@ async function getFromCache(slug: string): Promise<{ title: string; summary: str
 async function saveToCache(slug: string, data: { title: string; summary: string; content: string }, article: NewsArticle): Promise<void> {
   try {
     const { prisma } = await import("./prisma");
+    const source = [article.title, article.summary, htmlToText(article.content ?? "")].join("\n");
+    const report = validateTextFields(source, data);
+    const safe = report.publishable ? data : { title: article.title, summary: article.summary, content: article.content ?? "" };
+    const proof = {
+      qualityReport: JSON.parse(JSON.stringify({ ...report, analysisStatus: report.publishable ? "validated" : "enriched", unpublishedCandidate: report.publishable ? undefined : data })),
+      sourceSnapshot: { title: article.title, summary: article.summary, content: article.content ?? "", url: article.url, publishedAt: article.publishedAt },
+      sourcePublishedAt: new Date(article.publishedAt),
+    };
     await prisma.newsCache.upsert({
       where: { slug },
-      create: { slug, ...data, source: article.source, originalUrl: article.url },
-      update: { ...data, enrichedAt: new Date() },
+      create: { slug, ...safe, ...proof, source: article.source, originalUrl: article.url },
+      update: { ...safe, ...proof, enrichedAt: new Date() },
     });
   } catch (err) {
     console.error("[AI News] Falha ao salvar cache:", (err as Error).message);
@@ -97,7 +108,9 @@ export async function getEnrichedArticle(article: NewsArticle): Promise<Enriched
     fromCache: false,
   };
 
-  const cached = await getFromCache(article.slug);
+  const cachedCandidate = await getFromCache(article.slug);
+  const source = [article.title, article.summary, htmlToText(article.content ?? "")].join("\n");
+  const cached = cachedCandidate && validateTextFields(source, cachedCandidate).publishable ? cachedCandidate : null;
   if (cached && cached.content.length > 100) return { ...cached, fromCache: true };
 
   const ai = await generateArticle(article);
@@ -109,5 +122,5 @@ export async function getEnrichedArticle(article: NewsArticle): Promise<Enriched
 
   await saveToCache(article.slug, ai, article);
 
-  return { ...ai, fromCache: false };
+  return validateTextFields(source, ai).publishable ? { ...ai, fromCache: false } : fallback;
 }

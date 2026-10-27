@@ -1,3 +1,5 @@
+import { sourceRevision } from "@/lib/intelligence/evidence";
+import { publicationStatus } from "@/lib/intelligence/validation";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -52,18 +54,8 @@ async function handleCron(req: NextRequest) {
   const activeSources: string[] = [];
 
   try {
-    // ── 0. Limpar briefings com mais de 7 dias ───────────────────────────
-    const cutoff7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    try {
-      const deleted = await prisma.briefing.deleteMany({ where: { createdAt: { lt: cutoff7d } } });
-      if (deleted.count > 0) console.log(`[Cron] ${deleted.count} briefings com mais de 7 dias removidos`);
-    } catch (err) {
-      console.error("[Cron] Erro ao limpar briefings antigos (não crítico):", (err as Error).message);
-      runErrors.push(`cleanup: ${(err as Error).message}`);
-    }
-
-    // ── 1. Coletar dados de todas as fontes ─────────────────────────────
-    console.log("[Cron] Iniciando coleta horária de threat intelligence...");
+    // ── 0. Preservar registros para auditoria ───────────────────────────
+    // Preserve preliminary and rejected records for audit; retention is a separate policy.
     const { items, errors, sources } = await fetchAllSources();
 
     activeSources.push(...sources);
@@ -87,26 +79,38 @@ async function handleCron(req: NextRequest) {
     const epssMap = await fetchEpssScores(allCves);
 
     for (const item of items) {
-      if (item.cves?.length && !item.epssScore) {
+      if (item.cves?.length === 1 && item.epssScore === undefined) {
         const score = epssMap[item.cves[0]];
-        if (score !== undefined) item.epssScore = score;
+        if (score !== undefined) {
+          item.epssScore = score;
+          item.evidenceSources = [...(item.evidenceSources ?? []).filter(s=>s.id!=="epss"), {
+            id:"epss",name:"FIRST EPSS",url:"https://api.first.org/data/v1/epss?cve=" + item.cves[0],
+            text:JSON.stringify({cve:item.cves[0],epss:score}),retrievedAt:new Date().toISOString(),origin:"original",
+          }];
+        }
       }
     }
 
     // ── 3. Deduplicar contra o banco ─────────────────────────────────────
     const hashes = items.map(generateContentHash);
     let existingHashes: Set<string>;
+    const previousByHash = new Map<string, { id:string; slug:string; sourceSnapshot:unknown }>();
     try {
-      existingHashes = await prisma.briefing
-        .findMany({
-          where: { contentHash: { in: hashes } },
-          select: { contentHash: true },
-        })
-        .then((rows: { contentHash: string }[]) => new Set(rows.map((r) => r.contentHash)));
+      const rows = await prisma.briefing.findMany({ where: { contentHash: { in: hashes } }, select: { id:true, slug:true, contentHash:true, sourceSnapshot:true } });
+      const unchanged = new Set<string>();
+      for (const row of rows) {
+        previousByHash.set(row.contentHash,row);
+        const original = items.find(item=>generateContentHash(item)===row.contentHash);
+        if (original && row.sourceSnapshot) {
+          try {
+            if (sourceRevision(original) === sourceRevision(row.sourceSnapshot as unknown as RawItem)) unchanged.add(row.contentHash);
+          } catch { /* Malformed or legacy snapshot must be recollected, not trusted. */ }
+        }
+      }
+      existingHashes = unchanged;
     } catch (err) {
-      console.error("[Cron] Erro ao buscar hashes existentes, assumindo todos novos:", (err as Error).message);
-      runErrors.push(`dedup: ${(err as Error).message}`);
-      existingHashes = new Set();
+      // Never assume an empty DB on a read failure: that can produce duplicate or stale publications.
+      throw new Error("Deduplicação indisponível: " + (err as Error).message);
     }
 
     const newItems = filterNewItems(items, existingHashes);
@@ -144,15 +148,13 @@ async function handleCron(req: NextRequest) {
         const briefing = await generateBriefingAsync(item, existingSlugs);
         const hash = generateContentHash(item);
 
-        const created = await prisma.briefing.create({
-          data: {
+        const previous = previousByHash.get(hash);
+        const data = {
             title: briefing.title,
-            slug: briefing.slug,
+            slug: previous?.slug ?? briefing.slug,
             summary: briefing.summary,
             content: briefing.content,
-            ...(briefing.structuredContent
-              ? { structuredContent: briefing.structuredContent as unknown as Prisma.InputJsonValue }
-              : {}),
+            structuredContent: briefing.structuredContent ? JSON.parse(JSON.stringify(briefing.structuredContent)) as Prisma.InputJsonValue : Prisma.DbNull,
             severity: briefing.severity,
             category: briefing.category,
             tags: briefing.tags,
@@ -166,11 +168,19 @@ async function handleCron(req: NextRequest) {
             epssScore: briefing.epssScore,
             cvssScore: briefing.cvssScore,
             confidence: briefing.confidence,
-            status: AUTO_PUBLISH ? "published" : "draft",
+            status: "draft" as const,
+            analysisStatus: briefing.analysisStatus,
+            qualityReport: JSON.parse(JSON.stringify(briefing.qualityReport)) as Prisma.InputJsonValue,
+            sourceSnapshot: JSON.parse(JSON.stringify(briefing.sourceSnapshot)) as Prisma.InputJsonValue,
+            operationalPriority: briefing.operationalPriority,
+            severityBasis: briefing.severityBasis,
             contentHash: hash,
             readingTime: briefing.readingTime,
-          },
-        });
+        };
+        const created = previous
+          ? await prisma.briefing.update({ where: { id: previous.id }, data })
+          : await prisma.briefing.create({ data });
+        if (previous) await prisma.ioc.deleteMany({ where: { briefingId: created.id } });
 
         // Populate structured Ioc table
         const iocList = (briefing.iocs ?? []) as Ioc[];
@@ -191,6 +201,9 @@ async function handleCron(req: NextRequest) {
           });
         }
 
+        const nextStatus = publicationStatus(AUTO_PUBLISH, briefing.qualityReport);
+        if (nextStatus === "published") await prisma.briefing.update({ where: { id: created.id }, data: { status: nextStatus } });
+        if (!briefing.qualityReport.publishable) runErrors.push("quality:" + created.id + ":" + briefing.qualityReport.issues.map(i => i.code).join(","));
         briefingsCreated++;
         console.log(`[Cron] Briefing criado: ${briefing.title.slice(0, 60)} (${iocList.length} IOCs)`);
       } catch (err) {

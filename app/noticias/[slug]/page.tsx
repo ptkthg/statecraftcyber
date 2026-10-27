@@ -1,3 +1,5 @@
+import { validTextReport } from "@/lib/intelligence/text-validation";
+import { PUBLIC_BRIEFING_WHERE } from "@/lib/intelligence/publication";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -64,7 +66,7 @@ function ArticleBodySkeleton({ article }: { article: NewsArticle }) {
         <Loader2 size={14} className="text-brand animate-spin flex-shrink-0" />
         <div>
           <p className="text-xs text-dim">Gerando notícia em português...</p>
-          <p className="text-xs text-dim mt-0.5">A IA está redigindo o artigo completo. Aguarde alguns segundos.</p>
+          <p className="text-xs text-dim mt-0.5">O conteúdo será exibido somente se houver suporte verificável nas fontes. Aguarde alguns segundos.</p>
         </div>
       </div>
 
@@ -143,7 +145,7 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
       <p
         className="text-lg md:text-xl text-dim font-normal italic leading-snug mb-6"
       >
-        {isAi ? "Análise elaborada pela Statecraft com base em fontes abertas" : `Fonte: ${article.source}`}
+        {isAi ? "Síntese extrativa automatizada da fonte original" : `Fonte: ${article.source}`}
       </p>
 
       {/* Linha de creditos */}
@@ -268,7 +270,7 @@ async function RelatedBriefings({ cves, tags }: { cves: string[]; tags: string[]
     if (tags.length > 0) orConditions.push({ tags: { hasSome: tags } });
 
     const briefings = await prisma.briefing.findMany({
-      where: { status: "published", OR: orConditions },
+      where: { ...PUBLIC_BRIEFING_WHERE, OR: orConditions },
       select: { slug: true, title: true, severity: true, category: true, cves: true, tags: true, createdAt: true },
       orderBy: { createdAt: "desc" },
       take: 3,
@@ -390,7 +392,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     try {
       const { prisma } = await import("@/lib/prisma");
       const cached = await prisma.newsCache.findUnique({ where: { slug } });
-      if (cached) {
+      const snapshot = cached?.sourceSnapshot as { title?:string; summary?:string; url?:string; publishedAt?:string } | null;
+      if (cached && snapshot?.title && snapshot.summary && snapshot.publishedAt && validTextReport(cached.qualityReport, snapshot.title + "\n" + snapshot.summary)) {
         article = {
           id: cached.slug,
           slug: cached.slug,
@@ -399,7 +402,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           url: cached.originalUrl,
           source: cached.source,
           sourceRegion: "Global" as const,
-          publishedAt: cached.enrichedAt.toISOString(),
+          publishedAt: snapshot!.publishedAt!,
           tags: [],
           cves: [],
           importance: 0,

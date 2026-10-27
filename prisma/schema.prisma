@@ -31,6 +31,12 @@ model Briefing {
   cvssScore         Float?
   confidence        Confidence
   status            Status     @default(draft)
+  /// Automated evidence validation; never a claim of human review.
+  analysisStatus    String     @default("preliminary")
+  qualityReport     Json?
+  sourceSnapshot    Json?
+  operationalPriority String?
+  severityBasis     String?
   contentHash       String     @unique
   readingTime       Int        @default(5)
   createdAt         DateTime   @default(now())
@@ -38,6 +44,7 @@ model Briefing {
   iocsRel           Ioc[]
   searchVector      Unsupported("tsvector")? @map("search_vector")
 
+  @@index([status, analysisStatus, createdAt(sort: Desc)])
   @@index([status, severity])
   @@index([status, createdAt(sort: Desc)])
   @@index([category])
@@ -63,6 +70,9 @@ model Ioc {
 }
 
 model NewsCache {
+  qualityReport Json?
+  sourceSnapshot Json?
+  sourcePublishedAt DateTime?
   slug        String   @id
   title       String
   summary     String   @db.Text
@@ -74,6 +84,7 @@ model NewsCache {
 }
 
 model CveCache {
+  qualityReport Json?
   id               String    @id
   published        DateTime
   lastModified     DateTime

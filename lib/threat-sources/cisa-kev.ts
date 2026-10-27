@@ -37,9 +37,9 @@ export const cisaKevAdapter: SourceAdapter = {
 
     return recent.map((entry): RawThreatItem => ({
       externalId: entry.cveID,
-      title: `${entry.cveID}: Exploração Ativa em ${entry.vulnerabilityName}`,
+      title: `${entry.cveID}: Exploração conhecida em ${entry.vulnerabilityName}`,
       description: `${entry.shortDescription} Ação requerida pela CISA: ${entry.requiredAction}`,
-      sourceUrl: `https://nvd.nist.gov/vuln/detail/${entry.cveID}`,
+      sourceUrl: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
       sourceName: "CISA KEV",
       publishedAt: new Date(entry.dateAdded),
       cves: [entry.cveID],
@@ -54,26 +54,11 @@ export const cisaKevAdapter: SourceAdapter = {
           : []),
       ],
       affectedProducts: [`${entry.vendorProject} ${entry.product}`],
-      affectedSectors: inferSectors(entry.vendorProject, entry.product),
-      affectedRegions: ["Global"],
-      severity: "critical",
+      affectedSectors: [],
+      affectedRegions: [],
+      // KEV is exploitation evidence and priority, not a CVSS technical severity.
       inCisaKev: true,
       exploitedInWild: true,
     }));
   },
 };
-
-function inferSectors(vendor: string, product: string): string[] {
-  const combined = `${vendor} ${product}`.toLowerCase();
-  const sectors: string[] = [];
-  if (/cisco|fortinet|palo|sonicwall|juniper|netgear/.test(combined))
-    sectors.push("Infraestrutura de Rede");
-  if (/vmware|microsoft|oracle|sap/.test(combined))
-    sectors.push("Corporativo");
-  if (/ivanti|citrix|pulse|vpn/.test(combined))
-    sectors.push("Acesso Remoto");
-  if (/exchange|sharepoint|outlook/.test(combined))
-    sectors.push("Colaboração Empresarial");
-  if (sectors.length === 0) sectors.push("Geral");
-  return sectors;
-}

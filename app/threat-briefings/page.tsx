@@ -1,3 +1,4 @@
+import { PUBLIC_BRIEFING_WHERE } from "@/lib/intelligence/publication";
 import { prisma } from "@/lib/prisma";
 import EditorialHero from "@/components/editorial/EditorialHero";
 import BriefingExplorer, { type BriefingItem } from "@/components/threat/BriefingExplorer";
@@ -17,7 +18,7 @@ async function getBriefings(): Promise<{ briefings: BriefingItem[]; trending: Br
   }
   try {
     const rows = await prisma.briefing.findMany({
-      where: { status: "published" },
+      where: { ...PUBLIC_BRIEFING_WHERE },
       orderBy: [{ severity: "desc" }, { createdAt: "desc" }],
       take: 50,
       select: {

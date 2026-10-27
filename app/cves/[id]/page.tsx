@@ -1,3 +1,4 @@
+import { PUBLIC_BRIEFING_WHERE } from "@/lib/intelligence/publication";
 import type { CSSProperties, ReactNode } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -14,7 +15,7 @@ import styles from "./cve-detail.module.css";
 type Props = { params: Promise<{ id: string }> };
 
 const severityLabel: Record<string, string> = {
-  CRITICAL: "Crítica", HIGH: "Alta", MEDIUM: "Média", LOW: "Baixa",
+  NONE: "Nenhuma", CRITICAL: "Crítica", HIGH: "Alta", MEDIUM: "Média", LOW: "Baixa",
 };
 
 function formatDate(value: string): string {
@@ -78,7 +79,7 @@ export default async function CveDetailPage({ params }: Props) {
 
   const relatedCampaigns = campaigns.filter((campaign) => campaign.cves.some((item) => item.id === id));
   const relatedBriefings = await prisma.briefing.findMany({
-    where: { status: "published", cves: { has: id } },
+    where: { ...PUBLIC_BRIEFING_WHERE, cves: { has: id } },
     select: { slug: true, title: true, severity: true },
     orderBy: { createdAt: "desc" },
     take: 6,

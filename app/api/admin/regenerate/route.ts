@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { verifyAdminToken } from "@/lib/security/admin-token";
-import { generateAiBriefing, buildMarkdownFallback } from "@/lib/ai-briefing";
-import type { RawThreatItem, RawIOC } from "@/lib/threat-sources/types";
+import { generateBriefingAsync } from "@/lib/briefing-generator";
+import { publicationStatus } from "@/lib/intelligence/validation";
+import type { RawThreatItem } from "@/lib/threat-sources/types";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -86,57 +87,29 @@ export async function POST(req: NextRequest) {
 
   for (const b of briefings) {
     try {
-      // Reconstruct a minimal RawThreatItem from stored fields.
-      // The original description is not stored; NVD enrichment will supply technical details.
-      const item: RawThreatItem = {
-        externalId: b.id,
-        title: b.title,
-        description: b.summary,
-        sourceName: b.sourceName,
-        sourceUrl: b.sourceUrl,
-        publishedAt: b.sourcePublishedAt ?? b.createdAt,
-        cves: b.cves,
-        cvssScore: b.cvssScore ?? undefined,
-        epssScore: b.epssScore ?? undefined,
-        severity: b.severity as RawThreatItem["severity"],
-        mitreTechniques: b.mitreTechniques,
-        affectedSectors: b.affectedSectors,
-        affectedRegions: b.affectedRegions,
-        affectedProducts: [],
-        iocs: b.iocsRel.map((ioc) => ({
-          type: ioc.type as RawIOC["type"],
-          value: ioc.value,
-          confidence: ioc.confidence as RawIOC["confidence"],
-          source: ioc.sourceName ?? b.sourceName,
-        })),
-        inCisaKev: false, // re-checked by enrichCveContext during RAG
-        tags: b.tags,
-      };
-
-      const { title, summary, structuredContent } = await generateAiBriefing(
-        item,
-        b.severity,
-        b.summary,
-        b.content
-      );
-
-      const content = structuredContent
-        ? buildMarkdownFallback(structuredContent)
-        : b.content;
-
+      // Generated summaries cannot bootstrap their own evidence.
+      if (!b.sourceSnapshot) {
+        await prisma.briefing.update({ where: { id: b.id }, data: { status: "draft", analysisStatus: "preliminary" } });
+        results.push({ slug: b.slug, title: b.title, enriched: false, error: "Registro legado sem snapshot original; recolha a fonte antes de regenerar." });
+        continue;
+      }
+      const snapshot = b.sourceSnapshot as unknown as RawThreatItem;
+      const item = { ...snapshot, publishedAt: snapshot.publishedAt ? new Date(snapshot.publishedAt) : undefined };
+      const generated = await generateBriefingAsync(item, new Set());
       await prisma.briefing.update({
         where: { id: b.id },
         data: {
-          title,
-          summary,
-          content,
-          ...(structuredContent
-            ? { structuredContent: structuredContent as unknown as Prisma.InputJsonValue }
-            : {}),
+          title: generated.title, summary: generated.summary, content: generated.content,
+          structuredContent: generated.structuredContent ? JSON.parse(JSON.stringify(generated.structuredContent)) as Prisma.InputJsonValue : Prisma.DbNull,
+          qualityReport: JSON.parse(JSON.stringify(generated.qualityReport)) as Prisma.InputJsonValue,
+          sourceSnapshot: JSON.parse(JSON.stringify(generated.sourceSnapshot)) as Prisma.InputJsonValue,
+          analysisStatus: generated.analysisStatus, severity: generated.severity, confidence: generated.confidence,
+          cvssScore: generated.cvssScore, epssScore: generated.epssScore, mitreTechniques: generated.mitreTechniques,
+          operationalPriority: generated.operationalPriority, severityBasis: generated.severityBasis,
+          status: publicationStatus(b.status === "published" || process.env.AUTO_PUBLISH === "true", generated.qualityReport),
         },
       });
-
-      results.push({ slug: b.slug, title, enriched: !!structuredContent });
+      results.push({ slug: b.slug, title: generated.title, enriched: generated.analysisStatus !== "preliminary", error: generated.qualityReport.publishable ? undefined : generated.qualityReport.issues.map(i => i.code).join(",") });
     } catch (err) {
       results.push({
         slug: b.slug,

@@ -1,3 +1,4 @@
+import { PUBLIC_BRIEFING_WHERE, PUBLIC_IOC_WHERE } from "@/lib/intelligence/publication";
 // Funções puras dos dados derivados da home (spec 2026-06-12 §7). Queries ficam em getHomeStats.
 
 const ALERT_PATTERNS = /(corrige|patch|atualiza[çc][ãa]o|urgente|explorad[ao]|exploit|zero-day|kev|mitiga[çc][ãa]o)/i;
@@ -79,22 +80,22 @@ export async function getHomeStats(): Promise<HomeStats> {
     const [criticals, briefingsTotal, briefingsWeek, cvesToday, cvesKevToday, recentCves, iocsTotal, regionRows, latest, lastRun] =
       await Promise.all([
         prisma.briefing.findMany({
-          where: { status: "published", severity: "critical", createdAt: { gte: d7 } },
+          where: { ...PUBLIC_BRIEFING_WHERE, severity: "critical", createdAt: { gte: d7 } },
           orderBy: { createdAt: "desc" },
           select: { slug: true, title: true, tags: true, createdAt: true, sourceName: true },
         }),
-        prisma.briefing.count({ where: { status: "published" } }),
-        prisma.briefing.count({ where: { status: "published", createdAt: { gte: d7 } } }),
+        prisma.briefing.count({ where: { ...PUBLIC_BRIEFING_WHERE } }),
+        prisma.briefing.count({ where: { ...PUBLIC_BRIEFING_WHERE, createdAt: { gte: d7 } } }),
         prisma.cveCache.count({ where: { published: { gte: d1 } } }),
         prisma.cveCache.count({ where: { published: { gte: d1 }, inCisaKev: true } }),
         prisma.cveCache.findMany({ where: { published: { gte: d7 } }, select: { published: true } }),
-        prisma.ioc.count(),
+        prisma.ioc.count({ where: PUBLIC_IOC_WHERE }),
         prisma.briefing.findMany({
-          where: { status: "published", createdAt: { gte: d7 } },
+          where: { ...PUBLIC_BRIEFING_WHERE, createdAt: { gte: d7 } },
           select: { affectedRegions: true, severity: true },
         }),
         prisma.briefing.findFirst({
-          where: { status: "published" }, orderBy: { createdAt: "desc" }, select: { slug: true },
+          where: { ...PUBLIC_BRIEFING_WHERE }, orderBy: { createdAt: "desc" }, select: { slug: true },
         }),
         prisma.cronLog.findFirst({ where: { success: true }, orderBy: { runAt: "desc" }, select: { runAt: true } }),
       ]);

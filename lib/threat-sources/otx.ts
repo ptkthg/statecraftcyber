@@ -92,6 +92,8 @@ export const otxAdapter: SourceAdapter = {
         cves,
         iocs,
         mitreTechniques: mitre,
+        evidenceSources: [{ id: "otx-pulse", name: "AlienVault OTX", url: `https://otx.alienvault.com/pulse/${pulse.id}`, text: JSON.stringify(pulse), techniqueAssertions: (pulse.attack_ids ?? []).map(a => ({ id: a.id, kind: "reported" as const, quote: JSON.stringify(a) })), retrievedAt: new Date().toISOString(), publishedAt: pulse.created, origin: "original" }],
+        mitreEvidence: (pulse.attack_ids ?? []).map(a => ({ id: a.id, name: a.name || a.display_name?.replace(/^T\d{4}(?:\.\d{3})?[: -]+/, ""), kind: "reported" as const, sourceId: "otx-pulse", quote: JSON.stringify(a) })),
         tags: [
           ...(pulse.tags ?? []).slice(0, 8),
           ...(pulse.malware_families ?? [])
@@ -102,8 +104,7 @@ export const otxAdapter: SourceAdapter = {
         affectedRegions:
           (pulse.targeted_countries ?? []).length > 0
             ? pulse.targeted_countries
-            : ["Global"],
-        ...(pulse.adversary ? { affectedRegions: [pulse.adversary] } : {}),
+            : [],
       };
     });
   },

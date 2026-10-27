@@ -46,13 +46,15 @@ export function buildFeodoItems(entries: FeodoEntry[], now: Date): RawThreatItem
       sourceUrl: "https://feodotracker.abuse.ch/browse/",
       sourceName: "abuse.ch / Feodo Tracker",
       publishedAt: now,
+      publishedAtOrigin: "retrieval",
       cves: [],
       iocs,
       severity: "high",
-      mitreTechniques: ["T1071", "T1090"],
+      severityOrigin: "assessment",
+      mitreTechniques: [], // Feed membership does not prove an ATT&CK behavior.
       tags: [slugify(family), "botnet", "c2", "feodo-tracker"],
-      affectedSectors: ["Geral"],
-      affectedRegions: ["Global"],
+      affectedSectors: [],
+      affectedRegions: [],
     });
   }
 

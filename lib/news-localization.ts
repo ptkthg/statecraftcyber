@@ -1,3 +1,4 @@
+import { validateTextFields, validTextReport } from "./intelligence/text-validation";
 import type { NewsArticle } from "./news-feeds";
 import { completeNewsJson } from "./news-ai-client";
 
@@ -64,11 +65,15 @@ export async function localizeNewsArticles(articles: NewsArticle[]): Promise<New
     const { prisma } = await import("./prisma");
     const cached = await prisma.newsCache.findMany({
       where: { slug: { in: articles.map((article) => article.slug) } },
-      select: { slug: true, title: true, summary: true },
+      select: { slug: true, title: true, summary: true, qualityReport: true },
     });
-    const translations = new Map(cached.map((item) => [item.slug, item]));
+    const translations = new Map<string, Preview>(cached.filter(item => {
+      const original = articles.find(a => a.slug === item.slug);
+      return original && validTextReport(item.qualityReport, original.title + "\n" + original.summary) && validateTextFields(original.title + "\n" + original.summary, { title: item.title, summary: item.summary }).publishable;
+    }).map(item => [item.slug, item]));
+    const cachedSlugs = new Set(cached.map(item => item.slug));
     const missing = articles.filter((article) =>
-      article.sourceRegion !== "Brasil" && !translations.has(article.slug)
+      article.sourceRegion !== "Brasil" && !cachedSlugs.has(article.slug)
     );
 
     // Translate only uncached articles; small batches keep the response bounded.
@@ -87,11 +92,15 @@ export async function localizeNewsArticles(articles: NewsArticle[]): Promise<New
       const rows = batch.flatMap((article) => {
         const preview = translated.get(article.slug);
         if (!preview) return [];
-        translations.set(article.slug, preview);
+        const report = validateTextFields(article.title + "\n" + article.summary, { title: preview.title, summary: preview.summary });
+        if (report.publishable) translations.set(article.slug, preview);
         return [{
           slug: article.slug,
-          title: preview.title,
-          summary: preview.summary,
+          title: report.publishable ? preview.title : article.title,
+          summary: report.publishable ? preview.summary : article.summary,
+          qualityReport: JSON.parse(JSON.stringify({ ...report, analysisStatus: report.publishable ? "validated" : "enriched", unpublishedCandidate: report.publishable ? undefined : preview })),
+          sourceSnapshot: { title: article.title, summary: article.summary, content: article.content ?? "", url: article.url, publishedAt: article.publishedAt },
+          sourcePublishedAt: new Date(article.publishedAt),
           content: "", // Full PT-BR article is generated only when opened.
           source: article.source,
           originalUrl: article.url,

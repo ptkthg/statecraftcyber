@@ -1,3 +1,4 @@
+import { selectNvdCvss, type NvdMetrics } from "../intelligence/cvss";
 import type { SourceAdapter, RawThreatItem } from "./types";
 
 const NVD_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0";
@@ -9,14 +10,7 @@ interface NvdCve {
     lastModified: string;
     vulnStatus: string;
     descriptions: { lang: string; value: string }[];
-    metrics?: {
-      cvssMetricV31?: {
-        cvssData: { baseScore: number; baseSeverity: string };
-      }[];
-      cvssMetricV3?: {
-        cvssData: { baseScore: number; baseSeverity: string };
-      }[];
-    };
+    metrics?: NvdMetrics;
     configurations?: {
       nodes: {
         cpeMatch: { criteria: string; vulnerable: boolean }[];
@@ -37,11 +31,7 @@ function getDescription(cve: NvdCve["cve"]): string {
   return en?.value ?? "Sem descrição disponível.";
 }
 
-function getCvss(cve: NvdCve["cve"]): number | undefined {
-  const v31 = cve.metrics?.cvssMetricV31?.[0]?.cvssData?.baseScore;
-  const v3 = cve.metrics?.cvssMetricV3?.[0]?.cvssData?.baseScore;
-  return v31 ?? v3;
-}
+function getCvss(cve: NvdCve["cve"]): number | undefined { return selectNvdCvss(cve.metrics).score ?? undefined; }
 
 function extractAffectedProducts(cve: NvdCve["cve"]): string[] {
   const products = new Set<string>();
@@ -99,19 +89,20 @@ export const nvdAdapter: SourceAdapter = {
 
         return {
           externalId: cve.id,
-          title: `${cve.id}: Vulnerabilidade Crítica Identificada`,
+          title: `${cve.id}: Vulnerabilidade reportada`,
           description,
           sourceUrl: `https://nvd.nist.gov/vuln/detail/${cve.id}`,
           sourceName: "NVD",
           publishedAt: new Date(cve.published),
           cves: [cve.id],
           cvssScore: cvss,
+          metricWarnings: [...selectNvdCvss(cve.metrics).warnings],
           iocs: [],
           mitreTechniques: [],
           tags: ["vulnerabilidade", "nvd", cvss && cvss >= 9 ? "cvss-crítico" : "cvss-alto"].filter(Boolean) as string[],
           affectedProducts: products,
-          affectedSectors: ["Corporativo", "Infraestrutura"],
-          affectedRegions: ["Global"],
+          affectedSectors: [],
+          affectedRegions: [],
         };
       });
   },

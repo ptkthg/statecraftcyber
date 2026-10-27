@@ -1,3 +1,4 @@
+import { PUBLIC_BRIEFING_WHERE, PUBLIC_IOC_WHERE } from "@/lib/intelligence/publication";
 import { NextRequest, NextResponse } from "next/server";
 import type { Ioc, LiveIoc } from "@/lib/types";
 import { checkRateLimit } from "@/lib/security/rate-limit";
@@ -41,11 +42,11 @@ export async function GET(req: NextRequest) {
     const rawLimit = parseInt(searchParams.get("limit") ?? "20", 10);
     const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 50) : 20;
     // Always force "published" — never expose drafts via public endpoint
-    const status = "published";
+
 
     const [briefings, latestIocsRaw] = await Promise.all([
       prisma.briefing.findMany({
-        where: { status },
+        where: PUBLIC_BRIEFING_WHERE,
         orderBy: [{ severity: "desc" }, { createdAt: "desc" }],
         take: limit,
         select: {
@@ -65,6 +66,7 @@ export async function GET(req: NextRequest) {
       }),
       // Últimos IOCs da tabela Ioc (inclui briefing para slug e severidade)
       prisma.ioc.findMany({
+        where: PUBLIC_IOC_WHERE,
         orderBy: { createdAt: "desc" },
         take: 8,
         select: {

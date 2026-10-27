@@ -57,7 +57,7 @@ function CveRow({ cve, rank }: { cve: CveEntry; rank: number }) {
       <div className={styles.rowMain}>
         <div className={styles.rowEyebrow}>
           <span className={styles.rowId}>{cve.id}</span>
-          <span className={styles.severityText}>{cve.severity === "CRITICAL" ? "CRÍTICA" : cve.severity === "HIGH" ? "ALTA" : cve.severity === "MEDIUM" ? "MÉDIA" : cve.severity === "LOW" ? "BAIXA" : "SEM SCORE"}</span>
+          <span className={styles.severityText}>{cve.severity === "CRITICAL" ? "CRÍTICA" : cve.severity === "HIGH" ? "ALTA" : cve.severity === "MEDIUM" ? "MÉDIA" : cve.severity === "LOW" ? "BAIXA" : cve.severity === "NONE" ? "NENHUMA" : "SEM SCORE"}</span>
           {cve.inCisaKev && <span className={styles.kevBadge}><ShieldAlert size={11} aria-hidden /> CISA KEV</span>}
         </div>
         <h3 title={title}>{title}</h3>

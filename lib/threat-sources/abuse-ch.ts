@@ -97,12 +97,13 @@ async function fetchUrlHaus(): Promise<RawThreatItem[]> {
       sourceUrl: "https://urlhaus.abuse.ch/browse/",
       sourceName: "abuse.ch / URLhaus",
       publishedAt: new Date(),
+      publishedAtOrigin: "retrieval",
       cves: [],
       iocs,
-      mitreTechniques: ["T1583.008", "T1071.001"],
+      mitreTechniques: [], // Feed membership does not prove an ATT&CK behavior.
       tags: ["urlhaus", "ioc", "malware", ...tags],
-      affectedSectors: ["Geral"],
-      affectedRegions: ["Global"],
+      affectedSectors: [],
+      affectedRegions: [],
     });
   }
 
@@ -153,11 +154,12 @@ async function fetchMalwareBazaar(): Promise<RawThreatItem[]> {
       publishedAt: new Date(samples[0].first_seen),
       cves: [],
       iocs,
-      mitreTechniques: ["T1204", "T1059"],
+      mitreTechniques: [], // Feed membership does not prove an ATT&CK behavior.
       tags: ["malware", "bazaar", sig.toLowerCase().replace(/\s+/g, "-")],
-      affectedSectors: ["Geral"],
-      affectedRegions: ["Global"],
+      affectedSectors: [],
+      affectedRegions: [],
       severity: "high",
+      severityOrigin: "assessment",
     });
   }
 

@@ -12,19 +12,21 @@ async function getStatus() {
     iocCount,
     cveCount,
     newsCount,
+    analysisRows,
     cronLogs,
   ] = await Promise.all([
     prisma.briefing.count({ where: { status: "published" } }),
     prisma.ioc.count(),
     prisma.cveCache.count(),
     prisma.newsCache.count(),
+    prisma.briefing.findMany({ orderBy: { updatedAt: "desc" }, take: 20, select: { id: true, title: true, analysisStatus: true, status: true, qualityReport: true } }),
     prisma.cronLog.findMany({
       orderBy: { runAt: "desc" },
       take: 10,
     }),
   ]);
 
-  return { briefingCount, iocCount, cveCount, newsCount, cronLogs };
+  return { briefingCount, iocCount, cveCount, newsCount, cronLogs, analysisRows };
 }
 
 function formatDuration(ms: number): string {
@@ -49,7 +51,7 @@ function timeAgo(d: Date): string {
 }
 
 export default async function AdminStatusPage() {
-  const { briefingCount, iocCount, cveCount, newsCount, cronLogs } = await getStatus();
+  const { briefingCount, iocCount, cveCount, newsCount, cronLogs, analysisRows } = await getStatus();
   const lastRun = cronLogs[0];
 
   const stats = [
@@ -61,6 +63,14 @@ export default async function AdminStatusPage() {
 
   return (
     <main className="min-h-screen bg-canvas pt-16">
+      <section className="mx-auto max-w-5xl px-4 py-6">
+        <h2 className="font-display text-xl text-ink">Qualidade das análises recentes</h2>
+        <p className="my-3 text-sm text-body">Preliminar: evidência ou seções insuficientes. Enriquecido: candidato retido para revisão. Validado: checagens automáticas aprovadas, sem afirmar revisão humana.</p>
+        <ul className="space-y-3">{analysisRows.map(row => <li key={row.id} className="border-t border-dim/30 pt-3 text-sm">
+          <strong>{row.title}</strong><p>{row.analysisStatus} · {row.status}</p>
+          <pre className="overflow-auto whitespace-pre-wrap text-xs text-body">{JSON.stringify((row.qualityReport as { issues?: unknown } | null)?.issues ?? ["Registro legado sem validação."], null, 2)}</pre>
+        </li>)}</ul>
+      </section>
       {/* Header */}
       <div className="border-b border-white/[0.04] sticky top-0 bg-canvas/95 backdrop-blur z-10">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">

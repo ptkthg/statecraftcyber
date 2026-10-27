@@ -1,3 +1,4 @@
+import { PUBLIC_IOC_WHERE, PUBLIC_BRIEFING_WHERE } from "@/lib/intelligence/publication";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { detectCveId, mergeResults } from "@/lib/search/merge";
@@ -51,12 +52,16 @@ export async function GET(req: NextRequest) {
           ts_rank(search_vector, plainto_tsquery('portuguese', ${q})) AS rank
         FROM "Briefing"
         WHERE status = 'published'
+          AND "analysisStatus" = 'validated'
+          AND "qualityReport"->>'policyVersion' = 'phase1-v1'
+          AND "qualityReport"->>'publishable' = 'true'
           AND search_vector @@ plainto_tsquery('portuguese', ${q})
         ORDER BY rank DESC
         LIMIT 5
       `,
       prisma.ioc.findMany({
         where: {
+          ...PUBLIC_IOC_WHERE,
           OR: [
             { value: { contains: q, mode: "insensitive" } },
             { normalized: { contains: q, mode: "insensitive" } },
@@ -70,7 +75,9 @@ export async function GET(req: NextRequest) {
         SELECT slug, title, source,
           ts_rank(search_vector, plainto_tsquery('portuguese', ${q})) AS rank
         FROM "NewsCache"
-        WHERE search_vector @@ plainto_tsquery('portuguese', ${q})
+        WHERE "qualityReport"->>'policyVersion' = 'phase1-v1'
+          AND "qualityReport"->>'publishable' = 'true'
+          AND search_vector @@ plainto_tsquery('portuguese', ${q})
         ORDER BY rank DESC
         LIMIT 5
       `,
@@ -140,7 +147,7 @@ export async function GET(req: NextRequest) {
     if (cveId) {
       try {
         const corr = await prisma.ioc.findMany({
-          where: { briefing: { cves: { has: cveId.toUpperCase() } } },
+          where: { briefing: { is: { ...PUBLIC_BRIEFING_WHERE, cves: { has: cveId.toUpperCase() } } } },
           take: 5,
           include: { briefing: { select: { slug: true, severity: true } } },
         });

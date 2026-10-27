@@ -1,3 +1,4 @@
+import type { EvidenceSource, TechniqueEvidence } from "../intelligence/types";
 export type Severity = "critical" | "high" | "medium" | "low";
 export type Confidence = "high" | "medium" | "low";
 
@@ -6,18 +7,27 @@ export interface RawIOC {
   value: string;
   confidence: Confidence;
   source: string;
+  sourceUrl?: string;
+  lastSeen?: string;
+  locallyConfirmed?: boolean;
+  sharedInfrastructure?: boolean;
 }
 
 export interface RawThreatItem {
   /** Identificador único da fonte */
   externalId: string;
+  descriptionOrigin?: "original" | "generated";
+  evidenceSources?: EvidenceSource[];
+  mitreEvidence?: TechniqueEvidence[];
   title: string;
   description: string;
   sourceUrl: string;
   sourceName: string;
   publishedAt?: Date;
+  publishedAtOrigin?: "source" | "retrieval";
   cves?: string[];
   cvssScore?: number;
+  metricWarnings?: string[];
   epssScore?: number;
   iocs?: RawIOC[];
   mitreTechniques?: string[];
@@ -27,6 +37,7 @@ export interface RawThreatItem {
   affectedRegions?: string[];
   /** Pré-classificação sugerida pela fonte */
   severity?: Severity;
+  severityOrigin?: "source" | "assessment";
   inCisaKev?: boolean;
   exploitedInWild?: boolean;
 }

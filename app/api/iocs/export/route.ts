@@ -1,3 +1,4 @@
+import { PUBLIC_IOC_WHERE } from "@/lib/intelligence/publication";
 import { NextRequest, NextResponse } from "next/server";
 import type { EnrichedIoc } from "@/lib/types";
 import { checkRateLimit } from "@/lib/security/rate-limit";
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest) {
     const typeFilter = ALLOWED_TYPES.has(rawType) ? rawType : "";
 
     const where = {
+        ...PUBLIC_IOC_WHERE,
       ...(typeFilter ? { type: typeFilter } : {}),
       ...(q ? { normalized: { contains: q } } : {}),
     };

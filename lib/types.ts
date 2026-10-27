@@ -1,3 +1,4 @@
+import type { EvidenceClaim, QualityReport, TechniqueEvidence } from "./intelligence/types";
 export type Severity = "critical" | "high" | "medium" | "low";
 export type Confidence = "high" | "medium" | "low";
 export type IocType = "ip" | "domain" | "url" | "hash" | "email" | "file" | "c2";
@@ -26,6 +27,9 @@ export interface EnrichedIoc extends Ioc {
 // ── Structured briefing content ───────────────────────────────────────────────
 
 export interface StructuredBriefing {
+  claims?: EvidenceClaim[];
+  mitreEvidence?: TechniqueEvidence[];
+  quality?: QualityReport;
   title: string;
   executiveSummary: string;
   whatHappened: string;

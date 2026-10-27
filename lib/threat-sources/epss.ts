@@ -26,9 +26,11 @@ export async function fetchEpssScores(
     if (!res.ok) return {};
 
     const data: EpssResponse = await res.json();
-    return Object.fromEntries(
-      data.data.map((e) => [e.cve, parseFloat(e.epss)])
-    );
+    const allowed = new Set(cveIds.map(id => id.toUpperCase()));
+    return Object.fromEntries((Array.isArray(data.data) ? data.data : [])
+      .filter(e => allowed.has(e.cve) && typeof e.epss === "string" && e.epss.trim() !== "" && Number.isFinite(Number(e.epss)) && Number(e.epss) >= 0 && Number(e.epss) <= 1)
+      .map(e => [e.cve, Number(e.epss)]));
+
   } catch {
     return {};
   }

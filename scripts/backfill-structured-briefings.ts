@@ -169,11 +169,11 @@ async function main() {
   let saved = 0;
   let failed = 0;
   let skipped = 0;
-  let offset = 0;
+  let lastId: string | undefined;
 
   while (processed < toProcess) {
     const batch = await prisma.briefing.findMany({
-      where: { ...idFilter, structuredContent: { equals: Prisma.DbNull } },
+      where: { ...idFilter, ...(lastId ? { id: { gt: lastId } } : {}), structuredContent: { equals: Prisma.DbNull } },
       select: {
         id: true,
         title: true,
@@ -187,7 +187,7 @@ async function main() {
         cves: true,
         mitreTechniques: true,
       },
-      skip: offset,
+      orderBy: { id: "asc" },
       take: BATCH_SIZE,
     });
 
@@ -216,7 +216,8 @@ async function main() {
       try {
         await prisma.briefing.update({
           where: { id: b.id },
-          data: { structuredContent: structured as unknown as Prisma.InputJsonValue },
+          // Legacy generated text has no original source snapshot: never promote it.
+          data: { structuredContent: structured as unknown as Prisma.InputJsonValue, status: "draft", analysisStatus: "preliminary", qualityReport: { policyVersion: "phase1-v1", publishable: false, issues: [{ code: "source.legacy", message: "Backfill sem snapshot original; exige nova coleta." }] } },
         });
         console.log("SALVO");
         saved++;
@@ -226,7 +227,7 @@ async function main() {
       }
     }
 
-    offset += batch.length;
+    lastId = batch[batch.length - 1]?.id;
     if (processed < toProcess) await sleep(DELAY_MS);
   }
 

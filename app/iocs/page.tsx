@@ -1,3 +1,4 @@
+import { PUBLIC_BRIEFING_WHERE, PUBLIC_IOC_WHERE } from "@/lib/intelligence/publication";
 import type { Metadata } from "next";
 import type { Ioc, EnrichedIoc } from "@/lib/types";
 import IocSearch from "@/components/iocs/IocSearch";
@@ -25,11 +26,12 @@ async function fetchInitialIocs(): Promise<{ results: EnrichedIoc[]; total: numb
   try {
     const { prisma } = await import("@/lib/prisma");
 
-    const iocTableCount = await prisma.ioc.count();
+    const iocTableCount = await prisma.ioc.count({ where: PUBLIC_IOC_WHERE });
 
     if (iocTableCount > 0) {
       const [rows, allForStats] = await Promise.all([
         prisma.ioc.findMany({
+          where: PUBLIC_IOC_WHERE,
           orderBy: { createdAt: "desc" },
           take: 25,
           include: {
@@ -38,7 +40,7 @@ async function fetchInitialIocs(): Promise<{ results: EnrichedIoc[]; total: numb
             },
           },
         }),
-        prisma.ioc.groupBy({ by: ["type"], _count: { type: true } }),
+        prisma.ioc.groupBy({ where: PUBLIC_IOC_WHERE, by: ["type"], _count: { type: true } }),
       ]);
 
       const results: EnrichedIoc[] = rows.map((ioc) => ({
@@ -63,7 +65,7 @@ async function fetchInitialIocs(): Promise<{ results: EnrichedIoc[]; total: numb
 
     // Fallback: scan Briefing.iocs JSON field
     const briefings = await prisma.briefing.findMany({
-      where: { status: "published" },
+      where: { ...PUBLIC_BRIEFING_WHERE },
       select: { slug: true, title: true, severity: true, sourceName: true, createdAt: true, iocs: true },
       orderBy: { createdAt: "desc" },
     });

@@ -1,3 +1,6 @@
+import { selectNvdCvss, type NvdMetrics } from "../intelligence/cvss";
+import { safeCveEnrichment } from "../intelligence/cve-policy";
+import { sourceDigest, validateTextFields } from "../intelligence/text-validation";
 import Groq from "groq-sdk";
 
 let _groq: Groq | null = null;
@@ -35,7 +38,7 @@ async function enrichBatch(batch: CveEntry[]): Promise<CveAiResult[]> {
   const userPrompt = `Para cada vulnerabilidade abaixo, gere uma ficha técnica em português brasileiro.
 
 - "ptBrDescription": Explicação didática em 3 a 5 frases. Explique o que é a falha, como funciona tecnicamente e em quais condições pode ser explorada. Linguagem técnica mas acessível para analistas, gestores e times de SecOps.
-- "mitigation": Ação de mitigação ou correção em 1 a 2 frases. Se há patch disponível, mencione. Se não, sugira medidas de contorno concretas.
+- "mitigation": Somente uma medida explicitamente descrita na fonte. Não deduza patch de limites de versão e não invente medidas de contorno. Sem suporte, deixe vazio.
 - "aiPriority": Use exatamente um destes valores: "Crítica", "Alta", "Média" ou "Baixa". Considere CVSS, EPSS e presença no CISA KEV.
 
 Responda APENAS com um objeto JSON válido:
@@ -66,7 +69,9 @@ ${JSON.stringify(input)}`;
 async function enrichAndSave(entries: CveEntry[]): Promise<void> {
   try {
     const { prisma } = await import("../prisma");
-    const unenriched = entries.filter((e) => !e.ptBrDescription);
+    const attempted = await prisma.cveCache.findMany({ where: { id: { in: entries.map(e=>e.id) } }, select: { id:true, qualityReport:true } });
+    const previous = new Map(attempted.map(row => [row.id, row.qualityReport as { sourceDigest?:string } | null]));
+    const unenriched = entries.filter(e => !e.ptBrDescription && previous.get(e.id)?.sourceDigest !== sourceDigest(e.description));
     if (unenriched.length === 0) return;
 
     const BATCH = 15;
@@ -74,13 +79,16 @@ async function enrichAndSave(entries: CveEntry[]): Promise<void> {
       const batch = unenriched.slice(i, i + BATCH);
       const results = await enrichBatch(batch);
       for (const r of results) {
-        if (!r.id || !r.ptBrDescription) continue;
+        const original = batch.find(entry => entry.id === r.id);
+        if (!original || typeof r.ptBrDescription !== "string" || typeof r.mitigation !== "string") continue;
+        const report = validateTextFields(original.description, { ptBrDescription: r.ptBrDescription, mitigation: r.mitigation });
         await prisma.cveCache.updateMany({
-          where: { id: r.id },
+          where: { id: r.id, description: original.description, lastModified: new Date(original.lastModified) },
           data: {
-            ptBrDescription: r.ptBrDescription,
-            mitigation: r.mitigation ?? null,
-            aiPriority: r.aiPriority ?? null,
+            ptBrDescription: report.publishable ? r.ptBrDescription : null,
+            mitigation: report.publishable ? r.mitigation : null,
+            aiPriority: null,
+            qualityReport: JSON.parse(JSON.stringify({ ...report, analysisStatus: report.publishable ? "validated" : "enriched", unpublishedCandidate: report.publishable ? undefined : r })),
             enrichedAt: new Date(),
           },
         });
@@ -145,7 +153,7 @@ export interface CveEntry {
   description: string;
   cvssScore: number | null;
   cvssVersion: string;
-  severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | null;
+  severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "NONE" | null;
   epss: number | null;
   epssPercentile: number | null;
   inCisaKev: boolean;
@@ -166,11 +174,7 @@ interface NvdVuln {
     lastModified: string;
     vulnStatus: string;
     descriptions: { lang: string; value: string }[];
-    metrics?: {
-      cvssMetricV31?: { cvssData: { baseScore: number; baseSeverity: string }; type: string }[];
-      cvssMetricV3?:  { cvssData: { baseScore: number; baseSeverity: string }; type: string }[];
-      cvssMetricV2?:  { cvssData: { baseScore: number }; baseSeverity: string }[];
-    };
+    metrics?: NvdMetrics;
     configurations?: { nodes: { cpeMatch: { criteria: string; vulnerable: boolean }[] }[] }[];
     weaknesses?: { type: string; description: { lang: string; value: string }[] }[];
   };
@@ -189,13 +193,8 @@ function extractVulnType(cve: NvdVuln["cve"]): { vulnType: VulnType; cweId: stri
 }
 
 function extractCvss(cve: NvdVuln["cve"]): { score: number | null; severity: CveEntry["severity"]; version: string } {
-  const v31 = cve.metrics?.cvssMetricV31?.find((m) => m.type === "Primary") ?? cve.metrics?.cvssMetricV31?.[0];
-  if (v31) return { score: v31.cvssData.baseScore, severity: v31.cvssData.baseSeverity as CveEntry["severity"], version: "3.1" };
-  const v3 = cve.metrics?.cvssMetricV3?.find((m) => m.type === "Primary") ?? cve.metrics?.cvssMetricV3?.[0];
-  if (v3)  return { score: v3.cvssData.baseScore,  severity: v3.cvssData.baseSeverity  as CveEntry["severity"], version: "3.0" };
-  const v2 = cve.metrics?.cvssMetricV2?.[0];
-  if (v2)  return { score: v2.cvssData.baseScore,  severity: v2.baseSeverity as CveEntry["severity"], version: "2.0" };
-  return { score: null, severity: null, version: "" };
+  const metric = selectNvdCvss(cve.metrics);
+  return { score: metric.score, severity: metric.severity ? metric.severity.toUpperCase() as CveEntry["severity"] : null, version: metric.version };
 }
 
 function extractProducts(cve: NvdVuln["cve"]): string[] {
@@ -261,7 +260,7 @@ async function fetchEpss(cveIds: string[]): Promise<Record<string, { score: numb
 function sortEntries(entries: CveEntry[]): CveEntry[] {
   return entries.sort((a, b) => {
     if (a.inCisaKev !== b.inCisaKev) return a.inCisaKev ? -1 : 1;
-    const sevOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3, null: 4 };
+    const sevOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3, NONE: 4, null: 5 };
     const sd = (sevOrder[a.severity ?? "null"] ?? 4) - (sevOrder[b.severity ?? "null"] ?? 4);
     if (sd !== 0) return sd;
     return (b.cvssScore ?? 0) - (a.cvssScore ?? 0);
@@ -326,20 +325,14 @@ export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; up
             published: r.published.toISOString(),
             lastModified: r.lastModified.toISOString(),
             description: r.description,
-            cvssScore: r.cvssScore,
             cvssVersion: r.cvssVersion,
-            severity: r.severity as CveEntry["severity"],
-            epss: r.epss,
-            epssPercentile: r.epssPercentile,
             inCisaKev: r.inCisaKev,
             affectedProducts: r.affectedProducts,
             nvdUrl: r.nvdUrl,
             vulnType: r.vulnType as VulnType,
             cweId: r.cweId,
             vulnExplanation: r.vulnExplanation,
-            ptBrDescription: r.ptBrDescription,
-            mitigation: r.mitigation,
-            aiPriority: r.aiPriority,
+            ...safeCveEnrichment(r),
           }))
         );
         // Kick off enrichment for any entries still missing AI fields
@@ -354,7 +347,7 @@ export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; up
   }
 
   // ── 2. Fetch fresh from APIs ──────────────────────────────────────────────
-  const entries = sortEntries(await fetchFromApis());
+  const entries = sortEntries((await fetchFromApis()).map(cve => ({ ...cve, ...safeCveEnrichment(cve) })));
   const now = new Date();
 
   // ── 3. Persist to DB + enrich with AI (non-blocking) ────────────────────
@@ -385,6 +378,8 @@ export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; up
           },
           update: {
             lastModified: new Date(cve.lastModified),
+            description: cve.description,
+            ptBrDescription: null, mitigation: null, aiPriority: null, qualityReport: (await import("@prisma/client")).Prisma.DbNull,
             cvssScore: cve.cvssScore,
             cvssVersion: cve.cvssVersion,
             severity: cve.severity,

@@ -1,3 +1,5 @@
+import { EvidenceNotes } from "@/components/briefing/EvidenceNotes";
+import { PUBLIC_BRIEFING_WHERE } from "@/lib/intelligence/publication";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -28,6 +30,8 @@ interface Briefing {
   summary: string;
   content: string;
   structuredContent: StructuredBriefing | null;
+  operationalPriority?: string | null;
+  severityBasis?: string | null;
   severity: "critical" | "high" | "medium" | "low";
   category: string;
   tags: string[];
@@ -93,10 +97,10 @@ function cvssLabel(score: number): string {
 }
 
 function epssLabel(score: number): string {
-  if (score >= 0.7) return "Risco muito alto";
-  if (score >= 0.4) return "Risco alto";
-  if (score >= 0.1) return "Risco moderado";
-  return "Risco baixo";
+  if (score >= 0.7) return "Probabilidade muito alta";
+  if (score >= 0.4) return "Probabilidade alta";
+  if (score >= 0.1) return "Probabilidade moderada";
+  return "Probabilidade baixa";
 }
 
 // ── Data fetching ─────────────────────────────────────────────────────────
@@ -104,7 +108,7 @@ function epssLabel(score: number): string {
 async function getBriefing(slug: string): Promise<Briefing | null> {
   try {
     const { prisma } = await import("@/lib/prisma");
-    const b = await prisma.briefing.findUnique({ where: { slug } });
+    const b = await prisma.briefing.findFirst({ where: { slug, ...PUBLIC_BRIEFING_WHERE } });
     if (!b) return null;
 
     return {
@@ -198,6 +202,8 @@ function StructuredContent({ sc, briefing }: { sc: StructuredBriefing; briefing:
         </BriefingSection>
       )}
 
+      <p className="text-xs text-dim my-5">IOCs são sinais para correlação. Confirme procedência, última observação e falsos positivos antes de qualquer bloqueio.</p>
+      <EvidenceNotes briefing={sc} />
       {sc.falsePositiveNotes && (
         <BriefingSection title="Falsos positivos">
           <RichText text={sc.falsePositiveNotes} />
@@ -367,7 +373,7 @@ export default async function BriefingPage({
             <div className="mb-4 flex divide-x divide-white/[0.05] rounded-[20px] border border-white/[0.05] bg-raised">
               {briefing.cvssScore && (
                 <div className="flex-1 px-5 py-4 text-center">
-                  <div className="text-[10px] text-dim uppercase tracking-wider mb-1">CVSS v3</div>
+                  <div className="text-[10px] text-dim uppercase tracking-wider mb-1">CVSS da fonte</div>
                   <div className={`font-display text-3xl font-bold leading-none ${briefing.cvssScore >= 9 ? "text-brand" : briefing.cvssScore >= 7 ? "text-orange-400" : "text-yellow-400"}`}>
                     {briefing.cvssScore.toFixed(1)}
                   </div>

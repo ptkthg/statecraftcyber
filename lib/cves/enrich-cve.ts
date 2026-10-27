@@ -1,3 +1,4 @@
+import type { EvidenceSource } from "../intelligence/types";
 /**
  * CVE Enrichment — RAG data-fetching layer
  *
@@ -27,6 +28,7 @@
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface CveEnrichment {
+  sources?: EvidenceSource[];
   /** Raw aggregated context block, ready to append to buildContext() output */
   contextBlock: string;
   /** True if at least one source returned useful data */
@@ -65,7 +67,7 @@ async function fetchNvdDetail(cve: string): Promise<string | null> {
               exploitabilityScore: number;
               impactScore: number;
             }[];
-            cvssMetricV3?: {
+            cvssMetricV30?: {
               cvssData: {
                 vectorString: string;
                 attackVector: string;
@@ -98,7 +100,7 @@ async function fetchNvdDetail(cve: string): Promise<string | null> {
       lines.push(`Impacto — Confidencialidade: ${d.confidentialityImpact} | Integridade: ${d.integrityImpact} | Disponibilidade: ${d.availabilityImpact}`);
       lines.push(`Exploitability Score: ${v31.exploitabilityScore} | Impact Score: ${v31.impactScore}`);
     } else {
-      const v3 = vuln.metrics?.cvssMetricV3?.[0];
+      const v3 = vuln.metrics?.cvssMetricV30?.[0];
       if (v3) {
         const d = v3.cvssData;
         lines.push(`Vetor CVSS 3.0: ${d.vectorString}`);
@@ -121,7 +123,7 @@ async function fetchNvdDetail(cve: string): Promise<string | null> {
           const parts = match.criteria.split(":");
           const product = parts.length >= 5 ? `${parts[3]} ${parts[4]}` : match.criteria;
           const from = match.versionStartIncluding ? `>= ${match.versionStartIncluding}` : "";
-          const to = match.versionEndExcluding ? `< ${match.versionEndExcluding} (excluída = versão com patch)` : "";
+          const to = match.versionEndExcluding ? `< ${match.versionEndExcluding} (limite superior excluído; não comprova versão corrigida)` : "";
           const range = [from, to].filter(Boolean).join(", ");
           if (range) versionRanges.push(`${product}: ${range}`);
         }
@@ -222,11 +224,11 @@ async function fetchCisaKevDetail(cve: string): Promise<string | null> {
     if (!entry) return null;
 
     const lines = [
-      `Status: CONFIRMADO NO CISA KEV — Exploração ativa em ambientes reais`,
+      `Status: CONFIRMADO NO CISA KEV — Exploração em ambientes reais reportada no catálogo; não confirma atividade atual em todo ambiente`,
       `Produto afetado: ${entry.vendorProject} ${entry.product}`,
       `Nome da vulnerabilidade: ${entry.vulnerabilityName}`,
       `Data de adição ao KEV: ${entry.dateAdded}`,
-      `Ação obrigatória (CISA): ${entry.requiredAction}`,
+      `Ação requerida no catálogo CISA (prazo BOD para órgãos federais civis dos EUA, não obrigação universal): ${entry.requiredAction}`,
       `Prazo CISA: ${entry.dueDate}`,
     ];
 
@@ -444,9 +446,19 @@ export async function enrichCveContext(cve: string): Promise<CveEnrichment> {
     ]);
 
     const sections: string[] = [];
-    for (const result of results) {
+    const sources: EvidenceSource[] = [];
+    const origins = [
+      ["nvd", "NVD", "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=" + cve],
+      ["epss", "FIRST EPSS", "https://api.first.org/data/v1/epss?cve=" + cve],
+      ["kev", "CISA KEV", "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"],
+      ["osv", "OSV", "https://api.osv.dev/v1/vulns/" + cve],
+      ["github", "GitHub Advisory", "https://api.github.com/advisories?cve_id=" + cve],
+    ];
+    for (const [index, result] of results.entries()) {
       if (result.status === "fulfilled" && result.value) {
         sections.push(result.value);
+        const [id, name, url] = origins[index];
+        sources.push({ id, name, url, text: result.value, retrievedAt: new Date().toISOString(), origin: "original" });
       }
     }
 
@@ -460,7 +472,7 @@ export async function enrichCveContext(cve: string): Promise<CveEnrichment> {
       `--- Fim do enriquecimento RAG ---`,
     ].join("\n");
 
-    return { contextBlock, hasData: true };
+    return { contextBlock, hasData: true, sources };
   } catch {
     return { contextBlock: "", hasData: false };
   }

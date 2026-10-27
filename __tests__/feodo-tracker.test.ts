@@ -68,7 +68,8 @@ describe("buildFeodoItems", () => {
       source: "Feodo Tracker",
     });
     expect(item.sourceName).toBe("abuse.ch / Feodo Tracker");
-    expect(item.mitreTechniques).toEqual(["T1071", "T1090"]);
+    // An online C2 listing does not prove protocol or proxy techniques.
+    expect(item.mitreTechniques).toEqual([]);
   });
 
   it("retorna vazio se nada está online", () => {
