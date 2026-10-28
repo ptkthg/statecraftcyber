@@ -9,4 +9,7 @@ export const PUBLIC_BRIEFING_WHERE = {
     { qualityReport: { path: ["publishable"], equals: true } },
   ],
 } satisfies Prisma.BriefingWhereInput;
-export const PUBLIC_IOC_WHERE = { briefing: { is: PUBLIC_BRIEFING_WHERE } } satisfies Prisma.IocWhereInput;
+export const PUBLIC_IOC_WHERE = {
+  isActive: true,
+  briefing: { is: PUBLIC_BRIEFING_WHERE },
+} satisfies Prisma.IocWhereInput;

@@ -1,331 +1,81 @@
-import { sourceRevision } from "@/lib/intelligence/evidence";
-import { publicationStatus } from "@/lib/intelligence/validation";
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
 import { fetchAllSources, fetchEpssScores } from "@/lib/threat-sources";
-import { generateBriefingAsync } from "@/lib/briefing-generator";
-import { filterNewItems, generateContentHash } from "@/lib/deduplication";
-import { normalizeIoc } from "@/lib/threat-intel/normalize-ioc";
-import type { Ioc } from "@/lib/types";
-
-// Limite de briefings gerados por execução. Cada geração é uma chamada de IA
-// (~7s); no plano Hobby a função tem 60s, então mantemos o lote pequeno e
-// orquestramos o volume diário por múltiplas chamadas (ver GitHub Actions).
-const ENV_MAX = parseInt(process.env.MAX_HOURLY_BRIEFINGS || "", 10);
-const DEFAULT_MAX = Number.isFinite(ENV_MAX) && ENV_MAX > 0 ? ENV_MAX : 4;
-const HARD_CAP = 5; // teto de segurança para não estourar os 60s do Hobby
-
-function resolveMaxHourly(req: NextRequest): number {
-  const q = parseInt(req.nextUrl.searchParams.get("max") ?? "", 10);
-  const wanted = Number.isFinite(q) && q > 0 ? q : DEFAULT_MAX;
-  return Math.max(1, Math.min(wanted, HARD_CAP));
-}
-
-const AUTO_PUBLISH = process.env.AUTO_PUBLISH === "true";
-
-export const maxDuration = 60; // Hobby plan limit
+import { runPipeline } from "@/lib/pipeline/service";
+import { withSource } from "@/lib/pipeline/context";
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
-
-export async function GET(req: NextRequest) {
-  return handleCron(req);
-}
-
-export async function POST(req: NextRequest) {
-  return handleCron(req);
-}
-
+export const GET = handleCron;
+export const POST = handleCron;
 async function handleCron(req: NextRequest) {
-  // ── Autenticação ────────────────────────────────────────────────────────
-  const cronSecret = process.env.CRON_SECRET;
-  const authHeader = req.headers.get("authorization");
-  const providedSecret = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : null;
-
-  if (!cronSecret || providedSecret !== cronSecret) {
+  const secret = process.env.CRON_SECRET,
+    authorization = req.headers.get("authorization");
+  if (!secret || authorization !== "Bearer " + secret)
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
-
-  const MAX_HOURLY = resolveMaxHourly(req);
-  const startedAt = Date.now();
-  const runErrors: string[] = [];
-  let briefingsCreated = 0;
-  const activeSources: string[] = [];
-
-  try {
-    // ── 0. Preservar registros para auditoria ───────────────────────────
-    // Preserve preliminary and rejected records for audit; retention is a separate policy.
-    const { items, errors, sources } = await fetchAllSources();
-
-    activeSources.push(...sources);
-    runErrors.push(...errors.map((e) => `${e.source}: ${e.error}`));
-
-    console.log(`[Cron] ${items.length} itens coletados de ${sources.length} fontes`);
-
-    if (items.length === 0) {
-      await logCronRun({
-        success: true,
-        briefingsCreated: 0,
-        errors: runErrors,
-        sources: activeSources,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json({ ok: true, briefingsCreated: 0, message: "Nenhum item novo" });
-    }
-
-    // ── 2. Enriquecer CVEs com EPSS ──────────────────────────────────────
-    const allCves = [...new Set(items.flatMap((i) => i.cves ?? []))];
-    const epssMap = await fetchEpssScores(allCves);
-
-    for (const item of items) {
-      if (item.cves?.length === 1 && item.epssScore === undefined) {
-        const score = epssMap[item.cves[0]];
-        if (score !== undefined) {
-          item.epssScore = score;
-          item.evidenceSources = [...(item.evidenceSources ?? []).filter(s=>s.id!=="epss"), {
-            id:"epss",name:"FIRST EPSS",url:"https://api.first.org/data/v1/epss?cve=" + item.cves[0],
-            text:JSON.stringify({cve:item.cves[0],epss:score}),retrievedAt:new Date().toISOString(),origin:"original",
-          }];
-        }
-      }
-    }
-
-    // ── 3. Deduplicar contra o banco ─────────────────────────────────────
-    const hashes = items.map(generateContentHash);
-    let existingHashes: Set<string>;
-    const previousByHash = new Map<string, { id:string; slug:string; sourceSnapshot:unknown }>();
-    try {
-      const rows = await prisma.briefing.findMany({ where: { contentHash: { in: hashes } }, select: { id:true, slug:true, contentHash:true, sourceSnapshot:true } });
-      const unchanged = new Set<string>();
-      for (const row of rows) {
-        previousByHash.set(row.contentHash,row);
-        const original = items.find(item=>generateContentHash(item)===row.contentHash);
-        if (original && row.sourceSnapshot) {
-          try {
-            if (sourceRevision(original) === sourceRevision(row.sourceSnapshot as unknown as RawItem)) unchanged.add(row.contentHash);
-          } catch { /* Malformed or legacy snapshot must be recollected, not trusted. */ }
-        }
-      }
-      existingHashes = unchanged;
-    } catch (err) {
-      // Never assume an empty DB on a read failure: that can produce duplicate or stale publications.
-      throw new Error("Deduplicação indisponível: " + (err as Error).message);
-    }
-
-    const newItems = filterNewItems(items, existingHashes);
-    console.log(`[Cron] ${newItems.length} itens novos após deduplicação`);
-
-    if (newItems.length === 0) {
-      await logCronRun({
-        success: true,
-        briefingsCreated: 0,
-        errors: runErrors,
-        sources: activeSources,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json({ ok: true, briefingsCreated: 0, message: "Todos os itens já existem" });
-    }
-
-    // ── 4. Ordenar por severidade e garantir diversidade de fontes ──────
-    const sorted = prioritizeItems(newItems.map((n) => n.item));
-    const prioritized = diversifyBySource(sorted, MAX_HOURLY);
-
-    // ── 5. Gerar briefings e salvar no banco ─────────────────────────────
-    let existingSlugs: Set<string>;
-    try {
-      existingSlugs = await prisma.briefing
-        .findMany({ select: { slug: true } })
-        .then((rows: { slug: string }[]) => new Set(rows.map((r) => r.slug)));
-    } catch (err) {
-      console.error("[Cron] Erro ao buscar slugs existentes, assumindo nenhum:", (err as Error).message);
-      runErrors.push(`slugs: ${(err as Error).message}`);
-      existingSlugs = new Set();
-    }
-
-    for (const item of prioritized) {
-      try {
-        const briefing = await generateBriefingAsync(item, existingSlugs);
-        const hash = generateContentHash(item);
-
-        const previous = previousByHash.get(hash);
-        const data = {
-            title: briefing.title,
-            slug: previous?.slug ?? briefing.slug,
-            summary: briefing.summary,
-            content: briefing.content,
-            structuredContent: briefing.structuredContent ? JSON.parse(JSON.stringify(briefing.structuredContent)) as Prisma.InputJsonValue : Prisma.DbNull,
-            severity: briefing.severity,
-            category: briefing.category,
-            tags: briefing.tags,
-            affectedSectors: briefing.affectedSectors,
-            affectedRegions: briefing.affectedRegions,
-            sourceName: briefing.sourceName,
-            sourceUrl: briefing.sourceUrl,
-            sourcePublishedAt: briefing.sourcePublishedAt,
-            cves: briefing.cves,
-            mitreTechniques: briefing.mitreTechniques,
-            epssScore: briefing.epssScore,
-            cvssScore: briefing.cvssScore,
-            confidence: briefing.confidence,
-            status: "draft" as const,
-            analysisStatus: briefing.analysisStatus,
-            qualityReport: JSON.parse(JSON.stringify(briefing.qualityReport)) as Prisma.InputJsonValue,
-            sourceSnapshot: JSON.parse(JSON.stringify(briefing.sourceSnapshot)) as Prisma.InputJsonValue,
-            operationalPriority: briefing.operationalPriority,
-            severityBasis: briefing.severityBasis,
-            contentHash: hash,
-            readingTime: briefing.readingTime,
-        };
-        const created = previous
-          ? await prisma.briefing.update({ where: { id: previous.id }, data })
-          : await prisma.briefing.create({ data });
-        if (previous) await prisma.ioc.deleteMany({ where: { briefingId: created.id } });
-
-        // Populate structured Ioc table
-        const iocList = (briefing.iocs ?? []) as Ioc[];
-        for (const ioc of iocList) {
-          if (!ioc.type || !ioc.value) continue;
-          const normalized = normalizeIoc(ioc.type, ioc.value);
-          await prisma.ioc.upsert({
-            where: { type_normalized_briefingId: { type: ioc.type, normalized, briefingId: created.id } },
-            update: {},
-            create: {
-              type: ioc.type,
-              value: ioc.value,
-              normalized,
-              confidence: (["high", "medium", "low"].includes(ioc.confidence) ? ioc.confidence : "medium") as "high" | "medium" | "low",
-              sourceName: ioc.source ?? briefing.sourceName,
-              briefingId: created.id,
-            },
-          });
-        }
-
-        const nextStatus = publicationStatus(AUTO_PUBLISH, briefing.qualityReport);
-        if (nextStatus === "published") await prisma.briefing.update({ where: { id: created.id }, data: { status: nextStatus } });
-        if (!briefing.qualityReport.publishable) runErrors.push("quality:" + created.id + ":" + briefing.qualityReport.issues.map(i => i.code).join(","));
-        briefingsCreated++;
-        console.log(`[Cron] Briefing criado: ${briefing.title.slice(0, 60)} (${iocList.length} IOCs)`);
-      } catch (err) {
-        const msg = `Erro ao salvar briefing "${item.title.slice(0, 40)}": ${(err as Error).message}`;
-        console.error(`[Cron] ${msg}`);
-        runErrors.push(msg);
-      }
-    }
-
-    // ── 6. Log da execução ───────────────────────────────────────────────
-    await logCronRun({
-      success: true,
-      briefingsCreated,
-      errors: runErrors,
-      sources: activeSources,
-      durationMs: Date.now() - startedAt,
-    });
-
-    return NextResponse.json({
-      ok: true,
-      briefingsCreated,
-      sources: activeSources,
-      errors: runErrors.length > 0 ? runErrors : undefined,
-      durationMs: Date.now() - startedAt,
-    });
-  } catch (err) {
-    const msg = (err as Error).message;
-    console.error("[Cron] Falha geral:", msg);
-
-    await logCronRun({
-      success: false,
-      briefingsCreated,
-      errors: [...runErrors, msg],
-      sources: activeSources,
-      durationMs: Date.now() - startedAt,
-    }).catch(() => {}); // Não falhar no log
-
+  const key =
+    req.headers.get("idempotency-key") ??
+    "cron:" + new Date().toISOString().slice(0, 16);
+  if (!/^[a-zA-Z0-9:_.-]{1,128}$/.test(key))
     return NextResponse.json(
-      { ok: false, error: msg },
-      { status: 500 }
+      { error: "Chave de idempotência inválida" },
+      { status: 400 },
     );
-  }
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-type RawItem = import("@/lib/threat-sources/types").RawThreatItem;
-
-/**
- * Garante que nenhuma fonte domine todos os slots.
- * Cada fonte pode ocupar no máximo ceil(max/2) slots (mínimo 2).
- * Slots restantes são preenchidos com os itens mais prioritários.
- */
-function diversifyBySource(sorted: RawItem[], max: number): RawItem[] {
-  // Agrupar por fonte mantendo a ordem de prioridade interna
-  const bySource: Record<string, RawItem[]> = {};
-  for (const item of sorted) {
-    if (!bySource[item.sourceName]) bySource[item.sourceName] = [];
-    bySource[item.sourceName].push(item);
-  }
-
-  // Cap proporcional ao número de fontes com itens
-  const numSources = Object.keys(bySource).length;
-  const capPerSource = Math.max(2, Math.ceil(max / numSources));
-
-  const countBySource: Record<string, number> = {};
-  const selected: RawItem[] = [];
-
-  for (const item of sorted) {
-    if (selected.length >= max) break;
-    const src = item.sourceName;
-    countBySource[src] = countBySource[src] ?? 0;
-    if (countBySource[src] < capPerSource) {
-      selected.push(item);
-      countBySource[src]++;
-    }
-  }
-
-  // Preencher slots restantes ignorando o cap
-  if (selected.length < max) {
-    for (const item of sorted) {
-      if (selected.length >= max) break;
-      if (!selected.includes(item)) selected.push(item);
-    }
-  }
-
-  return selected;
-}
-
-/** Ordena itens por severidade implícita para processar os mais críticos primeiro. */
-function prioritizeItems(items: RawItem[]): RawItem[] {
-  const severityWeight: Record<string, number> = {
-    critical: 4,
-    high: 3,
-    medium: 2,
-    low: 1,
-  };
-
-  return [...items].sort((a, b) => {
-    const wa = severityWeight[a.severity ?? "low"] ?? 1;
-    const wb = severityWeight[b.severity ?? "low"] ?? 1;
-    if (wb !== wa) return wb - wa;
-
-    // CISA KEV primeiro
-    if (a.inCisaKev && !b.inCisaKev) return -1;
-    if (!a.inCisaKev && b.inCisaKev) return 1;
-
-    // CVSS maior primeiro
-    return (b.cvssScore ?? 0) - (a.cvssScore ?? 0);
-  });
-}
-
-async function logCronRun(data: {
-  success: boolean;
-  briefingsCreated: number;
-  errors: string[];
-  sources: string[];
-  durationMs: number;
-}) {
+  const requested = Number(
+    req.nextUrl.searchParams.get("max") ??
+      process.env.MAX_HOURLY_BRIEFINGS ??
+      4,
+  );
   try {
-    await prisma.cronLog.create({ data });
+    const result = await runPipeline(prisma, {
+      idempotencyKey: key,
+      max: Number.isFinite(requested)
+        ? Math.max(1, Math.min(5, Math.floor(requested)))
+        : 4,
+      autoPublish: process.env.AUTO_PUBLISH === "true",
+      collect: async () => {
+        const result = await fetchAllSources();
+        const cves = [...new Set(result.items.flatMap((i) => i.cves ?? []))];
+        const scores = await withSource("FIRST EPSS", async () => {
+          const map = await fetchEpssScores(cves);
+          return Object.entries(map);
+        }).then((entries) => Object.fromEntries(entries));
+        for (const item of result.items)
+          if (item.cves?.length === 1 && item.epssScore === undefined) {
+            const cve = item.cves[0],
+              score = scores[cve];
+            if (score !== undefined) {
+              item.epssScore = score;
+              item.evidenceSources = [
+                ...(item.evidenceSources ?? []).filter((s) => s.id !== "epss"),
+                {
+                  id: "epss",
+                  name: "FIRST EPSS",
+                  url: "https://api.first.org/data/v1/epss?cve=" + cve,
+                  text: JSON.stringify({ cve, epss: score }),
+                  retrievedAt: new Date().toISOString(),
+                  origin: "original",
+                },
+              ];
+            }
+          }
+        return result;
+      },
+    });
+    return NextResponse.json(
+      { ok: result.status !== "failed", ...result },
+      {
+        status:
+          result.status === "busy"
+            ? 409
+            : result.status === "failed"
+              ? 500
+              : 200,
+      },
+    );
   } catch {
-    console.error("[Cron] Não foi possível salvar o log da execução");
+    return NextResponse.json(
+      { ok: false, error: "pipeline_failed" },
+      { status: 500 },
+    );
   }
 }

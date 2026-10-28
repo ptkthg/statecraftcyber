@@ -8,41 +8,47 @@ datasource db {
 }
 
 model Briefing {
-  id                String     @id @default(cuid())
-  title             String
-  slug              String     @unique
-  summary           String     @db.Text
-  content           String     @db.Text
-  severity          Severity
-  category          String
-  tags              String[]
-  affectedSectors   String[]
-  affectedRegions   String[]
-  sourceName        String
-  sourceUrl         String
-  sourcePublishedAt DateTime?
+  id                  String                   @id @default(cuid())
+  title               String
+  slug                String                   @unique
+  summary             String                   @db.Text
+  content             String                   @db.Text
+  severity            Severity
+  category            String
+  tags                String[]
+  affectedSectors     String[]
+  affectedRegions     String[]
+  sourceName          String
+  sourceUrl           String
+  sourcePublishedAt   DateTime?
   /// @deprecated Use the Ioc relation table instead. Kept for snapshot compatibility.
-  iocs              Json       @default("[]")
+  iocs                Json                     @default("[]")
   /// Structured JSON content for the new rendering pipeline. Null for briefings generated before this field was added.
-  structuredContent Json?
-  cves              String[]
-  mitreTechniques   String[]
-  epssScore         Float?
-  cvssScore         Float?
-  confidence        Confidence
-  status            Status     @default(draft)
+  structuredContent   Json?
+  cves                String[]
+  mitreTechniques     String[]
+  epssScore           Float?
+  cvssScore           Float?
+  confidence          Confidence
+  status              Status                   @default(draft)
   /// Automated evidence validation; never a claim of human review.
-  analysisStatus    String     @default("preliminary")
-  qualityReport     Json?
-  sourceSnapshot    Json?
+  analysisStatus      String                   @default("preliminary")
+  qualityReport       Json?
+  sourceSnapshot      Json?
   operationalPriority String?
-  severityBasis     String?
-  contentHash       String     @unique
-  readingTime       Int        @default(5)
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-  iocsRel           Ioc[]
-  searchVector      Unsupported("tsvector")? @map("search_vector")
+  severityBasis       String?
+  contentHash         String                   @unique
+  readingTime         Int                      @default(5)
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  firstObservedAt     DateTime?
+  lastObservedAt      DateTime?
+  sourceUpdatedAt     DateTime?
+  revision            Int                      @default(0)
+  pipelineEvent       IntelligenceEvent?
+  revisions           BriefingRevision[]
+  iocsRel             Ioc[]
+  searchVector        Unsupported("tsvector")? @map("search_vector")
 
   @@index([status, analysisStatus, createdAt(sort: Desc)])
   @@index([status, severity])
@@ -51,40 +57,47 @@ model Briefing {
 }
 
 model Ioc {
-  id          String     @id @default(cuid())
-  type        String
-  value       String
-  normalized  String
-  confidence  Confidence
-  sourceName  String?
-  briefingId  String
-  briefing    Briefing   @relation(fields: [briefingId], references: [id], onDelete: Cascade)
-  createdAt   DateTime   @default(now())
+  pipelineManaged  Boolean    @default(false)
+  firstObservedAt  DateTime?
+  lastObservedAt   DateTime?
+  sourceUrl        String?
+  sourceLastSeenAt DateTime?
+  isActive         Boolean    @default(true)
+  retiredAt        DateTime?
+  id               String     @id @default(cuid())
+  type             String
+  value            String
+  normalized       String
+  confidence       Confidence
+  sourceName       String?
+  briefingId       String
+  briefing         Briefing   @relation(fields: [briefingId], references: [id], onDelete: Cascade)
+  createdAt        DateTime   @default(now())
 
+  @@unique([type, normalized, briefingId])
   @@index([type])
   @@index([normalized])
   @@index([confidence])
   @@index([createdAt])
   @@index([briefingId])
-  @@unique([type, normalized, briefingId])
 }
 
 model NewsCache {
-  qualityReport Json?
-  sourceSnapshot Json?
+  qualityReport     Json?
+  sourceSnapshot    Json?
   sourcePublishedAt DateTime?
-  slug        String   @id
-  title       String
-  summary     String   @db.Text
-  content     String   @db.Text
-  source      String
-  originalUrl String
-  enrichedAt   DateTime @default(now())
-  searchVector Unsupported("tsvector")? @map("search_vector")
+  slug              String                   @id
+  title             String
+  summary           String                   @db.Text
+  content           String                   @db.Text
+  source            String
+  originalUrl       String
+  enrichedAt        DateTime                 @default(now())
+  searchVector      Unsupported("tsvector")? @map("search_vector")
 }
 
 model CveCache {
-  qualityReport Json?
+  qualityReport    Json?
   id               String    @id
   published        DateTime
   lastModified     DateTime
@@ -113,6 +126,9 @@ model CveCache {
 }
 
 model CronLog {
+  metrics          Json?
+  outcome          String?
+  pipelineRunId    String?
   id               String   @id @default(cuid())
   runAt            DateTime @default(now())
   success          Boolean
@@ -138,4 +154,119 @@ enum Confidence {
 enum Status {
   draft
   published
+}
+
+model PipelineRun {
+  sourceRevisions   SourceRevision[]
+  briefingRevisions BriefingRevision[]
+  batches           CollectionBatch[]
+  id                String             @id @default(cuid())
+  idempotencyKey    String             @unique
+  status            String             @default("running")
+  startedAt         DateTime           @default(now())
+  finishedAt        DateTime?
+  metrics           Json               @default("{}")
+  errors            Json               @default("[]")
+
+  @@index([startedAt(sort: Desc)])
+}
+
+model PipelineLease {
+  key       String   @id
+  owner     String
+  expiresAt DateTime
+}
+
+model IntelligenceEvent {
+  id                   String              @id @default(cuid())
+  eventKey             String              @unique
+  profile              Json
+  materialFingerprint  String              @default("")
+  processedFingerprint String?
+  status               String              @default("pending")
+  attempts             Int                 @default(0)
+  nextAttemptAt        DateTime?
+  lastErrorCode        String?
+  firstObservedAt      DateTime            @default(now())
+  lastObservedAt       DateTime            @default(now())
+  revision             Int                 @default(0)
+  briefingId           String?             @unique
+  briefing             Briefing?           @relation(fields: [briefingId], references: [id], onDelete: SetNull)
+  relatedEventId       String?
+  relatedEvent         IntelligenceEvent?  @relation("RelatedEvents", fields: [relatedEventId], references: [id], onDelete: SetNull)
+  relatedEvents        IntelligenceEvent[] @relation("RelatedEvents")
+  records              SourceRecord[]
+
+  @@index([status, nextAttemptAt])
+}
+
+model SourceRecord {
+  matchEvidence       Json              @default("{}")
+  id                  String            @id @default(cuid())
+  identityHash        String            @unique
+  legacyHash          String
+  externalId          String
+  sourceName          String
+  sourceUrl           String
+  eventId             String
+  event               IntelligenceEvent @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  sourceFingerprint   String
+  materialFingerprint String
+  rawPayload          Json
+  effectiveIocs       Json              @default("[]")
+  entities            Json
+  qualityIssues       Json              @default("[]")
+  revision            Int               @default(1)
+  firstObservedAt     DateTime          @default(now())
+  lastObservedAt      DateTime          @default(now())
+  sourcePublishedAt   DateTime?
+  sourceUpdatedAt     DateTime?
+  versions            SourceRevision[]
+
+  @@index([eventId])
+  @@index([legacyHash])
+}
+
+model SourceRevision {
+  id                  String       @id @default(cuid())
+  recordId            String
+  record              SourceRecord @relation(fields: [recordId], references: [id], onDelete: Restrict)
+  revision            Int
+  materialFingerprint String
+  rawPayload          Json
+  entities            Json
+  observedAt          DateTime     @default(now())
+  run                 PipelineRun  @relation(fields: [runId], references: [id], onDelete: Restrict)
+  runId               String
+
+  @@unique([recordId, revision])
+}
+
+model BriefingRevision {
+  id              String      @id @default(cuid())
+  briefingId      String
+  briefing        Briefing    @relation(fields: [briefingId], references: [id], onDelete: Restrict)
+  revision        Int
+  snapshot        Json
+  originalSources Json
+  changeSummary   Json
+  run             PipelineRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+  runId           String
+  createdAt       DateTime    @default(now())
+
+  @@unique([briefingId, revision])
+}
+
+model CollectionBatch {
+  run         PipelineRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+  observedAt  DateTime    @default(now())
+  id          String      @id @default(cuid())
+  runId       String
+  fingerprint String      @unique
+  items       Json
+  cursor      Int         @default(0)
+  complete    Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+
+  @@index([complete, createdAt])
 }

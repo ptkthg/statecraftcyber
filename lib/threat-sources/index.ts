@@ -1,3 +1,4 @@
+import { mapConcurrent, withSource, currentContext } from "../pipeline/context";
 import type { SourceAdapter, RawThreatItem } from "./types";
 import { cisaKevAdapter } from "./cisa-kev";
 import { nvdAdapter } from "./nvd";
@@ -9,7 +10,13 @@ import { feodoTrackerAdapter } from "./feodo-tracker";
 import { cinsScoreAdapter } from "./cins-score";
 
 export { fetchEpssScores } from "./epss";
-export type { RawThreatItem, RawIOC, SourceAdapter, Severity, Confidence } from "./types";
+export type {
+  RawThreatItem,
+  RawIOC,
+  SourceAdapter,
+  Severity,
+  Confidence,
+} from "./types";
 
 const ALL_ADAPTERS: SourceAdapter[] = [
   cisaKevAdapter,
@@ -33,16 +40,19 @@ export async function fetchAllSources(): Promise<FetchResult> {
   const errors: { source: string; error: string }[] = [];
   const sources: string[] = [];
 
-  const results = await Promise.allSettled(
-    ALL_ADAPTERS.map((adapter) =>
-      adapter
-        .fetch()
-        .then((items) => ({ source: adapter.name, items }))
-        .catch((err: Error) => {
-          throw Object.assign(err, { sourceName: adapter.name });
-        })
-    )
-  );
+  const results = await mapConcurrent(ALL_ADAPTERS, 3, async (adapter) => {
+    try {
+      return {
+        source: adapter.name,
+        items: await withSource(adapter.name, () => adapter.fetch()),
+      };
+    } catch (error) {
+      throw Object.assign(
+        error instanceof Error ? error : new Error("Source failure"),
+        { sourceName: adapter.name },
+      );
+    }
+  });
 
   const items: RawThreatItem[] = [];
 
@@ -58,5 +68,12 @@ export async function fetchAllSources(): Promise<FetchResult> {
     }
   }
 
+  for (const m of Object.values(currentContext()?.metrics.sources ?? {}))
+    if (m.status === "partial" || m.status === "failed")
+      if (!errors.some((e) => e.source === m.name))
+        errors.push({
+          source: m.name,
+          error: m.codes.join(",") || "partial_source_failure",
+        });
   return { items, errors, sources };
 }

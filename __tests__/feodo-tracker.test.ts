@@ -61,7 +61,7 @@ describe("buildFeodoItems", () => {
   it("IOCs são sempre ip com confidence high; severity sempre high", () => {
     const [item] = buildFeodoItems([entry()], NOW);
     expect(item.severity).toBe("high");
-    expect(item.iocs![0]).toEqual({
+    expect(item.iocs![0]).toMatchObject({
       type: "ip",
       value: "1.2.3.4",
       confidence: "high",

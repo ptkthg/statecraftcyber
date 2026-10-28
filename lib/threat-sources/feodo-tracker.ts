@@ -1,3 +1,4 @@
+import { fetchWithPolicy as fetch } from "../pipeline/http";
 import type { SourceAdapter, RawThreatItem, RawIOC } from "./types";
 
 const FEODO_API = "https://feodotracker.abuse.ch/downloads/ipblocklist.json";
@@ -12,10 +13,16 @@ export interface FeodoEntry {
 }
 
 function slugify(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
-export function buildFeodoItems(entries: FeodoEntry[], now: Date): RawThreatItem[] {
+export function buildFeodoItems(
+  entries: FeodoEntry[],
+  now: Date,
+): RawThreatItem[] {
   const online = entries.filter((e) => e.status === "online");
 
   const byFamily = new Map<string, FeodoEntry[]>();
@@ -37,9 +44,16 @@ export function buildFeodoItems(entries: FeodoEntry[], now: Date): RawThreatItem
       value: e.ip_address,
       confidence: "high" as const,
       source: "Feodo Tracker",
+      sourceUrl: FEODO_API,
+      lastSeen: e.last_online,
     }));
 
     items.push({
+      descriptionOrigin: "generated",
+      recordKind: "periodic-ioc",
+      periodicKey: family,
+      iocSetComplete: familyEntries.length <= 20,
+      malwareFamilies: [family],
       externalId: `feodo-${slugify(family)}-${date}`,
       title: `Feodo Tracker: ${iocs.length} Servidores C2 Ativos de ${family}`,
       description: `${iocs.length} endereços IP identificados como servidores de comando e controle ativos da botnet ${family} pelo Feodo Tracker.`,

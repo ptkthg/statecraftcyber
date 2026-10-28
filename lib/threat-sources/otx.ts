@@ -1,3 +1,5 @@
+import { sourceSkipped, currentContext, metricFor } from "../pipeline/context";
+import { fetchWithPolicy as fetch } from "../pipeline/http";
 import type { SourceAdapter, RawThreatItem, RawIOC } from "./types";
 
 const OTX_BASE = "https://otx.alienvault.com/api/v1";
@@ -41,7 +43,7 @@ const OTX_TYPE_MAP: Record<string, RawIOC["type"]> = {
 
 function mapOtxIndicators(
   indicators: OtxPulse["indicators"],
-  pulseName: string
+  pulseName: string,
 ): RawIOC[] {
   return indicators
     .filter((ind) => OTX_TYPE_MAP[ind.type])
@@ -60,6 +62,7 @@ export const otxAdapter: SourceAdapter = {
   async fetch(): Promise<RawThreatItem[]> {
     const apiKey = process.env.OTX_API_KEY;
     if (!apiKey) {
+      sourceSkipped("configuration_missing");
       console.warn("[OTX] OTX_API_KEY não configurada — pulando fonte");
       return [];
     }
@@ -77,12 +80,29 @@ export const otxAdapter: SourceAdapter = {
 
     const data: OtxResponse = await res.json();
 
+    if (data.next) {
+      const c = currentContext();
+      if (c) {
+        const m = metricFor(c);
+        m.failures++;
+        m.codes.push("source_page_truncated");
+      }
+    }
     return data.results.map((pulse): RawThreatItem => {
       const iocs = mapOtxIndicators(pulse.indicators ?? [], pulse.name);
       const mitre = (pulse.attack_ids ?? []).map((a) => a.id).filter(Boolean);
-      const cves = extractCvesFromText((pulse.description ?? "") + " " + pulse.name);
+      const cves = extractCvesFromText(
+        (pulse.description ?? "") + " " + pulse.name,
+      );
 
       return {
+        sourceUpdatedAt: pulse.modified ? new Date(pulse.modified) : undefined,
+        actors: pulse.adversary ? [pulse.adversary] : [],
+        malwareFamilies: (pulse.malware_families ?? []).map(
+          (m) => m.display_name,
+        ),
+        iocSetComplete: (pulse.indicators ?? []).length <= 20,
+        originalPayload: pulse,
         externalId: pulse.id,
         title: pulse.name,
         description: pulse.description || `Pulse OTX: ${pulse.name}`,
@@ -92,8 +112,30 @@ export const otxAdapter: SourceAdapter = {
         cves,
         iocs,
         mitreTechniques: mitre,
-        evidenceSources: [{ id: "otx-pulse", name: "AlienVault OTX", url: `https://otx.alienvault.com/pulse/${pulse.id}`, text: JSON.stringify(pulse), techniqueAssertions: (pulse.attack_ids ?? []).map(a => ({ id: a.id, kind: "reported" as const, quote: JSON.stringify(a) })), retrievedAt: new Date().toISOString(), publishedAt: pulse.created, origin: "original" }],
-        mitreEvidence: (pulse.attack_ids ?? []).map(a => ({ id: a.id, name: a.name || a.display_name?.replace(/^T\d{4}(?:\.\d{3})?[: -]+/, ""), kind: "reported" as const, sourceId: "otx-pulse", quote: JSON.stringify(a) })),
+        evidenceSources: [
+          {
+            id: "otx-pulse",
+            name: "AlienVault OTX",
+            url: `https://otx.alienvault.com/pulse/${pulse.id}`,
+            text: JSON.stringify(pulse),
+            techniqueAssertions: (pulse.attack_ids ?? []).map((a) => ({
+              id: a.id,
+              kind: "reported" as const,
+              quote: JSON.stringify(a),
+            })),
+            retrievedAt: new Date().toISOString(),
+            publishedAt: pulse.created,
+            origin: "original",
+          },
+        ],
+        mitreEvidence: (pulse.attack_ids ?? []).map((a) => ({
+          id: a.id,
+          name:
+            a.name || a.display_name?.replace(/^T\d{4}(?:\.\d{3})?[: -]+/, ""),
+          kind: "reported" as const,
+          sourceId: "otx-pulse",
+          quote: JSON.stringify(a),
+        })),
         tags: [
           ...(pulse.tags ?? []).slice(0, 8),
           ...(pulse.malware_families ?? [])

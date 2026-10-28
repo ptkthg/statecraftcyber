@@ -1,3 +1,5 @@
+import { withSource } from "../pipeline/context";
+import { fetchWithPolicy as fetch } from "../pipeline/http";
 import type { SourceAdapter, RawThreatItem, RawIOC } from "./types";
 
 const URLHAUS_API = "https://urlhaus-api.abuse.ch/v1/urls/recent/limit/50/";
@@ -42,13 +44,15 @@ export const abusechAdapter: SourceAdapter = {
     const results: RawThreatItem[] = [];
 
     try {
-      results.push(...(await fetchUrlHaus()));
+      results.push(...(await withSource("abuse.ch / URLhaus", fetchUrlHaus)));
     } catch (e) {
       console.error("[abuse.ch] URLhaus falhou:", e);
     }
 
     try {
-      results.push(...(await fetchMalwareBazaar()));
+      results.push(
+        ...(await withSource("abuse.ch / MalwareBazaar", fetchMalwareBazaar)),
+      );
     } catch (e) {
       console.error("[abuse.ch] MalwareBazaar falhou:", e);
     }
@@ -86,11 +90,13 @@ async function fetchUrlHaus(): Promise<RawThreatItem[]> {
       source: "URLhaus",
     }));
 
-    const tags = [
-      ...new Set(urls.flatMap((u) => u.tags ?? [])),
-    ].slice(0, 8);
+    const tags = [...new Set(urls.flatMap((u) => u.tags ?? []))].slice(0, 8);
 
     items.push({
+      descriptionOrigin: "generated",
+      recordKind: "periodic-ioc",
+      periodicKey: threat,
+      iocSetComplete: false,
       externalId: `urlhaus-${threat}-${new Date().toISOString().slice(0, 10)}`,
       title: `Infraestrutura de ${formatThreat(threat)}: ${iocs.length} URLs Maliciosas Ativas`,
       description: `O URLhaus (abuse.ch) identificou ${iocs.length} URLs ativas distribuindo ${formatThreat(threat)} nas últimas 24 horas. ${urls.filter((u) => u.url_status === "online").length} URLs permanecem online.`,
@@ -146,6 +152,11 @@ async function fetchMalwareBazaar(): Promise<RawThreatItem[]> {
     }));
 
     items.push({
+      descriptionOrigin: "generated",
+      recordKind: "periodic-ioc",
+      periodicKey: sig,
+      iocSetComplete: false,
+      malwareFamilies: [sig],
       externalId: `bazaar-${sig.toLowerCase()}-${new Date().toISOString().slice(0, 10)}`,
       title: `Nova Amostra de ${sig} Identificada no MalwareBazaar`,
       description: `${samples.length} nova(s) amostra(s) da família ${sig} foram submetidas ao MalwareBazaar. Tipos de arquivo: ${[...new Set(samples.map((s) => s.file_type))].join(", ")}.`,

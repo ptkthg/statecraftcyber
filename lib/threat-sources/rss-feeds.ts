@@ -1,3 +1,5 @@
+import { fetchWithPolicy as fetch } from "../pipeline/http";
+import { mapConcurrent, withSource } from "../pipeline/context";
 import Parser from "rss-parser";
 import type { SourceAdapter, RawThreatItem } from "./types";
 
@@ -62,10 +64,28 @@ const FEEDS: FeedConfig[] = [
 ];
 
 const SECURITY_KEYWORDS = [
-  "ransomware", "phishing", "malware", "vulnerability", "exploit",
-  "attack", "breach", "apt", "threat", "cve", "zero-day", "backdoor",
-  "trojan", "botnet", "credential", "lateral movement", "supply chain",
-  "vulnerabilidade", "ataque", "ameaça", "incidente", "golpe",
+  "ransomware",
+  "phishing",
+  "malware",
+  "vulnerability",
+  "exploit",
+  "attack",
+  "breach",
+  "apt",
+  "threat",
+  "cve",
+  "zero-day",
+  "backdoor",
+  "trojan",
+  "botnet",
+  "credential",
+  "lateral movement",
+  "supply chain",
+  "vulnerabilidade",
+  "ataque",
+  "ameaça",
+  "incidente",
+  "golpe",
 ];
 
 function isSecurityRelevant(title: string, summary: string): boolean {
@@ -101,10 +121,17 @@ export const rssFeedsAdapter: SourceAdapter = {
   async fetch(): Promise<RawThreatItem[]> {
     const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000); // 48h
 
-    const perFeed = await Promise.all(
-      FEEDS.map(async (feed) => {
+    const perFeed = await mapConcurrent(FEEDS, 2, async (feed) => {
+      return withSource("RSS Feeds / " + feed.name, async () => {
         try {
-          const parsed = await parser.parseURL(feed.url);
+          const response = await fetch(feed.url, {
+            signal: AbortSignal.timeout(12000),
+          });
+          if (!response.ok) throw new Error("RSS HTTP " + response.status);
+          const text = await response.text();
+          const parsed = await parser.parseString(text).catch((error) => {
+            throw Object.assign(error, { pipelineCode: "parsing" });
+          });
           const items: RawThreatItem[] = [];
 
           for (const item of (parsed.items ?? []).slice(0, 5)) {
@@ -113,7 +140,8 @@ export const rssFeedsAdapter: SourceAdapter = {
             const pubDate = item.pubDate ? new Date(item.pubDate) : undefined;
             if (pubDate && pubDate < cutoff) continue;
 
-            const rawSummary = item.contentSnippet ?? item.content ?? item.summary ?? "";
+            const rawSummary =
+              item.contentSnippet ?? item.content ?? item.summary ?? "";
             const summary = truncate(cleanHtml(rawSummary), 600);
 
             if (!isSecurityRelevant(item.title, summary)) continue;
@@ -121,9 +149,11 @@ export const rssFeedsAdapter: SourceAdapter = {
             const cves = extractCvesFromText(`${item.title} ${summary}`);
 
             items.push({
+              originalPayload: item,
               externalId: item.guid ?? item.link,
               title: item.title.trim(),
-              description: summary || `Publicação de ${feed.name}: ${item.title}`,
+              description:
+                summary || `Publicação de ${feed.name}: ${item.title}`,
               sourceUrl: item.link,
               sourceName: feed.name,
               publishedAt: pubDate,
@@ -138,13 +168,16 @@ export const rssFeedsAdapter: SourceAdapter = {
 
           return items;
         } catch (err) {
-          console.warn(`[RSS] Feed "${feed.name}" falhou:`, (err as Error).message);
-          return [];
+          console.warn(
+            `[RSS] Feed "${feed.name}" falhou:`,
+            (err as Error).message,
+          );
+          throw err;
         }
-      })
-    );
+      });
+    });
 
-    return perFeed.flat();
+    return perFeed.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
   },
 };
 

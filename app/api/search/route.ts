@@ -147,7 +147,7 @@ export async function GET(req: NextRequest) {
     if (cveId) {
       try {
         const corr = await prisma.ioc.findMany({
-          where: { briefing: { is: { ...PUBLIC_BRIEFING_WHERE, cves: { has: cveId.toUpperCase() } } } },
+          where: { isActive:true, briefing: { is: { ...PUBLIC_BRIEFING_WHERE, cves: { has: cveId.toUpperCase() } } } },
           take: 5,
           include: { briefing: { select: { slug: true, severity: true } } },
         });

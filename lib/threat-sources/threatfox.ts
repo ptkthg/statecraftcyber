@@ -1,4 +1,11 @@
-import type { SourceAdapter, RawThreatItem, RawIOC, Confidence, Severity } from "./types";
+import { fetchWithPolicy as fetch } from "../pipeline/http";
+import type {
+  SourceAdapter,
+  RawThreatItem,
+  RawIOC,
+  Confidence,
+  Severity,
+} from "./types";
 
 const THREATFOX_API = "https://threatfox-api.abuse.ch/api/v1/";
 
@@ -36,15 +43,28 @@ export function mapThreatFoxIoc(entry: ThreatFoxEntry): RawIOC | null {
   const type = TYPE_MAP[entry.ioc_type];
   if (!type) return null;
   const value =
-    entry.ioc_type === "ip_port" ? entry.ioc_value.split(":")[0] : entry.ioc_value;
-  return { type, value, confidence: mapConfidence(entry.confidence_level), source: "ThreatFox" };
+    entry.ioc_type === "ip_port"
+      ? entry.ioc_value.split(":")[0]
+      : entry.ioc_value;
+  return {
+    type,
+    value,
+    confidence: mapConfidence(entry.confidence_level),
+    source: "ThreatFox",
+  };
 }
 
 function slugify(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
-export function buildThreatFoxItems(entries: ThreatFoxEntry[], now: Date): RawThreatItem[] {
+export function buildThreatFoxItems(
+  entries: ThreatFoxEntry[],
+  now: Date,
+): RawThreatItem[] {
   const byFamily = new Map<string, ThreatFoxEntry[]>();
   for (const e of entries) {
     if (!TYPE_MAP[e.ioc_type]) continue;
@@ -68,7 +88,8 @@ export function buildThreatFoxItems(entries: ThreatFoxEntry[], now: Date): RawTh
     if (!iocs.length) continue;
 
     const severity: Severity = familyEntries.some(
-      (e) => e.threat_type === "botnet_cc" || e.threat_type === "payload_delivery"
+      (e) =>
+        e.threat_type === "botnet_cc" || e.threat_type === "payload_delivery",
     )
       ? "high"
       : "medium";
@@ -77,6 +98,11 @@ export function buildThreatFoxItems(entries: ThreatFoxEntry[], now: Date): RawTh
     const types = [...new Set(iocs.map((i) => i.type))].join(", ");
 
     items.push({
+      descriptionOrigin: "generated",
+      recordKind: "periodic-ioc",
+      periodicKey: family,
+      iocSetComplete: false,
+      malwareFamilies: [family],
       externalId: `threatfox-${slug}-${date}`,
       title: `ThreatFox: ${iocs.length} Indicadores Ativos de ${family}`,
       description: `${iocs.length} indicadores de comprometimento da família ${family} coletados do ThreatFox nas últimas 24 horas. Tipos: ${types}.`,

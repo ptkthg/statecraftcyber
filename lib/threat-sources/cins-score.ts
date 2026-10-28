@@ -1,3 +1,4 @@
+import { fetchWithPolicy as fetch } from "../pipeline/http";
 import type { SourceAdapter, RawThreatItem } from "./types";
 
 const CINS_URL = "https://cinsscore.com/list/ci-badguys.txt";
@@ -26,13 +27,17 @@ export function buildCinsItem(ips: string[], now: Date): RawThreatItem | null {
   if (!ips.length) return null;
 
   return {
+    descriptionOrigin: "generated",
+    recordKind: "periodic-ioc",
+    periodicKey: "cins-ip-list",
+    iocSetComplete: false,
     externalId: `cins-score-${now.toISOString().slice(0, 10)}`,
     title: `CINS Score: ${ips.length} IPs Maliciosos da Blocklist Comunitária`,
     description: `${ips.length} endereços IP listados na blocklist CINS (Critical Intelligence Network Score) como fontes ativas de tráfego malicioso.`,
     sourceUrl: "https://cinsscore.com/",
     sourceName: "CINS Score",
     publishedAt: now,
-      publishedAtOrigin: "retrieval",
+    publishedAtOrigin: "retrieval",
     cves: [],
     iocs: ips.map((ip) => ({
       type: "ip" as const,
@@ -41,7 +46,7 @@ export function buildCinsItem(ips: string[], now: Date): RawThreatItem | null {
       source: "CINS Score",
     })),
     severity: "medium",
-      severityOrigin: "assessment",
+    severityOrigin: "assessment",
     tags: ["blocklist", "ip", "cins", "ioc-feed"],
     affectedSectors: [],
     affectedRegions: [],

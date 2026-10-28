@@ -1,3 +1,5 @@
+import { currentContext, metricFor } from "../pipeline/context";
+import { fetchWithPolicy as fetch } from "../pipeline/http";
 import { selectNvdCvss, type NvdMetrics } from "../intelligence/cvss";
 import type { SourceAdapter, RawThreatItem } from "./types";
 
@@ -31,7 +33,9 @@ function getDescription(cve: NvdCve["cve"]): string {
   return en?.value ?? "Sem descrição disponível.";
 }
 
-function getCvss(cve: NvdCve["cve"]): number | undefined { return selectNvdCvss(cve.metrics).score ?? undefined; }
+function getCvss(cve: NvdCve["cve"]): number | undefined {
+  return selectNvdCvss(cve.metrics).score ?? undefined;
+}
 
 function extractAffectedProducts(cve: NvdCve["cve"]): string[] {
   const products = new Set<string>();
@@ -65,9 +69,9 @@ export const nvdAdapter: SourceAdapter = {
     const fmt = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, ".000");
 
     const url = new URL(NVD_URL);
-    url.searchParams.set("pubStartDate", fmt(yesterday));
-    url.searchParams.set("pubEndDate", fmt(now));
-    url.searchParams.set("resultsPerPage", "20"); // sem filtro de severidade — filtramos localmente (HIGH + CRITICAL)
+    url.searchParams.set("lastModStartDate", fmt(yesterday));
+    url.searchParams.set("lastModEndDate", fmt(now));
+    url.searchParams.set("resultsPerPage", "2000"); // sem filtro de severidade — filtramos localmente (HIGH + CRITICAL)
 
     const res = await fetch(url.toString(), {
       headers,
@@ -78,9 +82,15 @@ export const nvdAdapter: SourceAdapter = {
 
     const data: NvdResponse = await res.json();
 
-    return data.vulnerabilities
-      .filter((v) => v.cve.vulnStatus !== "Rejected")
-      .filter((v) => (getCvss(v.cve) ?? 0) >= 7.0) // HIGH (7.0–8.9) + CRITICAL (9.0+)
+    if (data.totalResults > data.vulnerabilities.length) {
+      const c = currentContext();
+      if (c) {
+        const m = metricFor(c);
+        m.failures++;
+        m.codes.push("source_page_truncated");
+      }
+    }
+    return data.vulnerabilities // Include changed scores and rejected records so earlier assessments can be invalidated.
       .map((v): RawThreatItem => {
         const cve = v.cve;
         const cvss = getCvss(cve);
@@ -88,6 +98,20 @@ export const nvdAdapter: SourceAdapter = {
         const products = extractAffectedProducts(cve);
 
         return {
+          originalPayload: cve,
+          vendors: [
+            ...new Set(
+              (cve.configurations ?? []).flatMap((c) =>
+                c.nodes.flatMap((n) =>
+                  n.cpeMatch
+                    .filter((m) => m.vulnerable)
+                    .map((m) => m.criteria.split(":")[3]),
+                ),
+              ),
+            ),
+          ].filter(Boolean),
+          recordKind: "vulnerability",
+          sourceUpdatedAt: new Date(cve.lastModified),
           externalId: cve.id,
           title: `${cve.id}: Vulnerabilidade reportada`,
           description,
@@ -96,10 +120,25 @@ export const nvdAdapter: SourceAdapter = {
           publishedAt: new Date(cve.published),
           cves: [cve.id],
           cvssScore: cvss,
-          metricWarnings: [...selectNvdCvss(cve.metrics).warnings],
+          metricWarnings: [
+            ...selectNvdCvss(cve.metrics).warnings,
+            ...(cve.vulnStatus === "Rejected" ? ["source.rejected"] : []),
+          ],
           iocs: [],
           mitreTechniques: [],
-          tags: ["vulnerabilidade", "nvd", cvss && cvss >= 9 ? "cvss-crítico" : "cvss-alto"].filter(Boolean) as string[],
+          tags: [
+            "vulnerabilidade",
+            "nvd",
+            cvss === undefined
+              ? "cvss-indisponivel"
+              : cvss >= 9
+                ? "cvss-crítico"
+                : cvss >= 7
+                  ? "cvss-alto"
+                  : cvss >= 4
+                    ? "cvss-medio"
+                    : "cvss-baixo",
+          ].filter(Boolean) as string[],
           affectedProducts: products,
           affectedSectors: [],
           affectedRegions: [],

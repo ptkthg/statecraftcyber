@@ -1,3 +1,4 @@
+import { fetchWithPolicy as fetch } from "../pipeline/http";
 import type { EvidenceSource } from "../intelligence/types";
 /**
  * CVE Enrichment — RAG data-fetching layer
@@ -45,10 +46,13 @@ async function fetchNvdDetail(cve: string): Promise<string | null> {
     const nvdKey = process.env.NVD_API_KEY;
     if (nvdKey) headers["apiKey"] = nvdKey;
 
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) });
+    const res = await fetch(url, {
+      headers,
+      signal: AbortSignal.timeout(8_000),
+    });
     if (!res.ok) return null;
 
-    const data = await res.json() as {
+    const data = (await res.json()) as {
       vulnerabilities?: {
         cve: {
           metrics?: {
@@ -80,7 +84,14 @@ async function fetchNvdDetail(cve: string): Promise<string | null> {
           weaknesses?: { description: { lang: string; value: string }[] }[];
           references?: { url: string; source: string; tags?: string[] }[];
           configurations?: {
-            nodes: { cpeMatch: { criteria: string; vulnerable: boolean; versionStartIncluding?: string; versionEndExcluding?: string }[] }[];
+            nodes: {
+              cpeMatch: {
+                criteria: string;
+                vulnerable: boolean;
+                versionStartIncluding?: string;
+                versionEndExcluding?: string;
+              }[];
+            }[];
           }[];
         };
       }[];
@@ -96,20 +107,30 @@ async function fetchNvdDetail(cve: string): Promise<string | null> {
     if (v31) {
       const d = v31.cvssData;
       lines.push(`Vetor CVSS 3.1: ${d.vectorString}`);
-      lines.push(`Vetor de ataque: ${d.attackVector} | Complexidade: ${d.attackComplexity} | Privilégios exigidos: ${d.privilegesRequired} | Interação do usuário: ${d.userInteraction}`);
-      lines.push(`Impacto — Confidencialidade: ${d.confidentialityImpact} | Integridade: ${d.integrityImpact} | Disponibilidade: ${d.availabilityImpact}`);
-      lines.push(`Exploitability Score: ${v31.exploitabilityScore} | Impact Score: ${v31.impactScore}`);
+      lines.push(
+        `Vetor de ataque: ${d.attackVector} | Complexidade: ${d.attackComplexity} | Privilégios exigidos: ${d.privilegesRequired} | Interação do usuário: ${d.userInteraction}`,
+      );
+      lines.push(
+        `Impacto — Confidencialidade: ${d.confidentialityImpact} | Integridade: ${d.integrityImpact} | Disponibilidade: ${d.availabilityImpact}`,
+      );
+      lines.push(
+        `Exploitability Score: ${v31.exploitabilityScore} | Impact Score: ${v31.impactScore}`,
+      );
     } else {
       const v3 = vuln.metrics?.cvssMetricV30?.[0];
       if (v3) {
         const d = v3.cvssData;
         lines.push(`Vetor CVSS 3.0: ${d.vectorString}`);
-        lines.push(`Vetor de ataque: ${d.attackVector} | Complexidade: ${d.attackComplexity} | Privilégios exigidos: ${d.privilegesRequired} | Interação do usuário: ${d.userInteraction}`);
+        lines.push(
+          `Vetor de ataque: ${d.attackVector} | Complexidade: ${d.attackComplexity} | Privilégios exigidos: ${d.privilegesRequired} | Interação do usuário: ${d.userInteraction}`,
+        );
       }
     }
 
     // CWE
-    const cweDesc = vuln.weaknesses?.[0]?.description.find((d) => d.lang === "en")?.value;
+    const cweDesc = vuln.weaknesses?.[0]?.description.find(
+      (d) => d.lang === "en",
+    )?.value;
     if (cweDesc && cweDesc !== "NVD-CWE-noinfo") {
       lines.push(`CWE: ${cweDesc}`);
     }
@@ -121,32 +142,60 @@ async function fetchNvdDetail(cve: string): Promise<string | null> {
         for (const match of node.cpeMatch) {
           if (!match.vulnerable) continue;
           const parts = match.criteria.split(":");
-          const product = parts.length >= 5 ? `${parts[3]} ${parts[4]}` : match.criteria;
-          const from = match.versionStartIncluding ? `>= ${match.versionStartIncluding}` : "";
-          const to = match.versionEndExcluding ? `< ${match.versionEndExcluding} (limite superior excluído; não comprova versão corrigida)` : "";
+          const product =
+            parts.length >= 5 ? `${parts[3]} ${parts[4]}` : match.criteria;
+          const from = match.versionStartIncluding
+            ? `>= ${match.versionStartIncluding}`
+            : "";
+          const to = match.versionEndExcluding
+            ? `< ${match.versionEndExcluding} (limite superior excluído; não comprova versão corrigida)`
+            : "";
           const range = [from, to].filter(Boolean).join(", ");
           if (range) versionRanges.push(`${product}: ${range}`);
         }
       }
     }
     if (versionRanges.length > 0) {
-      lines.push(`Versões vulneráveis: ${versionRanges.slice(0, 4).join(" | ")}`);
+      lines.push(
+        `Versões vulneráveis: ${versionRanges.slice(0, 4).join(" | ")}`,
+      );
     }
 
     // References — prioritize patches, advisories, exploits
     const refs = vuln.references ?? [];
-    const patchRefs = refs.filter((r) => r.tags?.some((t) => /patch|fix|vendor.?advisory|mitigation/i.test(t)));
-    const exploitRefs = refs.filter((r) => r.tags?.some((t) => /exploit|poc|proof.?of.?concept/i.test(t)));
-    const advisoryRefs = refs.filter((r) => r.tags?.some((t) => /vendor.?advisory|advisory/i.test(t)));
+    const patchRefs = refs.filter((r) =>
+      r.tags?.some((t) => /patch|fix|vendor.?advisory|mitigation/i.test(t)),
+    );
+    const exploitRefs = refs.filter((r) =>
+      r.tags?.some((t) => /exploit|poc|proof.?of.?concept/i.test(t)),
+    );
+    const advisoryRefs = refs.filter((r) =>
+      r.tags?.some((t) => /vendor.?advisory|advisory/i.test(t)),
+    );
 
     if (patchRefs.length > 0) {
-      lines.push(`Referências de patch: ${patchRefs.slice(0, 2).map((r) => r.url).join(", ")}`);
+      lines.push(
+        `Referências de patch: ${patchRefs
+          .slice(0, 2)
+          .map((r) => r.url)
+          .join(", ")}`,
+      );
     }
     if (advisoryRefs.length > 0) {
-      lines.push(`Advisory do vendor: ${advisoryRefs.slice(0, 2).map((r) => r.url).join(", ")}`);
+      lines.push(
+        `Advisory do vendor: ${advisoryRefs
+          .slice(0, 2)
+          .map((r) => r.url)
+          .join(", ")}`,
+      );
     }
     if (exploitRefs.length > 0) {
-      lines.push(`Referências de exploit/PoC (NVD): ${exploitRefs.slice(0, 2).map((r) => r.url).join(", ")}`);
+      lines.push(
+        `Referências de exploit/PoC (NVD): ${exploitRefs
+          .slice(0, 2)
+          .map((r) => r.url)
+          .join(", ")}`,
+      );
     }
 
     return lines.length > 0 ? `[NVD Detail]\n${lines.join("\n")}` : null;
@@ -162,7 +211,7 @@ async function fetchEpssDetail(cve: string): Promise<string | null> {
     const res = await fetch(url, { signal: AbortSignal.timeout(5_000) });
     if (!res.ok) return null;
 
-    const data = await res.json() as {
+    const data = (await res.json()) as {
       data?: { cve: string; epss: string; percentile: string; date: string }[];
     };
 
@@ -172,10 +221,13 @@ async function fetchEpssDetail(cve: string): Promise<string | null> {
     const score = parseFloat(entry.epss);
     const pct = parseFloat(entry.percentile);
     const scoreLabel =
-      score >= 0.7 ? "muito alto (exploits amplamente disponíveis)" :
-      score >= 0.4 ? "alto (ferramentas de exploit conhecidas)" :
-      score >= 0.1 ? "moderado" :
-      "baixo";
+      score >= 0.7
+        ? "muito alto (exploits amplamente disponíveis)"
+        : score >= 0.4
+          ? "alto (ferramentas de exploit conhecidas)"
+          : score >= 0.1
+            ? "moderado"
+            : "baixo";
 
     return `[EPSS]\nScore: ${(score * 100).toFixed(2)}% (${scoreLabel}) | Percentil: ${(pct * 100).toFixed(1)}% das CVEs conhecidas | Data: ${entry.date}`;
   } catch {
@@ -195,18 +247,21 @@ interface KevEntry {
 }
 
 // Module-level cache — avoids re-downloading o JSON KEV inteiro por CVE enriquecida no mesmo run
-let _kevCache: { data: { vulnerabilities: KevEntry[] }; at: number } | null = null;
+let _kevCache: { data: { vulnerabilities: KevEntry[] }; at: number } | null =
+  null;
 
-async function getCisaKevCatalog(): Promise<{ vulnerabilities: KevEntry[] } | null> {
+async function getCisaKevCatalog(): Promise<{
+  vulnerabilities: KevEntry[];
+} | null> {
   const now = Date.now();
   if (_kevCache && now - _kevCache.at < 120_000) return _kevCache.data;
   try {
     const res = await fetch(
       "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
-      { signal: AbortSignal.timeout(8_000) }
+      { signal: AbortSignal.timeout(8_000) },
     );
     if (!res.ok) return null;
-    const data = await res.json() as { vulnerabilities: KevEntry[] };
+    const data = (await res.json()) as { vulnerabilities: KevEntry[] };
     _kevCache = { data, at: now };
     return data;
   } catch {
@@ -233,7 +288,9 @@ async function fetchCisaKevDetail(cve: string): Promise<string | null> {
     ];
 
     if (entry.knownRansomwareCampaignUse === "Known") {
-      lines.push(`Associação com ransomware: SIM — uso por grupos de ransomware confirmado`);
+      lines.push(
+        `Associação com ransomware: SIM — uso por grupos de ransomware confirmado`,
+      );
     }
 
     return `[CISA KEV]\n${lines.join("\n")}`;
@@ -269,9 +326,12 @@ async function fetchOsvDetail(cve: string): Promise<string | null> {
     // Correct body format: { "query": "CVE-XXXX-XXXXX" } is NOT supported;
     // we must use the direct vuln lookup endpoint since OSV IDs != CVE IDs.
     // The /v1/vulns/{id} endpoint accepts CVE IDs directly as aliases.
-    const res = await fetch(`https://api.osv.dev/v1/vulns/${encodeURIComponent(cve)}`, {
-      signal: AbortSignal.timeout(6_000),
-    });
+    const res = await fetch(
+      `https://api.osv.dev/v1/vulns/${encodeURIComponent(cve)}`,
+      {
+        signal: AbortSignal.timeout(6_000),
+      },
+    );
 
     if (!res.ok) {
       // If direct CVE lookup fails, try the batch query endpoint with alias
@@ -284,13 +344,13 @@ async function fetchOsvDetail(cve: string): Promise<string | null> {
         signal: AbortSignal.timeout(6_000),
       });
       if (!res2.ok) return null;
-      const data2 = await res2.json() as { vulns?: OsvVuln[] };
+      const data2 = (await res2.json()) as { vulns?: OsvVuln[] };
       const v = data2.vulns?.[0];
       if (!v) return null;
       return formatOsvVuln(v);
     }
 
-    const vuln = await res.json() as OsvVuln;
+    const vuln = (await res.json()) as OsvVuln;
     return formatOsvVuln(vuln);
   } catch {
     return null;
@@ -307,21 +367,29 @@ function formatOsvVuln(vuln: OsvVuln): string | null {
   // Patch versions — the most operationally useful info
   const patchVersions: string[] = [];
   for (const affected of vuln.affected ?? []) {
-    const pkg = affected.package ? `${affected.package.ecosystem}/${affected.package.name}` : "";
+    const pkg = affected.package
+      ? `${affected.package.ecosystem}/${affected.package.name}`
+      : "";
     for (const range of affected.ranges ?? []) {
       const fixed = range.events.find((e) => e.fixed)?.fixed;
       if (fixed) {
-        patchVersions.push(pkg ? `${pkg} → corrigido em ${fixed}` : `corrigido em ${fixed}`);
+        patchVersions.push(
+          pkg ? `${pkg} → corrigido em ${fixed}` : `corrigido em ${fixed}`,
+        );
       }
     }
   }
   if (patchVersions.length > 0) {
-    lines.push(`Versões com patch (OSV): ${patchVersions.slice(0, 4).join(" | ")}`);
+    lines.push(
+      `Versões com patch (OSV): ${patchVersions.slice(0, 4).join(" | ")}`,
+    );
   }
 
   // Advisory references
   const advisories = (vuln.references ?? [])
-    .filter((r) => r.type === "ADVISORY" || r.type === "FIX" || r.type === "PACKAGE")
+    .filter(
+      (r) => r.type === "ADVISORY" || r.type === "FIX" || r.type === "PACKAGE",
+    )
     .slice(0, 3);
   if (advisories.length > 0) {
     lines.push(`Referências OSV: ${advisories.map((r) => r.url).join(", ")}`);
@@ -365,10 +433,13 @@ async function fetchGithubAdvisory(cve: string): Promise<string | null> {
       headers["Authorization"] = `Bearer ${process.env.GITHUB_TOKEN}`;
     }
 
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(6_000) });
+    const res = await fetch(url, {
+      headers,
+      signal: AbortSignal.timeout(6_000),
+    });
     if (!res.ok) return null;
 
-    const advisories = await res.json() as GhsaAdvisory[];
+    const advisories = (await res.json()) as GhsaAdvisory[];
     const advisory = advisories?.[0];
     if (!advisory) return null;
 
@@ -378,11 +449,15 @@ async function fetchGithubAdvisory(cve: string): Promise<string | null> {
     ];
 
     if (advisory.cvss) {
-      lines.push(`CVSS GitHub: ${advisory.cvss.score} | Vetor: ${advisory.cvss.vectorString}`);
+      lines.push(
+        `CVSS GitHub: ${advisory.cvss.score} | Vetor: ${advisory.cvss.vectorString}`,
+      );
     }
 
     if (advisory.cwes?.length) {
-      lines.push(`CWEs: ${advisory.cwes.map((c) => `${c.cweId} (${c.name})`).join(", ")}`);
+      lines.push(
+        `CWEs: ${advisory.cwes.map((c) => `${c.cweId} (${c.name})`).join(", ")}`,
+      );
     }
 
     // Patch versions per package — the key operational data
@@ -390,13 +465,19 @@ async function fetchGithubAdvisory(cve: string): Promise<string | null> {
     for (const v of advisory.vulnerabilities ?? []) {
       const patch = v.firstPatchedVersion?.identifier;
       if (patch) {
-        patches.push(`${v.package.ecosystem}/${v.package.name}: patch em ${patch}`);
+        patches.push(
+          `${v.package.ecosystem}/${v.package.name}: patch em ${patch}`,
+        );
       } else if (v.vulnerableVersionRange) {
-        patches.push(`${v.package.ecosystem}/${v.package.name}: versões afetadas ${v.vulnerableVersionRange}`);
+        patches.push(
+          `${v.package.ecosystem}/${v.package.name}: versões afetadas ${v.vulnerableVersionRange}`,
+        );
       }
     }
     if (patches.length > 0) {
-      lines.push(`Patches (GitHub Advisory): ${patches.slice(0, 4).join(" | ")}`);
+      lines.push(
+        `Patches (GitHub Advisory): ${patches.slice(0, 4).join(" | ")}`,
+      );
     }
 
     return `[GitHub Advisory DB]\n${lines.join("\n")}`;
@@ -441,24 +522,43 @@ export async function enrichCveContext(cve: string): Promise<CveEnrichment> {
       ]),
       // Outer safety net: resolve with partial results after 13 s
       new Promise<PromiseSettledResult<string | null>[]>((resolve) =>
-        setTimeout(() => resolve([]), OUTER_TIMEOUT_MS)
+        setTimeout(() => resolve([]), OUTER_TIMEOUT_MS),
       ),
     ]);
 
     const sections: string[] = [];
     const sources: EvidenceSource[] = [];
     const origins = [
-      ["nvd", "NVD", "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=" + cve],
+      [
+        "nvd",
+        "NVD",
+        "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=" + cve,
+      ],
       ["epss", "FIRST EPSS", "https://api.first.org/data/v1/epss?cve=" + cve],
-      ["kev", "CISA KEV", "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"],
+      [
+        "kev",
+        "CISA KEV",
+        "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+      ],
       ["osv", "OSV", "https://api.osv.dev/v1/vulns/" + cve],
-      ["github", "GitHub Advisory", "https://api.github.com/advisories?cve_id=" + cve],
+      [
+        "github",
+        "GitHub Advisory",
+        "https://api.github.com/advisories?cve_id=" + cve,
+      ],
     ];
     for (const [index, result] of results.entries()) {
       if (result.status === "fulfilled" && result.value) {
         sections.push(result.value);
         const [id, name, url] = origins[index];
-        sources.push({ id, name, url, text: result.value, retrievedAt: new Date().toISOString(), origin: "original" });
+        sources.push({
+          id,
+          name,
+          url,
+          text: result.value,
+          retrievedAt: new Date().toISOString(),
+          origin: "original",
+        });
       }
     }
 

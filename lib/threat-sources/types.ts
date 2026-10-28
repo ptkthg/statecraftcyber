@@ -16,6 +16,15 @@ export interface RawIOC {
 export interface RawThreatItem {
   /** Identificador único da fonte */
   externalId: string;
+  originalPayload?: unknown;
+  recordKind?: "vulnerability" | "periodic-ioc" | "event" | "campaign";
+  periodicKey?: string;
+  iocSetComplete?: boolean;
+  sourceUpdatedAt?: Date;
+  vendors?: string[];
+  campaigns?: string[];
+  actors?: string[];
+  malwareFamilies?: string[];
   descriptionOrigin?: "original" | "generated";
   evidenceSources?: EvidenceSource[];
   mitreEvidence?: TechniqueEvidence[];

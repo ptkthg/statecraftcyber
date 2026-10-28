@@ -1,3 +1,4 @@
+import { fetchWithPolicy as fetch } from "../pipeline/http";
 import type { SourceAdapter, RawThreatItem } from "./types";
 
 const CISA_KEV_URL =
@@ -35,30 +36,36 @@ export const cisaKevAdapter: SourceAdapter = {
     // Pegar apenas as 20 mais recentes (já vêm em ordem crescente)
     const recent = data.vulnerabilities.slice(-20);
 
-    return recent.map((entry): RawThreatItem => ({
-      externalId: entry.cveID,
-      title: `${entry.cveID}: Exploração conhecida em ${entry.vulnerabilityName}`,
-      description: `${entry.shortDescription} Ação requerida pela CISA: ${entry.requiredAction}`,
-      sourceUrl: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
-      sourceName: "CISA KEV",
-      publishedAt: new Date(entry.dateAdded),
-      cves: [entry.cveID],
-      iocs: [],
-      mitreTechniques: [],
-      tags: [
-        "cisa-kev",
-        "exploração-ativa",
-        entry.vendorProject.toLowerCase().replace(/\s+/g, "-"),
-        ...(entry.knownRansomwareCampaignUse === "Known"
-          ? ["ransomware"]
-          : []),
-      ],
-      affectedProducts: [`${entry.vendorProject} ${entry.product}`],
-      affectedSectors: [],
-      affectedRegions: [],
-      // KEV is exploitation evidence and priority, not a CVSS technical severity.
-      inCisaKev: true,
-      exploitedInWild: true,
-    }));
+    return recent.map(
+      (entry): RawThreatItem => ({
+        originalPayload: entry,
+        vendors: [entry.vendorProject],
+        recordKind: "vulnerability",
+        externalId: entry.cveID,
+        title: `${entry.cveID}: Exploração conhecida em ${entry.vulnerabilityName}`,
+        description: `${entry.shortDescription} Ação requerida pela CISA: ${entry.requiredAction}`,
+        sourceUrl:
+          "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+        sourceName: "CISA KEV",
+        publishedAt: new Date(entry.dateAdded),
+        cves: [entry.cveID],
+        iocs: [],
+        mitreTechniques: [],
+        tags: [
+          "cisa-kev",
+          "exploração-ativa",
+          entry.vendorProject.toLowerCase().replace(/\s+/g, "-"),
+          ...(entry.knownRansomwareCampaignUse === "Known"
+            ? ["ransomware"]
+            : []),
+        ],
+        affectedProducts: [`${entry.vendorProject} ${entry.product}`],
+        affectedSectors: [],
+        affectedRegions: [],
+        // KEV is exploitation evidence and priority, not a CVSS technical severity.
+        inCisaKev: true,
+        exploitedInWild: true,
+      }),
+    );
   },
 };
