@@ -15,7 +15,8 @@
     "audit:intelligence": "tsx scripts/audit-intelligence.ts",
     "mitre:update": "node scripts/update-attack-catalog.mjs",
     "test:intelligence:migration": "node scripts/verify-intelligence-migration.mjs",
-    "test:pipeline:migration": "node scripts/verify-pipeline-migration.mjs"
+    "test:pipeline:migration": "node scripts/verify-pipeline-migration.mjs",
+    "test:cves:migration": "node --import tsx scripts/verify-cve-radar-migration.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

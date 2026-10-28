@@ -1,6 +1,16 @@
-import { selectNvdCvss, type NvdMetrics } from "../intelligence/cvss";
+import { type CveCache } from "@prisma/client";
+import { nvdMetadata, type NvdRecord } from "./record";
+import {
+  metadataFrom,
+  type CveSourceMetadata,
+} from "./assessment";
+import { fetchKevCatalog, fetchEpssDated } from "./sources";
+import { selectNvdCvss } from "../intelligence/cvss";
 import { safeCveEnrichment } from "../intelligence/cve-policy";
-import { sourceDigest, validateTextFields } from "../intelligence/text-validation";
+import {
+  sourceDigest,
+  validateTextFields,
+} from "../intelligence/text-validation";
 import Groq from "groq-sdk";
 
 let _groq: Groq | null = null;
@@ -58,7 +68,9 @@ ${JSON.stringify(input)}`;
         { role: "user", content: userPrompt },
       ],
     });
-    const raw = JSON.parse(res.choices[0]?.message?.content ?? "{}") as { cves?: CveAiResult[] };
+    const raw = JSON.parse(res.choices[0]?.message?.content ?? "{}") as {
+      cves?: CveAiResult[];
+    };
     return Array.isArray(raw.cves) ? raw.cves : [];
   } catch (err) {
     console.error("[CVE AI] Falha no batch:", (err as Error).message);
@@ -66,12 +78,24 @@ ${JSON.stringify(input)}`;
   }
 }
 
-async function enrichAndSave(entries: CveEntry[]): Promise<void> {
+export async function enrichAndSave(entries: CveEntry[]): Promise<void> {
   try {
     const { prisma } = await import("../prisma");
-    const attempted = await prisma.cveCache.findMany({ where: { id: { in: entries.map(e=>e.id) } }, select: { id:true, qualityReport:true } });
-    const previous = new Map(attempted.map(row => [row.id, row.qualityReport as { sourceDigest?:string } | null]));
-    const unenriched = entries.filter(e => !e.ptBrDescription && previous.get(e.id)?.sourceDigest !== sourceDigest(e.description));
+    const attempted = await prisma.cveCache.findMany({
+      where: { id: { in: entries.map((e) => e.id) } },
+      select: { id: true, qualityReport: true },
+    });
+    const previous = new Map(
+      attempted.map((row) => [
+        row.id,
+        row.qualityReport as { sourceDigest?: string } | null,
+      ]),
+    );
+    const unenriched = entries.filter(
+      (e) =>
+        !e.ptBrDescription &&
+        previous.get(e.id)?.sourceDigest !== sourceDigest(e.description),
+    );
     if (unenriched.length === 0) return;
 
     const BATCH = 15;
@@ -79,23 +103,45 @@ async function enrichAndSave(entries: CveEntry[]): Promise<void> {
       const batch = unenriched.slice(i, i + BATCH);
       const results = await enrichBatch(batch);
       for (const r of results) {
-        const original = batch.find(entry => entry.id === r.id);
-        if (!original || typeof r.ptBrDescription !== "string" || typeof r.mitigation !== "string") continue;
-        const report = validateTextFields(original.description, { ptBrDescription: r.ptBrDescription, mitigation: r.mitigation });
+        const original = batch.find((entry) => entry.id === r.id);
+        if (
+          !original ||
+          typeof r.ptBrDescription !== "string" ||
+          typeof r.mitigation !== "string"
+        )
+          continue;
+        const report = validateTextFields(original.description, {
+          ptBrDescription: r.ptBrDescription,
+          mitigation: r.mitigation,
+        });
         await prisma.cveCache.updateMany({
-          where: { id: r.id, description: original.description, lastModified: new Date(original.lastModified) },
+          where: {
+            id: r.id,
+            description: original.description,
+            lastModified: new Date(original.lastModified),
+          },
           data: {
             ptBrDescription: report.publishable ? r.ptBrDescription : null,
             mitigation: report.publishable ? r.mitigation : null,
             aiPriority: null,
-            qualityReport: JSON.parse(JSON.stringify({ ...report, analysisStatus: report.publishable ? "validated" : "enriched", unpublishedCandidate: report.publishable ? undefined : r })),
+            qualityReport: JSON.parse(
+              JSON.stringify({
+                ...report,
+                analysisStatus: report.publishable ? "validated" : "enriched",
+                unpublishedCandidate: report.publishable ? undefined : r,
+              }),
+            ),
+            analysisReady: report.publishable,
             enrichedAt: new Date(),
           },
         });
       }
     }
   } catch (err) {
-    console.error("[CVE AI] Falha ao salvar enriquecimento:", (err as Error).message);
+    console.error(
+      "[CVE AI] Falha ao salvar enriquecimento:",
+      (err as Error).message,
+    );
   }
 }
 
@@ -109,41 +155,168 @@ export type VulnType =
   | "Negação de Serviço"
   | "Escalada de Privilégio"
   | "Criptografia"
+  | "Validação de entrada"
+  | "Concorrência"
   | "Outro";
 
 const CWE_MAP: Record<string, { type: VulnType; explanation: string }> = {
-  "CWE-94":  { type: "Execução de Código",    explanation: "Permite ao atacante executar comandos arbitrários no sistema alvo." },
-  "CWE-77":  { type: "Execução de Código",    explanation: "Comandos enviados pelo atacante são executados diretamente pelo sistema." },
-  "CWE-78":  { type: "Execução de Código",    explanation: "Dados externos são usados para executar comandos do sistema operacional." },
-  "CWE-502": { type: "Execução de Código",    explanation: "Dados maliciosos desserializados disparam execução de código no servidor." },
-  "CWE-89":  { type: "Injeção",               explanation: "Comandos SQL inseridos pelo atacante manipulam o banco de dados." },
-  "CWE-79":  { type: "Injeção",               explanation: "Scripts maliciosos são injetados em páginas web e executados no navegador de outras pessoas." },
-  "CWE-611": { type: "Injeção",               explanation: "Arquivos XML maliciosos acessam dados internos do servidor." },
-  "CWE-918": { type: "Injeção",               explanation: "O servidor é manipulado para fazer requisições a sistemas internos da rede." },
-  "CWE-787": { type: "Estouro de Buffer",     explanation: "Gravação além dos limites de memória pode causar execução de código ou travamento." },
-  "CWE-125": { type: "Estouro de Buffer",     explanation: "Leitura além dos limites de memória pode vazar dados sensíveis." },
-  "CWE-119": { type: "Estouro de Buffer",     explanation: "Operações de memória sem verificação de limites permitem corrupção de dados." },
-  "CWE-416": { type: "Estouro de Buffer",     explanation: "Uso de memória após liberação pode permitir execução de código arbitrário." },
-  "CWE-190": { type: "Estouro de Buffer",     explanation: "Overflow em cálculos inteiros causa comportamento inesperado ou corrupção de memória." },
-  "CWE-476": { type: "Estouro de Buffer",     explanation: "Referência a ponteiro nulo causa travamento do processo." },
-  "CWE-287": { type: "Autenticação",          explanation: "Falha no mecanismo de autenticação permite acesso sem credenciais válidas." },
-  "CWE-306": { type: "Autenticação",          explanation: "Funcionalidade crítica acessível sem qualquer autenticação." },
-  "CWE-798": { type: "Autenticação",          explanation: "Credenciais fixas no código-fonte permitem acesso não autorizado." },
-  "CWE-384": { type: "Autenticação",          explanation: "Sessões de autenticação podem ser sequestradas ou reutilizadas indevidamente." },
-  "CWE-200": { type: "Exposição de Dados",    explanation: "Informações sensíveis expostas a partes não autorizadas através de respostas ou logs." },
-  "CWE-312": { type: "Exposição de Dados",    explanation: "Dados sensíveis armazenados sem criptografia, acessíveis se o sistema for comprometido." },
-  "CWE-319": { type: "Exposição de Dados",    explanation: "Dados transmitidos em texto claro, interceptáveis em trânsito." },
-  "CWE-22":  { type: "Travessia de Caminho",  explanation: "O atacante acessa arquivos fora do diretório permitido, podendo ler dados do sistema." },
-  "CWE-23":  { type: "Travessia de Caminho",  explanation: "Sequências como '../' permitem navegar para diretórios não autorizados." },
-  "CWE-400": { type: "Negação de Serviço",    explanation: "Consumo excessivo de recursos torna o serviço indisponível para usuários legítimos." },
-  "CWE-362": { type: "Negação de Serviço",    explanation: "Condição de corrida entre processos pode causar comportamento imprevisível ou travamento." },
-  "CWE-20":  { type: "Negação de Serviço",    explanation: "Entrada não validada causa comportamento inesperado, travamento ou execução de código." },
-  "CWE-269": { type: "Escalada de Privilégio", explanation: "Usuário com acesso limitado obtém permissões de administrador indevidamente." },
-  "CWE-732": { type: "Escalada de Privilégio", explanation: "Permissões incorretas em arquivos ou recursos permitem acesso não autorizado." },
-  "CWE-434": { type: "Escalada de Privilégio", explanation: "Upload de arquivos maliciosos sem validação pode resultar em execução remota de código." },
-  "CWE-327": { type: "Criptografia",          explanation: "Algoritmo criptográfico fraco ou obsoleto pode ser quebrado por atacantes." },
-  "CWE-326": { type: "Criptografia",          explanation: "Chave criptográfica insuficientemente curta é vulnerável a ataques de força bruta." },
-  "CWE-295": { type: "Criptografia",          explanation: "Certificados TLS não validados corretamente permitem ataques de intermediário." },
+  "CWE-94": {
+    type: "Execução de Código",
+    explanation:
+      "Permite ao atacante executar comandos arbitrários no sistema alvo.",
+  },
+  "CWE-77": {
+    type: "Execução de Código",
+    explanation:
+      "Comandos enviados pelo atacante são executados diretamente pelo sistema.",
+  },
+  "CWE-78": {
+    type: "Execução de Código",
+    explanation:
+      "Dados externos são usados para executar comandos do sistema operacional.",
+  },
+  "CWE-502": {
+    type: "Execução de Código",
+    explanation:
+      "Dados maliciosos desserializados disparam execução de código no servidor.",
+  },
+  "CWE-89": {
+    type: "Injeção",
+    explanation:
+      "Comandos SQL inseridos pelo atacante manipulam o banco de dados.",
+  },
+  "CWE-79": {
+    type: "Injeção",
+    explanation:
+      "Scripts maliciosos são injetados em páginas web e executados no navegador de outras pessoas.",
+  },
+  "CWE-611": {
+    type: "Injeção",
+    explanation: "Arquivos XML maliciosos acessam dados internos do servidor.",
+  },
+  "CWE-918": {
+    type: "Injeção",
+    explanation:
+      "O servidor é manipulado para fazer requisições a sistemas internos da rede.",
+  },
+  "CWE-787": {
+    type: "Estouro de Buffer",
+    explanation:
+      "Gravação além dos limites de memória pode causar execução de código ou travamento.",
+  },
+  "CWE-125": {
+    type: "Estouro de Buffer",
+    explanation:
+      "Leitura além dos limites de memória pode vazar dados sensíveis.",
+  },
+  "CWE-119": {
+    type: "Estouro de Buffer",
+    explanation:
+      "Operações de memória sem verificação de limites permitem corrupção de dados.",
+  },
+  "CWE-416": {
+    type: "Estouro de Buffer",
+    explanation:
+      "Uso de memória após liberação pode permitir execução de código arbitrário.",
+  },
+  "CWE-190": {
+    type: "Estouro de Buffer",
+    explanation:
+      "Overflow em cálculos inteiros causa comportamento inesperado ou corrupção de memória.",
+  },
+  "CWE-476": {
+    type: "Estouro de Buffer",
+    explanation: "Referência a ponteiro nulo causa travamento do processo.",
+  },
+  "CWE-287": {
+    type: "Autenticação",
+    explanation:
+      "Falha no mecanismo de autenticação permite acesso sem credenciais válidas.",
+  },
+  "CWE-306": {
+    type: "Autenticação",
+    explanation: "Funcionalidade crítica acessível sem qualquer autenticação.",
+  },
+  "CWE-798": {
+    type: "Autenticação",
+    explanation:
+      "Credenciais fixas no código-fonte permitem acesso não autorizado.",
+  },
+  "CWE-384": {
+    type: "Autenticação",
+    explanation:
+      "Sessões de autenticação podem ser sequestradas ou reutilizadas indevidamente.",
+  },
+  "CWE-200": {
+    type: "Exposição de Dados",
+    explanation:
+      "Informações sensíveis expostas a partes não autorizadas através de respostas ou logs.",
+  },
+  "CWE-312": {
+    type: "Exposição de Dados",
+    explanation:
+      "Dados sensíveis armazenados sem criptografia, acessíveis se o sistema for comprometido.",
+  },
+  "CWE-319": {
+    type: "Exposição de Dados",
+    explanation:
+      "Dados transmitidos em texto claro, interceptáveis em trânsito.",
+  },
+  "CWE-22": {
+    type: "Travessia de Caminho",
+    explanation:
+      "O atacante acessa arquivos fora do diretório permitido, podendo ler dados do sistema.",
+  },
+  "CWE-23": {
+    type: "Travessia de Caminho",
+    explanation:
+      "Sequências como '../' permitem navegar para diretórios não autorizados.",
+  },
+  "CWE-400": {
+    type: "Negação de Serviço",
+    explanation:
+      "Consumo excessivo de recursos torna o serviço indisponível para usuários legítimos.",
+  },
+  "CWE-362": {
+    type: "Concorrência",
+    explanation:
+      "Condição de corrida entre processos pode causar comportamento imprevisível ou travamento.",
+  },
+  "CWE-20": {
+    type: "Validação de entrada",
+    explanation:
+      "Entrada não validada causa comportamento inesperado, travamento ou execução de código.",
+  },
+  "CWE-269": {
+    type: "Escalada de Privilégio",
+    explanation:
+      "Usuário com acesso limitado obtém permissões de administrador indevidamente.",
+  },
+  "CWE-732": {
+    type: "Escalada de Privilégio",
+    explanation:
+      "Permissões incorretas em arquivos ou recursos permitem acesso não autorizado.",
+  },
+  "CWE-434": {
+    type: "Escalada de Privilégio",
+    explanation:
+      "Upload de arquivos maliciosos sem validação pode resultar em execução remota de código.",
+  },
+  "CWE-327": {
+    type: "Criptografia",
+    explanation:
+      "Algoritmo criptográfico fraco ou obsoleto pode ser quebrado por atacantes.",
+  },
+  "CWE-326": {
+    type: "Criptografia",
+    explanation:
+      "Chave criptográfica insuficientemente curta é vulnerável a ataques de força bruta.",
+  },
+  "CWE-295": {
+    type: "Criptografia",
+    explanation:
+      "Certificados TLS não validados corretamente permitem ataques de intermediário.",
+  },
 };
 
 export interface CveEntry {
@@ -165,22 +338,16 @@ export interface CveEntry {
   ptBrDescription?: string | null;
   mitigation?: string | null;
   aiPriority?: string | null;
+  sourceMetadata?: CveSourceMetadata | null;
 }
 
-interface NvdVuln {
-  cve: {
-    id: string;
-    published: string;
-    lastModified: string;
-    vulnStatus: string;
-    descriptions: { lang: string; value: string }[];
-    metrics?: NvdMetrics;
-    configurations?: { nodes: { cpeMatch: { criteria: string; vulnerable: boolean }[] }[] }[];
-    weaknesses?: { type: string; description: { lang: string; value: string }[] }[];
-  };
-}
+export type NvdVuln = { cve: NvdRecord };
 
-function extractVulnType(cve: NvdVuln["cve"]): { vulnType: VulnType; cweId: string; vulnExplanation: string } {
+export function extractVulnType(cve: NvdVuln["cve"]): {
+  vulnType: VulnType;
+  cweId: string;
+  vulnExplanation: string;
+} {
   const weaknesses = cve.weaknesses ?? [];
   const primary = weaknesses.find((w) => w.type === "Primary") ?? weaknesses[0];
   const cweId = primary?.description.find((d) => d.lang === "en")?.value ?? "";
@@ -188,218 +355,200 @@ function extractVulnType(cve: NvdVuln["cve"]): { vulnType: VulnType; cweId: stri
   return {
     cweId,
     vulnType: mapped?.type ?? "Outro",
-    vulnExplanation: mapped?.explanation ?? "Vulnerabilidade sem classificação detalhada disponível.",
+    vulnExplanation:
+      mapped?.explanation ??
+      "Vulnerabilidade sem classificação detalhada disponível.",
   };
 }
 
-function extractCvss(cve: NvdVuln["cve"]): { score: number | null; severity: CveEntry["severity"]; version: string } {
+function extractCvss(cve: NvdVuln["cve"]): {
+  score: number | null;
+  severity: CveEntry["severity"];
+  version: string;
+} {
   const metric = selectNvdCvss(cve.metrics);
-  return { score: metric.score, severity: metric.severity ? metric.severity.toUpperCase() as CveEntry["severity"] : null, version: metric.version };
+  return {
+    score: metric.score,
+    severity: metric.severity
+      ? (metric.severity.toUpperCase() as CveEntry["severity"])
+      : null,
+    version: metric.version,
+  };
 }
 
-function extractProducts(cve: NvdVuln["cve"]): string[] {
-  const set = new Set<string>();
-  for (const conf of cve.configurations ?? [])
-    for (const node of conf.nodes)
-      for (const m of node.cpeMatch)
-        if (m.vulnerable) {
-          const p = m.criteria.split(":");
-          if (p.length >= 5) set.add(`${p[3]} ${p[4]}`);
-        }
-  return [...set].slice(0, 4);
+export function fromNvd(cve: NvdRecord): CveEntry {
+  const metric = extractCvss(cve),
+    metadata = nvdMetadata(cve);
+  return {
+    id: cve.id,
+    published: cve.published,
+    lastModified: cve.lastModified,
+    description:
+      cve.descriptions?.find((d) => d.lang === "en")?.value ??
+      cve.descriptions?.[0]?.value ??
+      "",
+    cvssScore: cve.vulnStatus === "Rejected" ? null : metric.score,
+    cvssVersion: metric.version,
+    severity: cve.vulnStatus === "Rejected" ? null : metric.severity,
+    epss: null,
+    epssPercentile: null,
+    inCisaKev: false,
+    affectedProducts: [
+      ...new Set(metadata.products.map((p) => p.vendor + " " + p.product)),
+    ],
+    nvdUrl: metadata.nvd.url,
+    ...extractVulnType(cve),
+    sourceMetadata: metadata,
+  };
 }
-
-async function fetchNvd(days: number): Promise<NvdVuln[]> {
-  const apiKey = process.env.NVD_API_KEY;
+export function fromStored(r: CveCache): CveEntry {
+  return {
+    id: r.id,
+    published: r.published.toISOString(),
+    lastModified: r.lastModified.toISOString(),
+    description: r.description,
+    cvssVersion: r.cvssVersion,
+    inCisaKev: r.inCisaKev,
+    affectedProducts: r.affectedProducts,
+    nvdUrl: r.nvdUrl,
+    ...extractVulnType({
+      id: r.id,
+      published: r.published.toISOString(),
+      lastModified: r.lastModified.toISOString(),
+      weaknesses: r.cweId
+        ? [{ type: "Primary", description: [{ lang: "en", value: r.cweId }] }]
+        : [],
+    }),
+    ...safeCveEnrichment(r),
+    sourceMetadata: metadataFrom(r.sourceMetadata),
+  };
+}
+async function collectCves(): Promise<CveEntry[]> {
   const headers: HeadersInit = { Accept: "application/json" };
-  if (apiKey) headers["apiKey"] = apiKey;
-
-  const start = new Date(Date.now() - days * 86_400_000);
-  const fmt = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, ".000");
-
-  const url = new URL("https://services.nvd.nist.gov/rest/json/cves/2.0");
-  url.searchParams.set("pubStartDate", fmt(start));
-  url.searchParams.set("pubEndDate", fmt(new Date()));
-  url.searchParams.set("resultsPerPage", "100");
-
-  const res = await fetch(url.toString(), { headers, signal: AbortSignal.timeout(25_000) });
-  if (!res.ok) throw new Error(`NVD ${res.status}`);
-  const data = await res.json() as { vulnerabilities: NvdVuln[] };
-  return data.vulnerabilities ?? [];
-}
-
-async function fetchKevIds(): Promise<Set<string>> {
-  try {
-    const res = await fetch("https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json", {
-      signal: AbortSignal.timeout(15_000),
+  if (process.env.NVD_API_KEY) headers.apiKey = process.env.NVD_API_KEY;
+  const end = new Date(),
+    start = new Date(+end - 7 * 86400000),
+    vulns: NvdRecord[] = [];
+  let expected = 0;
+  const kevPromise = fetchKevCatalog();
+  for (let page = 0; page < 2; page++) {
+    const url = new URL("https://services.nvd.nist.gov/rest/json/cves/2.0");
+    url.searchParams.set("pubStartDate", start.toISOString());
+    url.searchParams.set("pubEndDate", end.toISOString());
+    url.searchParams.set("resultsPerPage", "2000");
+    url.searchParams.set("startIndex", String(page * 2000));
+    const response = await fetch(url, {
+      headers,
+      signal: AbortSignal.timeout(15000),
     });
-    if (!res.ok) return new Set();
-    const data = await res.json() as { vulnerabilities: { cveID: string }[] };
-    return new Set(data.vulnerabilities.map((v) => v.cveID));
-  } catch {
-    return new Set();
-  }
-}
-
-async function fetchEpss(cveIds: string[]): Promise<Record<string, { score: number; percentile: number }>> {
-  if (!cveIds.length) return {};
-  try {
-    const url = new URL("https://api.first.org/data/v1/epss");
-    url.searchParams.set("cve", cveIds.slice(0, 100).join(","));
-    const res = await fetch(url.toString(), { signal: AbortSignal.timeout(10_000) });
-    if (!res.ok) return {};
-    const data = await res.json() as { data: { cve: string; epss: string; percentile: string }[] };
-    return Object.fromEntries(
-      data.data.map((e) => [e.cve, { score: parseFloat(e.epss), percentile: parseFloat(e.percentile) }])
-    );
-  } catch {
-    return {};
-  }
-}
-
-function sortEntries(entries: CveEntry[]): CveEntry[] {
-  return entries.sort((a, b) => {
-    if (a.inCisaKev !== b.inCisaKev) return a.inCisaKev ? -1 : 1;
-    const sevOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3, NONE: 4, null: 5 };
-    const sd = (sevOrder[a.severity ?? "null"] ?? 4) - (sevOrder[b.severity ?? "null"] ?? 4);
-    if (sd !== 0) return sd;
-    return (b.cvssScore ?? 0) - (a.cvssScore ?? 0);
-  });
-}
-
-async function fetchFromApis(): Promise<CveEntry[]> {
-  const [vulns, kevIds] = await Promise.all([fetchNvd(7), fetchKevIds()]);
-
-  const filtered = vulns.filter((v) => {
-    if (v.cve.vulnStatus === "Rejected") return false;
-    const { severity } = extractCvss(v.cve);
-    return severity === "CRITICAL" || severity === "HIGH" || severity === "MEDIUM";
-  });
-
-  const cveIds = filtered.map((v) => v.cve.id);
-  const epssMap = await fetchEpss(cveIds);
-
-  return filtered.map((v) => {
-    const { score, severity, version } = extractCvss(v.cve);
-    const epss = epssMap[v.cve.id];
-    const desc = v.cve.descriptions.find((d) => d.lang === "en")?.value ?? "";
-    return {
-      id: v.cve.id,
-      published: v.cve.published,
-      lastModified: v.cve.lastModified,
-      description: desc,
-      cvssScore: score,
-      cvssVersion: version,
-      severity,
-      epss: epss?.score ?? null,
-      epssPercentile: epss?.percentile ?? null,
-      inCisaKev: kevIds.has(v.cve.id),
-      affectedProducts: extractProducts(v.cve),
-      nvdUrl: `https://nvd.nist.gov/vuln/detail/${v.cve.id}`,
-      ...extractVulnType(v.cve),
+    if (!response.ok) {
+      if (!vulns.length) throw new Error("NVD unavailable");
+      break;
+    }
+    const data = (await response.json()) as {
+      vulnerabilities?: NvdVuln[];
+      totalResults: number;
     };
-  });
+    expected = data.totalResults ?? 0;
+    const rows = data.vulnerabilities ?? [];
+    vulns.push(...rows.map((v) => v.cve));
+    if (rows.length < 2000 || vulns.length >= expected) break;
+  }
+  const entries = vulns.map(fromNvd),
+    [kev, epss] = await Promise.all([
+      kevPromise,
+      fetchEpssDated(entries.map((e) => e.id)),
+    ]);
+  for (const cve of entries) {
+    const metadata = cve.sourceMetadata!,
+      score = epss.get(cve.id),
+      entry = kev?.entries.get(cve.id);
+    if (vulns.length < expected)
+      metadata.warnings.push(
+        "Cobertura NVD parcial: " +
+          vulns.length +
+          " de " +
+          expected +
+          " registros na consulta.",
+      );
+    if (kev) {
+      metadata.kev = {
+        ...metadata.kev,
+        status: !!entry,
+        checkedAt: kev.checkedAt,
+        ...entry,
+      };
+      cve.inCisaKev = !!entry;
+    }
+    if (score) {
+      cve.epss = score.score;
+      cve.epssPercentile = score.percentile;
+      metadata.epss = {
+        ...metadata.epss,
+        date: score.date,
+        retrievedAt: score.retrievedAt,
+      };
+    }
+  }
+  return entries;
 }
-
-export async function fetchCves(): Promise<{ cves: CveEntry[]; total: number; updatedAt: string }> {
-  // ── 1. Try DB cache (fresh = fetched within last 6h) ─────────────────────
+export async function saveCve(cve: CveEntry) {
+  const { prisma } = await import("../prisma"),
+    { saveCveBatch } = await import("./persist");
+  const previous = await prisma.cveCache.findUnique({ where: { id: cve.id } });
+  await saveCveBatch(prisma, [cve]);
+  if (
+    previous &&
+    previous.description === cve.description &&
+    +previous.lastModified === Date.parse(cve.lastModified)
+  )
+    await prisma.cveCache.updateMany({
+      where: {
+        id: cve.id,
+        description: cve.description,
+        lastModified: new Date(cve.lastModified),
+      },
+      data: { analysisReady: !!safeCveEnrichment(previous).ptBrDescription },
+    });
+}
+export async function fetchCves(): Promise<{
+  cves: CveEntry[];
+  total: number;
+  updatedAt: string;
+}> {
   try {
     const { prisma } = await import("../prisma");
-    const sixHoursAgo = new Date(Date.now() - 6 * 3_600_000);
-
     const newest = await prisma.cveCache.findFirst({
-      where: { fetchedAt: { gte: sixHoursAgo } },
+      where: {
+        fetchedAt: { gte: new Date(Date.now() - 6 * 3600000) },
+        sourceMetadata: { path: ["version"], equals: "phase3-v1" },
+      },
       orderBy: { fetchedAt: "desc" },
       select: { fetchedAt: true },
     });
-
     if (newest) {
       const rows = await prisma.cveCache.findMany({
-        where: { fetchedAt: { gte: sixHoursAgo } },
+        orderBy: { published: "desc" },
       });
-
-      if (rows.length > 0) {
-        const cves = sortEntries(
-          rows.map((r) => ({
-            id: r.id,
-            published: r.published.toISOString(),
-            lastModified: r.lastModified.toISOString(),
-            description: r.description,
-            cvssVersion: r.cvssVersion,
-            inCisaKev: r.inCisaKev,
-            affectedProducts: r.affectedProducts,
-            nvdUrl: r.nvdUrl,
-            vulnType: r.vulnType as VulnType,
-            cweId: r.cweId,
-            vulnExplanation: r.vulnExplanation,
-            ...safeCveEnrichment(r),
-          }))
-        );
-        // Kick off enrichment for any entries still missing AI fields
-        if (cves.some((c) => !c.ptBrDescription)) {
-          enrichAndSave(cves).catch(() => {});
-        }
-        return { cves, total: cves.length, updatedAt: newest.fetchedAt.toISOString() };
-      }
+      return {
+        cves: rows.map(fromStored),
+        total: rows.length,
+        updatedAt: newest.fetchedAt.toISOString(),
+      };
     }
   } catch {
-    // DB unavailable — fall through to API fetch
+    /* Preserve API fallback when PostgreSQL is unavailable. */
   }
-
-  // ── 2. Fetch fresh from APIs ──────────────────────────────────────────────
-  const entries = sortEntries((await fetchFromApis()).map(cve => ({ ...cve, ...safeCveEnrichment(cve) })));
-  const now = new Date();
-
-  // ── 3. Persist to DB + enrich with AI (non-blocking) ────────────────────
-  (async () => {
-    try {
-      const { prisma } = await import("../prisma");
-      // Keep older records so individual CVE links remain available.
-      for (const cve of entries) {
-        await prisma.cveCache.upsert({
-          where: { id: cve.id },
-          create: {
-            id: cve.id,
-            published: new Date(cve.published),
-            lastModified: new Date(cve.lastModified),
-            description: cve.description,
-            cvssScore: cve.cvssScore,
-            cvssVersion: cve.cvssVersion,
-            severity: cve.severity,
-            epss: cve.epss,
-            epssPercentile: cve.epssPercentile,
-            inCisaKev: cve.inCisaKev,
-            affectedProducts: cve.affectedProducts,
-            nvdUrl: cve.nvdUrl,
-            vulnType: cve.vulnType,
-            cweId: cve.cweId,
-            vulnExplanation: cve.vulnExplanation,
-            fetchedAt: now,
-          },
-          update: {
-            lastModified: new Date(cve.lastModified),
-            description: cve.description,
-            ptBrDescription: null, mitigation: null, aiPriority: null, qualityReport: (await import("@prisma/client")).Prisma.DbNull,
-            cvssScore: cve.cvssScore,
-            cvssVersion: cve.cvssVersion,
-            severity: cve.severity,
-            epss: cve.epss,
-            epssPercentile: cve.epssPercentile,
-            inCisaKev: cve.inCisaKev,
-            affectedProducts: cve.affectedProducts,
-            vulnType: cve.vulnType,
-            cweId: cve.cweId,
-            vulnExplanation: cve.vulnExplanation,
-            fetchedAt: now,
-          },
-        });
-      }
-      // Fire AI enrichment after raw data is saved
-      await enrichAndSave(entries);
-    } catch (err) {
-      console.error("[CveCache] Falha ao salvar:", (err as Error).message);
-    }
-  })().catch(() => {});
-
-  return { cves: entries, total: entries.length, updatedAt: now.toISOString() };
+  const cves = await collectCves();
+  try {
+    const { prisma } = await import("../prisma");
+    const { saveCveBatch } = await import("./persist");
+    await saveCveBatch(prisma, cves);
+  } catch (error) {
+    console.error(
+      "[CveCache] persistence unavailable",
+      error instanceof Error ? error.name : "unknown",
+    );
+  }
+  return { cves, total: cves.length, updatedAt: new Date().toISOString() };
 }

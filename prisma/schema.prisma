@@ -97,6 +97,11 @@ model NewsCache {
 }
 
 model CveCache {
+  recordStatus     String    @default("unknown")
+  sourceMetadata   Json?
+  productSearch    String    @default("")
+  analysisReady    Boolean   @default(false)
+  priorityRank     Int       @default(4)
   qualityReport    Json?
   id               String    @id
   published        DateTime
@@ -123,6 +128,11 @@ model CveCache {
   @@index([inCisaKev])
   @@index([fetchedAt])
   @@index([enrichedAt])
+  @@index([published(sort: Desc), id])
+  @@index([cvssScore(sort: Desc), id])
+  @@index([epss(sort: Desc), id])
+  @@index([priorityRank, published(sort: Desc), id])
+  @@index([analysisReady, published(sort: Desc)])
 }
 
 model CronLog {

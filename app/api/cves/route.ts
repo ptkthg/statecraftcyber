@@ -1,31 +1,37 @@
-import { NextRequest, NextResponse } from "next/server";
-import { fetchCves } from "@/lib/cves/fetch-cves";
+﻿import { NextRequest, NextResponse } from "next/server";
+import { queryCves, InvalidCveFilter } from "@/lib/cves/query";
 import { checkRateLimit } from "@/lib/security/rate-limit";
-
 export { type CveEntry, type VulnType } from "@/lib/cves/fetch-cves";
-
 export const dynamic = "force-dynamic";
-
 export async function GET(req: NextRequest) {
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
     req.headers.get("x-real-ip") ??
     "unknown";
-  const { allowed, retryAfterMs } = checkRateLimit(`cves:${ip}`, 30, 60_000);
-  if (!allowed) {
+  const { allowed, retryAfterMs } = checkRateLimit("cves:" + ip, 60, 60000);
+  if (!allowed)
     return NextResponse.json(
-      { error: "Muitas requisições. Tente novamente em instantes." },
-      { status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) } }
+      { error: "Muitas consultas. Tente novamente em instantes." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) },
+      },
     );
-  }
-
   try {
-    const data = await fetchCves();
-    return NextResponse.json(data, {
-      headers: { "Cache-Control": "public, s-maxage=7200, stale-while-revalidate=3600" },
+    return NextResponse.json(await queryCves(req.nextUrl.searchParams), {
+      headers: {
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+      },
     });
-  } catch (err) {
-    console.error("[API /cves]", err);
-    return NextResponse.json({ cves: [], total: 0, updatedAt: new Date().toISOString() });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof InvalidCveFilter
+            ? error.message
+            : "Fontes indisponíveis. Tente novamente.",
+      },
+      { status: error instanceof InvalidCveFilter ? 400 : 503 },
+    );
   }
 }
