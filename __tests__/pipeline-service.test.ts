@@ -367,6 +367,22 @@ describe("durable intelligence pipeline", () => {
     expect(tables.briefingRevision[0].snapshot.status).toBe("published");
     expect(preliminary).not.toHaveBeenCalled();
   });
+  it('keeps the validated edition visible when replacement generation fails technically', async () => {
+    const { db, tables } = memoryDatabase();
+    const fixture = groundedFixture();
+    const quality = validateBriefing(fixture.item, fixture.briefing, NOW);
+    await runPipeline(db, {
+      ...opts('published', [fixture.item]),
+      generate: async () => ({ ...generateBriefing(fixture.item, new Set()), structuredContent: fixture.briefing, qualityReport: quality, analysisStatus: quality.analysisStatus }),
+    });
+    const content = tables.briefing[0].content;
+    await runPipeline(db, {
+      ...opts('replacement-failed', [{ ...fixture.item, description: fixture.item.description + '\nAdditional original detail from the source.' }]),
+      generate: async () => { throw new Error('network unavailable'); },
+    });
+    expect(tables.briefing[0]).toMatchObject({ status: 'published', content });
+    expect(tables.intelligenceEvent[0].status).toBe('retry');
+  });
   it("keeps an IOC supported by another source when one complete source removes it", async () => {
     const { db, tables } = memoryDatabase(),
       ioc = {

@@ -13,6 +13,9 @@ export function memoryDatabase() {
     pipelineLease: [],
     cronLog: [],
     collectionBatch: [],
+    updateHealth: [],
+    newsArticleRecord: [],
+    briefingCandidate: [],
   };
   let sequence = 0;
   const db: any = {};
@@ -79,6 +82,7 @@ export function memoryDatabase() {
               ? "pending"
               : "draft",
         attempts: 0,
+        workerAttempts: 0,
         nextAttemptAt: null,
         lastErrorCode: null,
         briefingId: null,

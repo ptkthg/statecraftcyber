@@ -9,7 +9,7 @@ export async function completeNewsJson(
 ): Promise<string | null> {
   if (process.env.GROQ_API_KEY) {
     try {
-      groq ??= new Groq({ apiKey: process.env.GROQ_API_KEY });
+      groq ??= new Groq({ apiKey: process.env.GROQ_API_KEY, timeout: 20000, maxRetries: 0 });
       const response = await groq.chat.completions.create({
         model: process.env.GROQ_NEWS_MODEL ?? "openai/gpt-oss-120b",
         response_format: { type: "json_object" },

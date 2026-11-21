@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
       { briefings, trending, latestIocs: uniqueIocs },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+          "Cache-Control": "no-store",
         },
       }
     );

@@ -162,6 +162,7 @@ export function errorCode(error: unknown): string {
     message?: string;
   };
   if (e?.pipelineCode === "parsing") return "parsing";
+  if (e?.status === 401 || e?.status === 403) return 'authentication_failed';
   if (e?.code === "P2002") return "database_conflict";
   if (e?.code === "P2028") return "database_timeout";
   if (e?.code === "P1001" || e?.code === "P1002") return "database_unavailable";

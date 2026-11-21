@@ -295,7 +295,7 @@ export async function observe(
                 : now,
             sourceUpdatedAt,
             updatedAt: previous.updatedAt,
-            ...(materialChanged ? { status: "draft" as const } : {}),
+            ...(materialChanged && p.issues.length ? { status: 'draft' as const } : {}),
           },
         });
         // Only incoming indicators are observed now; a retained partial-set member is not a new sighting.
@@ -395,6 +395,8 @@ export async function processEvent(
   });
   const raw = compose(event.records),
     metrics = currentContext()?.metrics;
+  // A node may be replayed after its transaction committed but before its checkpoint.
+  if (event.status === "processed" && event.processedFingerprint === event.materialFingerprint) return;
   if (!raw || !needsEnrichment(raw)) {
     await db.$transaction(async (tx) => {
       await fence(tx, owner);
@@ -422,6 +424,18 @@ export async function processEvent(
     if (currentContext()) currentContext()!.lastAiFailure = undefined;
     if (failure && !briefing.structuredContent)
       throw Object.assign(new Error(failure), { code: failure });
+    // A failed replacement must never unpublish the last validated edition.
+    if (event.briefing?.status === "published" && !briefing.qualityReport.publishable) {
+      await db.$transaction(async tx => {
+        await fence(tx, owner);
+        await tx.intelligenceEvent.updateMany({
+          where: { id: event.id, revision: event.revision },
+          data: { status: "quarantined", lastErrorCode: "replacement_validation_failed", nextAttemptAt: null },
+        });
+      });
+      if (metrics) metrics.rejected++;
+      return;
+    }
     await db
       .$transaction(
         async (tx) => {
@@ -643,8 +657,8 @@ export async function processEvent(
       return;
     }
     const attempts = event.attempts + 1,
-      next = nextRetry(attempts),
-      code = (error as { code?: string }).code ?? errorCode(error);
+      code = (error as { code?: string }).code ?? errorCode(error),
+      next = code === 'authentication_failed' ? null : nextRetry(attempts);
     await db.$transaction(async (tx) => {
       await fence(tx, owner);
       await tx.intelligenceEvent.updateMany({

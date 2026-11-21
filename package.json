@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "updates:run": "tsx scripts/run-updates.ts",
+    "updates:setup": "tsx scripts/setup-update-checkpoints.ts",
+    "updates:check": "node scripts/check-updates.mjs",
+    "test:updates:migration": "node scripts/verify-updates-migration.mjs",
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
@@ -19,6 +23,8 @@
     "test:cves:migration": "node --import tsx scripts/verify-cve-radar-migration.mjs"
   },
   "dependencies": {
+    "@langchain/langgraph": "^1.7.5",
+    "@langchain/langgraph-checkpoint-postgres": "^1.1.4",
     "@prisma/client": "^6.19.3",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
@@ -32,6 +38,7 @@
     "lucide-react": "^1.16.0",
     "marked": "^18.0.3",
     "next": "16.2.6",
+    "pg": "^8.23.1",
     "prisma": "^6.19.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -41,6 +48,7 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.17",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

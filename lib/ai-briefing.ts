@@ -20,7 +20,7 @@ let _groq: Groq | null = null;
 function getGroq(): Groq | null {
   if (!process.env.GROQ_API_KEY) return null;
   if (!_groq)
-    _groq = new Groq({ apiKey: process.env.GROQ_API_KEY, maxRetries: 0 });
+    _groq = new Groq({ apiKey: process.env.GROQ_API_KEY, maxRetries: 0, timeout: 20000 });
   return _groq;
 }
 
@@ -62,7 +62,7 @@ async function callOpenRouter(
     if (!res.ok) {
       aiFinished(
         undefined,
-        res.status === 429 ? "rate_limit" : "upstream_error",
+        res.status === 401 || res.status === 403 ? 'authentication_failed' : res.status === 429 ? "rate_limit" : "upstream_error",
       );
       console.warn(`[OpenRouter] ${res.status} ${res.statusText}`);
       return null;
@@ -164,7 +164,7 @@ export async function generateAiBriefing(
       aiStarted();
       try {
         const response = await groq.chat.completions.create({
-          model: process.env.GROQ_MODEL ?? "openai/gpt-oss-120b",
+          model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
           max_tokens: 2000,
           temperature: 0.3,
           response_format: { type: "json_object" },
@@ -174,6 +174,7 @@ export async function generateAiBriefing(
           ],
         });
         raw = response.choices[0]?.message?.content?.trim() ?? "";
+        aiFinished(response.usage);
       } catch (groqErr) {
         aiFinished(undefined, errorCode(groqErr));
         console.warn(

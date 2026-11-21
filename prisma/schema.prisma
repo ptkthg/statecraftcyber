@@ -167,6 +167,9 @@ enum Status {
 }
 
 model PipelineRun {
+  workerAttempts    Int                @default(0)
+  engine            String             @default("legacy")
+  stage             String             @default("collect")
   sourceRevisions   SourceRevision[]
   briefingRevisions BriefingRevision[]
   batches           CollectionBatch[]
@@ -179,6 +182,31 @@ model PipelineRun {
   errors            Json               @default("[]")
 
   @@index([startedAt(sort: Desc)])
+}
+
+model BriefingCandidate {
+  key       String   @id
+  payload   Json
+  createdAt DateTime @default(now())
+}
+
+model UpdateHealth {
+  key               String    @id
+  lastAttemptAt     DateTime?
+  lastCollectionAt  DateTime?
+  lastPublicationAt DateTime?
+  lastSuccessAt     DateTime?
+  status            String    @default("never_run")
+  runId             String?
+}
+
+model NewsArticleRecord {
+  slug        String   @id
+  payload     Json
+  publishedAt DateTime
+  collectedAt DateTime @default(now())
+
+  @@index([publishedAt(sort: Desc)])
 }
 
 model PipelineLease {

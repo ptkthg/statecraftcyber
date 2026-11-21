@@ -1,4 +1,6 @@
 import Parser from "rss-parser";
+import { fetchWithPolicy } from './pipeline/http';
+import { sortRecentNews } from './news-order';
 
 export type ArticleType =
   | "Vulnerabilidade"
@@ -198,17 +200,24 @@ function inferTags(title: string): string[] {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export async function fetchNewsArticles(maxAgeDays = 3): Promise<NewsArticle[]> {
+export async function fetchNewsCollection(maxAgeDays = 3) {
   const cutoff = new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000);
   const results: NewsArticle[] = [];
+  const errors: string[] = [];
+  const sources: string[] = [];
 
   await Promise.allSettled(
     FEEDS.map(async (feed) => {
       try {
-        const parsed = await parser.parseURL(feed.url);
+        const response = await fetchWithPolicy(feed.url, {}, { maxAttempts: 3, attemptTimeoutMs: 12000 });
+        if (!response.ok) throw new Error('feed_unavailable');
+        const parsed = await parser.parseString(await response.text());
+        sources.push(feed.name);
         for (const item of (parsed.items ?? []).slice(0, 10)) {
           if (!item.title || !item.link) continue;
-          const pubDate = item.pubDate ? new Date(item.pubDate) : new Date();
+          if (!item.pubDate) continue;
+          const pubDate = new Date(item.pubDate);
+          if (!Number.isFinite(+pubDate) || +pubDate > Date.now() + 86400000) continue;
           if (pubDate < cutoff) continue;
 
           const rawSummary = item.contentSnippet ?? cleanHtml(item.content ?? "");
@@ -233,13 +242,14 @@ export async function fetchNewsArticles(maxAgeDays = 3): Promise<NewsArticle[]> 
           });
         }
       } catch {
-        // feed offline — skip silently
+        errors.push(feed.name + ':feed_unavailable');
       }
     })
   );
 
-  return results.sort((a, b) => {
-    if (b.importance !== a.importance) return b.importance - a.importance;
-    return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-  });
+  return { articles: sortRecentNews([...new Map(results.map(a => [a.slug, a])).values()]), errors, sources };
+}
+
+export async function fetchNewsArticles(maxAgeDays = 3): Promise<NewsArticle[]> {
+  return (await fetchNewsCollection(maxAgeDays)).articles;
 }

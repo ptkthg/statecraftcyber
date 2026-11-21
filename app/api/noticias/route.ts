@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchNewsArticles } from "@/lib/news-feeds";
-import { localizeNewsArticles } from "@/lib/news-localization";
+import { getStoredNews } from '@/lib/news-store';
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { getLivePreview } from "@/lib/live-preview";
 
@@ -29,8 +28,7 @@ export async function GET(req: NextRequest) {
       }, {});
       return NextResponse.json({ articles, total: articles.length, bySource });
     }
-    const articles = await fetchNewsArticles(3);
-    const merged = await localizeNewsArticles(articles);
+    const { articles: merged, stale, lastCollectionAt } = await getStoredNews();
 
     const bySource: Record<string, number> = {};
     for (const a of merged) {
@@ -38,11 +36,11 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { articles: merged, total: merged.length, bySource },
-      { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300" } }
+      { articles: merged, total: merged.length, bySource, stale, lastCollectionAt },
+      { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (err) {
     console.error("[API /noticias]", err);
-    return NextResponse.json({ articles: [], total: 0, bySource: {} });
+    return NextResponse.json({ error: 'Notícias temporariamente indisponíveis' }, { status: 503 });
   }
 }

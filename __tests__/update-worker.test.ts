@@ -1,0 +1,63 @@
+import { expect, it, vi } from 'vitest';
+import { MemorySaver } from '@langchain/langgraph';
+import { memoryDatabase } from './helpers/pipeline-db';
+import { runUpdateWorker } from '../lib/pipeline/runner';
+import { groundedFixture } from './fixtures/intelligence';
+import { generateBriefing } from '../lib/briefing-generator';
+
+it('advances the generation queue, records a rejected draft, and releases its lease', async () => {
+  const { db, tables } = memoryDatabase();
+  const item = groundedFixture().item;
+  const result = await runUpdateWorker(db, new MemorySaver(), {
+    collect: async () => ({ items: [item], sources: ['fixture'], errors: [] }),
+    collectNews: async () => {},
+    generate: async (raw, slugs) => generateBriefing(raw, slugs),
+    autoPublish: true,
+  });
+  expect(result.status).toBe('partial');
+  expect(tables.briefing).toHaveLength(1);
+  expect(tables.briefing[0].status).toBe('draft');
+  expect(tables.pipelineRun[0]).toMatchObject({ status: 'partial', stage: 'complete' });
+  expect(tables.updateHealth.find(r => r.key === 'briefings').lastCollectionAt).toBeInstanceOf(Date);
+  expect(tables.pipelineLease).toHaveLength(0);
+});
+
+it('records total source failure as interrupted and resumes the same run', async () => {
+  const { db, tables } = memoryDatabase();
+  const saver = new MemorySaver();
+  const collect = vi.fn().mockRejectedValueOnce(new Error('network down')).mockResolvedValue({ items: [], sources: ['fixture'], errors: [] });
+  const options = { collect, collectNews: async () => {}, autoPublish: true };
+  await expect(runUpdateWorker(db, saver, options)).rejects.toThrow('network down');
+  expect(tables.updateHealth[0].lastCollectionAt).toBeUndefined();
+  await runUpdateWorker(db, saver, options);
+  expect(tables.pipelineRun).toHaveLength(1);
+  expect(tables.pipelineRun[0].status).toBe('success');
+});
+
+it('does not start another collector while another worker holds the lease', async () => {
+  const { db, tables } = memoryDatabase();
+  tables.pipelineLease.push({ key: 'intelligence-v2', owner: 'another', expiresAt: new Date(Date.now() + 60000) });
+  const collect = vi.fn();
+  expect(await runUpdateWorker(db, new MemorySaver(), { collect, autoPublish: true })).toMatchObject({ status: 'busy' });
+  expect(collect).not.toHaveBeenCalled();
+});
+it('still generates after collection exceeds the old serverless time budget', async () => {
+  vi.useFakeTimers();
+  const start = new Date('2026-11-21T12:00:00Z');
+  vi.setSystemTime(start);
+  try {
+    const { db, tables } = memoryDatabase();
+    const item = groundedFixture().item;
+    const generate = vi.fn(async (raw: Parameters<typeof generateBriefing>[0], slugs: Set<string>) => generateBriefing(raw, slugs));
+    await runUpdateWorker(db, new MemorySaver(), {
+      collect: async () => {
+        vi.setSystemTime(new Date(+start + 60000));
+        tables.pipelineLease[0].expiresAt = new Date(+start + 16 * 60000);
+        return { items: [item], errors: [], sources: ['fixture'] };
+      },
+      collectNews: async () => {}, generate, autoPublish: true,
+    });
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(tables.briefing).toHaveLength(1);
+  } finally { vi.useRealTimers(); }
+});
