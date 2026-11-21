@@ -4,24 +4,20 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Suspense } from "react";
-import { unstable_cache } from "next/cache";
 import { renderSafeMarkdown } from "@/lib/security/sanitize-markdown";
 import {
   ArrowLeft, ExternalLink, Globe, MapPin, Clock,
   Tag, AlertCircle, Loader2, Sparkles, BookOpen, Shield, ChevronRight,
 } from "lucide-react";
-import { fetchNewsArticles, sanitizeContent, type NewsArticle, type ArticleType } from "@/lib/news-feeds";
+import { sanitizeContent, type NewsArticle, type ArticleType } from "@/lib/news-feeds";
+import { getStoredNews, getStoredArticle } from '@/lib/news-store';
 import { getEnrichedArticle } from "@/lib/ai-news";
 import { getSourceColor } from "@/lib/source-colors";
 import { editorialImageForNews } from "@/lib/editorial-image";
 import { getLivePreview } from "@/lib/live-preview";
 import PreviewDetail from "@/components/editorial/PreviewDetail";
 
-const getCachedArticles = unstable_cache(
-  () => fetchNewsArticles(3),
-  ["news-articles"],
-  { revalidate: 900 }
-);
+const getCachedArticles = async () => (await getStoredNews()).articles;
 
 
 
@@ -378,14 +374,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   }
   const articles = await getCachedArticles();
   let article: NewsArticle | undefined = articles.find((a) => a.slug === slug);
+  if (!article) article = (await getStoredArticle(slug)) ?? undefined;
 
   // Cache de 15min pode estar desatualizado — tenta fetch fresco
-  if (!article) {
-    try {
-      const fresh = await fetchNewsArticles(3);
-      article = fresh.find((a) => a.slug === slug);
-    } catch {}
-  }
 
   // Artigo saiu do RSS (> 3 dias) mas ainda está no cache do banco
   if (!article) {
@@ -550,7 +541,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     return item ? { title: item.title, description: item.summary.slice(0, 160), openGraph: { images: [{ url: editorialImageForNews(item).src }] } } : { title: "Notícia não encontrada" };
   }
   const articles = await getCachedArticles();
-  const article = articles.find((a) => a.slug === slug);
+  const article = articles.find((a) => a.slug === slug) ?? await getStoredArticle(slug);
   if (!article) return { title: "Notícia não encontrada" };
   return {
     title: article.title,

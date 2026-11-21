@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
+import { useRouter } from 'next/navigation';
+import { sortRecentNews } from '@/lib/news-order';
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronRight, MapPin, RefreshCw, Newspaper } from "lucide-react";
@@ -113,7 +115,10 @@ interface Props {
 }
 
 export default function NewsExplorer({ initialArticles, initialTab = "alertas" }: Props) {
-  const [articles, setArticles] = useState<NewsArticle[]>(initialArticles);
+  const articles = useMemo(() => sortRecentNews(initialArticles), [initialArticles]);
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [refreshError, setRefreshError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<"alertas" | "contexto">(initialTab);
   const [region, setRegion] = useState<"" | "Brasil" | "Global">("");
@@ -122,12 +127,13 @@ export default function NewsExplorer({ initialArticles, initialTab = "alertas" }
 
   const refresh = async () => {
     setRefreshing(true);
+    setRefreshError('');
     try {
-      const res = await fetch("/api/noticias");
-      if (res.ok) {
-        const data = await res.json();
-        setArticles(data.articles ?? []);
-      }
+      const res = await fetch('/api/noticias', { cache: 'no-store' });
+      if (!res.ok) throw new Error('refresh_failed');
+      startTransition(() => router.refresh());
+    } catch {
+      setRefreshError('Não foi possível atualizar. O conteúdo anterior foi preservado.');
     } finally {
       setRefreshing(false);
     }
@@ -202,12 +208,12 @@ export default function NewsExplorer({ initialArticles, initialTab = "alertas" }
         ))}
         <button
           onClick={refresh}
-          disabled={refreshing}
+          disabled={refreshing || pending}
           aria-label="Atualizar notícias"
           className="ml-auto flex items-center gap-1.5 text-xs text-dim hover:text-white transition-colors disabled:opacity-50"
         >
-          <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} aria-hidden />
-          <span className="hidden sm:inline">{refreshing ? "Atualizando..." : "Atualizar"}</span>
+          <RefreshCw size={12} aria-hidden />
+          <span className="hidden sm:inline">{refreshing || pending ? 'Atualizando...' : 'Atualizar'}</span>
         </button>
       </div>
 
@@ -230,7 +236,9 @@ export default function NewsExplorer({ initialArticles, initialTab = "alertas" }
         ))}
       </div>
 
-      <div className="relative">
+      {(refreshing || pending) && <progress aria-label="Atualizando notícias" className="w-full h-1" />}
+      <p role="status" className="text-sm text-dim">{refreshError}</p>
+      <div className="relative" aria-busy={refreshing || pending}>
         {refreshing && <div className="absolute inset-0 bg-canvas/70 z-10 rounded-xl pointer-events-none" aria-hidden />}
 
         {articles.length === 0 ? (

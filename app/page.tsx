@@ -2,8 +2,7 @@ import { PUBLIC_BRIEFING_WHERE } from "@/lib/intelligence/publication";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { campaigns } from "@/data/campaigns";
-import { fetchNewsArticles } from "@/lib/news-feeds";
-import { localizeNewsArticles } from "@/lib/news-localization";
+import { getStoredNews } from '@/lib/news-store';
 import EditorialHero from "@/components/editorial/EditorialHero";
 import StoryTile from "@/components/editorial/StoryTile";
 import Image from "next/image";
@@ -17,7 +16,7 @@ export default async function HomePage() {
   const preview = await getLivePreview();
   const [briefings, news] = await Promise.all([
     preview ? Promise.resolve(preview.briefings.briefings.map((item) => ({ ...item, createdAt: new Date(item.createdAt) })).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 30)) : prisma.briefing.findMany({ where: { ...PUBLIC_BRIEFING_WHERE }, orderBy: { createdAt: "desc" }, take: 30, select: { slug: true, title: true, summary: true, severity: true, category: true, createdAt: true, sourceName: true } }).catch(() => []),
-    preview ? Promise.resolve(preview.news.articles.slice(0, 6)) : fetchNewsArticles(3).then((items) => localizeNewsArticles(items.slice(0, 6))).catch(() => []),
+    preview ? Promise.resolve(preview.news.articles.slice(0, 6)) : getStoredNews().then(result => result.articles.slice(0, 6)).catch(() => []),
   ]);
   // Destaque: maior severidade entre os 30 briefings recentes; empate pela data mais recente.
   const ranked = [...briefings].sort((a, b) => severityRank[b.severity] - severityRank[a.severity] || b.createdAt.getTime() - a.createdAt.getTime());

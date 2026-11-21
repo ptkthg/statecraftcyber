@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import Page from '../app/threat-briefings/[slug]/page';
 import { PUBLIC_BRIEFING_WHERE, PUBLIC_IOC_WHERE } from "../lib/intelligence/publication";
 const mocks=vi.hoisted(()=>({briefings:vi.fn(),one:vi.fn(),iocs:vi.fn(),count:vi.fn(),groups:vi.fn(),raw:vi.fn(),cves:vi.fn()}));
 vi.mock("@/lib/prisma",()=>({prisma:{
@@ -40,7 +41,6 @@ describe("public intelligence read boundaries",()=>{
   expect(mocks.iocs.mock.calls[1][0].where.briefing.is).toMatchObject(PUBLIC_BRIEFING_WHERE);
  });
  it("returns no editorial detail for a draft or legacy slug",async()=>{
-  const {default:Page}=await import("../app/threat-briefings/[slug]/page");
   await expect(Page({params:Promise.resolve({slug:"unvalidated"})})).rejects.toThrow();
   expect(mocks.one.mock.calls[0][0].where).toMatchObject({...PUBLIC_BRIEFING_WHERE,slug:"unvalidated"});
  });

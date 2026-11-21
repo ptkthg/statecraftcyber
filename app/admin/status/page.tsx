@@ -1,4 +1,5 @@
 import Link from "next/link";
+import UpdateStatus from '@/components/editorial/UpdateStatus';
 import { prisma } from "@/lib/prisma";
 import {
   Shield,
@@ -204,6 +205,7 @@ export default async function AdminStatusPage() {
           Dados do banco. Atualizado a cada carregamento.
         </p>
 
+        <UpdateStatus />
         {/* Stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {stats.map((s) => (
