@@ -1,6 +1,6 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { requestReprocessing } from "@/lib/pipeline/control";
+import { localMutationResponse } from "@/lib/publication/admin";
 export const dynamic = "force-dynamic";
 /** Operational API uses the existing cron bearer; admin cookies are scoped to /admin. */
 export async function POST(req: NextRequest) {
@@ -9,6 +9,8 @@ export async function POST(req: NextRequest) {
     req.headers.get("authorization") !== "Bearer " + process.env.CRON_SECRET
   )
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const local = localMutationResponse();
+  if (local) return local;
   const body = (await req.json().catch(() => null)) as {
     eventId?: string;
     revision?: number;
@@ -26,6 +28,7 @@ export async function POST(req: NextRequest) {
       { error: "Informe eventId, revision e motivo (10–500 caracteres)" },
       { status: 400 },
     );
+  const { prisma } = await import("@/lib/prisma");
   const result = await requestReprocessing(
     prisma,
     [{ id: body.eventId, revision: body.revision! }],

@@ -1,11 +1,12 @@
-import { Prisma, PrismaClient } from "@prisma/client";
-import { auditStoredBriefing } from "../lib/intelligence/audit";
-import { publicationStatus } from "../lib/intelligence/validation";
+import type { Prisma } from "@prisma/client";
 async function main() {
 const apply = process.argv.includes("--apply");
 const arg = process.argv.indexOf("--limit");
 const limit = arg < 0 ? Infinity : Number(process.argv[arg + 1]);
 if (!(limit > 0)) throw new Error("--limit deve ser positivo.");
+const [{PrismaClient},{auditStoredBriefing},{publicationStatus}] = await Promise.all([
+  import('@prisma/client'), import('../lib/intelligence/audit'), import('../lib/intelligence/validation'),
+]);
 const prisma = new PrismaClient();
 try {
   let cursor: string | undefined, count = 0, withheld = 0;

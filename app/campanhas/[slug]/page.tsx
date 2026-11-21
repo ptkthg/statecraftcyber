@@ -5,8 +5,8 @@ import { notFound } from "next/navigation";
 import { unstable_cache } from "next/cache";
 import { ArrowLeft, ArrowUpRight, CalendarDays, ExternalLink } from "lucide-react";
 import { campaigns, mentionsCampaign, type Campaign } from "@/data/campaigns";
-import { fetchNewsArticles } from "@/lib/news-feeds";
-import { localizeNewsArticles } from "@/lib/news-localization";
+import { getStoredNews } from "@/lib/news-store";
+import { getPublishedSnapshot } from "@/lib/publication/snapshot";
 import { prisma } from "@/lib/prisma";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -27,10 +27,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 const getRelatedCoverage = unstable_cache(async (slug: string) => {
   const campaign = campaigns.find((item) => item.slug === slug);
   if (!campaign) return { news: [] as { slug: string; title: string }[], briefings: [] as { slug: string; title: string }[] };
+  const published = await getPublishedSnapshot();
 
   const [newsResult, briefingResult] = await Promise.allSettled([
-    fetchNewsArticles(3),
-    prisma.briefing.findMany({
+    getStoredNews().then(result => result.articles),
+    published ? Promise.resolve(published.briefings.briefings) : prisma.briefing.findMany({
       where: { ...PUBLIC_BRIEFING_WHERE, createdAt: { gte: new Date(Date.now() - 90 * 86400000) } },
       select: { slug: true, title: true, summary: true },
       orderBy: { createdAt: "desc" },
@@ -40,7 +41,7 @@ const getRelatedCoverage = unstable_cache(async (slug: string) => {
   const matchingNews = newsResult.status === "fulfilled"
     ? newsResult.value.filter((article) => mentionsCampaign(`${article.title} ${article.summary}`, campaign)).slice(0, 4)
     : [];
-  const news = matchingNews.length ? await localizeNewsArticles(matchingNews).catch(() => matchingNews) : [];
+  const news = matchingNews;
   const briefings = briefingResult.status === "fulfilled"
     ? briefingResult.value.filter((briefing) => mentionsCampaign(`${briefing.title} ${briefing.summary}`, campaign)).slice(0, 4)
     : [];

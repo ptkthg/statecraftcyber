@@ -1,6 +1,6 @@
-﻿import { Prisma } from "@prisma/client";
-import { prisma } from "../prisma";
-import { fetchCves, fromStored, type CveEntry } from "./fetch-cves";
+﻿import type { Prisma } from "@prisma/client";
+import { getPublishedSnapshot } from "../publication/snapshot";
+import type { CveEntry } from "./fetch-cves";
 import { operationalPriority } from "./assessment";
 export interface CveFilters {
   q: string;
@@ -196,6 +196,7 @@ export function filterCveEntries(entries: CveEntry[], f: CveFilters) {
           c.id,
           c.description,
           c.ptBrDescription ?? "",
+          c.vulnType,
           ...c.affectedProducts,
         ].join(" "),
       ).includes(text(f.q))
@@ -268,8 +269,33 @@ export interface CvePage {
   coverage: string;
   types: string[];
 }
+function cvePage(entries: CveEntry[], filters: CveFilters, updatedAt: string | null, coverage: string): CvePage {
+  const rows = filterCveEntries(entries, filters);
+  const totalPages = Math.max(1, Math.ceil(rows.length / filters.limit));
+  const page = Math.min(filters.page, totalPages);
+  return {
+    cves: rows.slice((page - 1) * filters.limit, page * filters.limit),
+    total: rows.length,
+    page,
+    totalPages,
+    limit: filters.limit,
+    updatedAt,
+    coverage,
+    types: [...new Set(entries.map((c) => c.vulnType))].sort(),
+  };
+}
+
 export async function queryCves(params: URLSearchParams): Promise<CvePage> {
   const f = parseCveFilters(params);
+  const snapshot = await getPublishedSnapshot();
+  if (snapshot) {
+    const updatedAt = snapshot.cves.reduce<string | null>((latest, cve) =>
+      cve.fetchedAt && (!latest || Date.parse(cve.fetchedAt) > Date.parse(latest)) ? cve.fetchedAt : latest, null);
+    return cvePage(snapshot.cves, f, updatedAt, "Registros disponíveis na cópia publicada da coleta local.");
+  }
+  const [{ prisma }, { fetchCves, fromStored }] = await Promise.all([
+    import("../prisma"), import("./fetch-cves"),
+  ]);
   try {
     const fresh = await prisma.cveCache.findFirst({
       where: {
@@ -324,20 +350,7 @@ export async function queryCves(params: URLSearchParams): Promise<CvePage> {
     );
     return result;
   } catch {
-    const data = await fetchCves(),
-      rows = filterCveEntries(data.cves, f),
-      totalPages = Math.max(1, Math.ceil(rows.length / f.limit)),
-      page = Math.min(f.page, totalPages);
-    return {
-      cves: rows.slice((page - 1) * f.limit, page * f.limit),
-      total: rows.length,
-      page,
-      totalPages,
-      limit: f.limit,
-      updatedAt: data.updatedAt,
-      coverage:
-        "Consulta de contingência às fontes; resultados limitados à coleta disponível.",
-      types: [...new Set(data.cves.map((c) => c.vulnType))].sort(),
-    };
+    const data = await fetchCves();
+    return cvePage(data.cves, f, data.updatedAt, "Consulta de contingência às fontes; resultados limitados à coleta disponível.");
   }
 }

@@ -16,6 +16,7 @@ import { getSourceColor } from "@/lib/source-colors";
 import { editorialImageForNews } from "@/lib/editorial-image";
 import { getLivePreview } from "@/lib/live-preview";
 import PreviewDetail from "@/components/editorial/PreviewDetail";
+import { getPublishedSnapshot, snapshotMode } from '@/lib/publication/snapshot';
 
 const getCachedArticles = async () => (await getStoredNews()).articles;
 
@@ -257,6 +258,7 @@ const SEVERITY_CONFIG: Record<string, { label: string; dot: string; text: string
 async function RelatedBriefings({ cves, tags }: { cves: string[]; tags: string[] }) {
   if (cves.length === 0 && tags.length === 0) return null;
 
+  const published = await getPublishedSnapshot();
   const { prisma } = await import("@/lib/prisma");
 
     // Build OR conditions: match by CVE first, then by tags
@@ -265,7 +267,7 @@ async function RelatedBriefings({ cves, tags }: { cves: string[]; tags: string[]
     if (cves.length > 0) orConditions.push({ cves: { hasSome: cves } });
     if (tags.length > 0) orConditions.push({ tags: { hasSome: tags } });
 
-    const briefings = await prisma.briefing.findMany({
+    const briefings = published ? published.briefings.briefings.filter(b=>b.cves.some(c=>cves.includes(c)) || b.tags.some(t=>tags.includes(t))).slice(0,3) : await prisma.briefing.findMany({
       where: { ...PUBLIC_BRIEFING_WHERE, OR: orConditions },
       select: { slug: true, title: true, severity: true, category: true, cves: true, tags: true, createdAt: true },
       orderBy: { createdAt: "desc" },
@@ -366,7 +368,7 @@ function RelatedCard({ article }: { article: NewsArticle }) {
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const preview = await getLivePreview();
-  if (preview) {
+  if (preview && !snapshotMode()) {
     const item = preview.news.articles.find((article) => article.slug === slug);
     if (!item) notFound();
     const image = editorialImageForNews(item);
@@ -379,7 +381,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   // Cache de 15min pode estar desatualizado — tenta fetch fresco
 
   // Artigo saiu do RSS (> 3 dias) mas ainda está no cache do banco
-  if (!article) {
+  if (!article && !snapshotMode()) {
     try {
       const { prisma } = await import("@/lib/prisma");
       const cached = await prisma.newsCache.findUnique({ where: { slug } });

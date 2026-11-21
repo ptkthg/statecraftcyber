@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStoredNews } from '@/lib/news-store';
 import { checkRateLimit } from "@/lib/security/rate-limit";
-import { getLivePreview } from "@/lib/live-preview";
 
 export const dynamic = "force-dynamic";
 
@@ -19,15 +18,6 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const preview = await getLivePreview();
-    if (preview) {
-      const articles = preview.news.articles;
-      const bySource = articles.reduce<Record<string, number>>((counts, article) => {
-        counts[article.source] = (counts[article.source] ?? 0) + 1;
-        return counts;
-      }, {});
-      return NextResponse.json({ articles, total: articles.length, bySource });
-    }
     const { articles: merged, stale, lastCollectionAt } = await getStoredNews();
 
     const bySource: Record<string, number> = {};

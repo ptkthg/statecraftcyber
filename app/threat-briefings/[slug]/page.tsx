@@ -20,6 +20,7 @@ import { CopyButton } from "@/components/briefing/CopyButton";
 import { MITRE_NAMES } from "@/lib/mitre-names";
 import { getLivePreview } from "@/lib/live-preview";
 import PreviewDetail from "@/components/editorial/PreviewDetail";
+import { getPublishedSnapshot, snapshotMode } from '@/lib/publication/snapshot';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -106,6 +107,8 @@ function epssLabel(score: number): string {
 // ── Data fetching ─────────────────────────────────────────────────────────
 
 async function getBriefing(slug: string): Promise<Briefing | null> {
+  const published = await getPublishedSnapshot();
+  if (published) return published.briefings.briefings.find(b=>b.slug===slug) ?? null;
   try {
     const { prisma } = await import("@/lib/prisma");
     const b = await prisma.briefing.findFirst({ where: { slug, ...PUBLIC_BRIEFING_WHERE } });
@@ -132,7 +135,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const preview = await getLivePreview();
-  if (preview) {
+  if (preview && !snapshotMode()) {
     const item = preview.briefings.briefings.find((briefing) => briefing.slug === slug);
     return item ? { title: item.title, description: item.summary.slice(0, 160) } : { title: "Briefing não encontrado" };
   }
@@ -233,7 +236,7 @@ export default async function BriefingPage({
 }) {
   const { slug } = await params;
   const preview = await getLivePreview();
-  if (preview) {
+  if (preview && !snapshotMode()) {
     const item = preview.briefings.briefings.find((briefing) => briefing.slug === slug);
     if (!item) notFound();
     const iocs = preview.iocs.filter((ioc) => ioc.briefingSlug === slug);

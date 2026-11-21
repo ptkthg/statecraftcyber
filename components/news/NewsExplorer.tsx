@@ -8,7 +8,7 @@ import Image from "next/image";
 import { ChevronRight, MapPin, RefreshCw, Newspaper } from "lucide-react";
 import type { NewsArticle, ArticleType } from "@/lib/news-feeds";
 import { getSourceColor } from "@/lib/source-colors";
-import { classifyNewsTitle } from "@/lib/home-stats";
+import { classifyNewsTitle } from "@/lib/news-classification";
 import { editorialImageForNews } from "@/lib/editorial-image";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { Tag } from "@/components/ui/Tag";

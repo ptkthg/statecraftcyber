@@ -1,11 +1,8 @@
 import { PUBLIC_BRIEFING_WHERE, PUBLIC_IOC_WHERE } from "@/lib/intelligence/publication";
+import { getPublishedSnapshot, type PublishedSnapshot } from "@/lib/publication/snapshot";
 // Funções puras dos dados derivados da home (spec 2026-06-12 §7). Queries ficam em getHomeStats.
 
-const ALERT_PATTERNS = /(corrige|patch|atualiza[çc][ãa]o|urgente|explorad[ao]|exploit|zero-day|kev|mitiga[çc][ãa]o)/i;
-
-export function classifyNewsTitle(title: string): "alert" | "context" {
-  return ALERT_PATTERNS.test(title) ? "alert" : "context";
-}
+export { classifyNewsTitle } from './news-classification';
 
 export interface RegionRow {
   region: string;
@@ -64,6 +61,45 @@ export interface HomeStats {
 }
 
 const DAY_LABELS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+const DAY_MS = 24 * 3600_000;
+
+function cveDayCounts(dates: string[], now: number) {
+  const perDay = new Map<string, number>();
+  for (const date of dates) {
+    const key = date.slice(0, 10);
+    perDay.set(key, (perDay.get(key) ?? 0) + 1);
+  }
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(now - (6 - i) * DAY_MS);
+    return { day: DAY_LABELS[date.getDay()], count: perDay.get(date.toISOString().slice(0, 10)) ?? 0 };
+  });
+}
+
+function snapshotStats(snapshot: PublishedSnapshot, now: number): HomeStats {
+  const briefings = snapshot.briefings.briefings;
+  const recent = briefings.filter((briefing) => Date.parse(briefing.createdAt) >= now - 7 * DAY_MS);
+  const criticals = recent.filter((briefing) => briefing.severity === "critical");
+  const cvesToday = snapshot.cves.filter((cve) => Date.parse(cve.published) >= now - DAY_MS);
+  const lastSuccess = snapshot.lastRun?.success ? snapshot.lastRun.runAt :
+    snapshot.updates.find((update) => update.key === "briefings")?.lastSuccessAt;
+
+  return {
+    criticalCount: criticals.length,
+    criticalDelta24h: criticals.filter((briefing) => Date.parse(briefing.createdAt) >= now - DAY_MS).length,
+    criticalSummary: summarizeCriticalTags(criticals),
+    criticalLatest: criticals.slice(0, 3).map(({ slug, title, tags, createdAt, sourceName }) =>
+      ({ slug, title, tags, createdAt: new Date(createdAt), sourceName })),
+    briefingsTotal: briefings.length,
+    briefingsWeek: recent.length,
+    cvesToday: cvesToday.length,
+    cvesKevToday: cvesToday.filter((cve) => cve.inCisaKev).length,
+    cvesPerDay: cveDayCounts(snapshot.cves.map((cve) => cve.published), now),
+    iocsTotal: snapshot.iocs.length,
+    regions: aggregateRegions(recent).slice(0, 4),
+    latestBriefingSlug: briefings[0]?.slug ?? null,
+    lastRunAt: lastSuccess ? new Date(lastSuccess) : null,
+  };
+}
 
 export async function getHomeStats(): Promise<HomeStats> {
   const empty: HomeStats = {
@@ -72,10 +108,12 @@ export async function getHomeStats(): Promise<HomeStats> {
     cvesPerDay: [], iocsTotal: 0, regions: [], latestBriefingSlug: null, lastRunAt: null,
   };
   try {
-    const { prisma } = await import("@/lib/prisma");
     const now = Date.now();
-    const d1 = new Date(now - 24 * 3600_000);
-    const d7 = new Date(now - 7 * 24 * 3600_000);
+    const snapshot = await getPublishedSnapshot();
+    if (snapshot) return snapshotStats(snapshot, now);
+    const { prisma } = await import("@/lib/prisma");
+    const d1 = new Date(now - DAY_MS);
+    const d7 = new Date(now - 7 * DAY_MS);
 
     const [criticals, briefingsTotal, briefingsWeek, cvesToday, cvesKevToday, recentCves, iocsTotal, regionRows, latest, lastRun] =
       await Promise.all([
@@ -100,15 +138,7 @@ export async function getHomeStats(): Promise<HomeStats> {
         prisma.cronLog.findFirst({ where: { success: true }, orderBy: { runAt: "desc" }, select: { runAt: true } }),
       ]);
 
-    const perDay = new Map<string, number>();
-    for (const c of recentCves) {
-      const key = c.published.toISOString().slice(0, 10);
-      perDay.set(key, (perDay.get(key) ?? 0) + 1);
-    }
-    const cvesPerDay = [...Array(7)].map((_, i) => {
-      const d = new Date(now - (6 - i) * 24 * 3600_000);
-      return { day: DAY_LABELS[d.getDay()], count: perDay.get(d.toISOString().slice(0, 10)) ?? 0 };
-    });
+    const cvesPerDay = cveDayCounts(recentCves.map((cve) => cve.published.toISOString()), now);
 
     return {
       criticalCount: criticals.length,

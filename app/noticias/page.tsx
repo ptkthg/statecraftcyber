@@ -4,14 +4,12 @@ import { getStoredNews } from '@/lib/news-store';
 import { sortRecentNews } from '@/lib/news-order';
 import { editorialImageForNews } from "@/lib/editorial-image";
 import NewsExplorer from "@/components/news/NewsExplorer";
-import { getLivePreview } from "@/lib/live-preview";
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: "Notícias", description: "Notícias de cibersegurança agregadas de fontes especializadas, com origem preservada e contexto para análise." };
 
 export default async function NoticiasPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const preview = await getLivePreview();
-  const [news, { tab }] = await Promise.all([preview ? Promise.resolve({ articles: preview.news.articles, stale: false, lastCollectionAt: preview.capturedAt }) : getStoredNews(), searchParams]);
+  const [news, { tab }] = await Promise.all([getStoredNews(), searchParams]);
   const articles = sortRecentNews(news.articles);
   const lead = [...articles].sort((a, b) => b.importance - a.importance || Date.parse(b.publishedAt) - Date.parse(a.publishedAt))[0];
   const image = lead ? editorialImageForNews(lead) : null;

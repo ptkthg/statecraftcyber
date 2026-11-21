@@ -2,6 +2,8 @@ import { PUBLIC_IOC_WHERE, PUBLIC_BRIEFING_WHERE } from "@/lib/intelligence/publ
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { detectCveId, mergeResults } from "@/lib/search/merge";
+import { searchSnapshot } from "@/lib/search/snapshot";
+import { getPublishedSnapshot } from "@/lib/publication/snapshot";
 import type { SearchResult } from "@/lib/search/types";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +31,11 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const snapshot = await getPublishedSnapshot();
+    if (snapshot) {
+      const results = searchSnapshot(snapshot, q);
+      return NextResponse.json({ results, total: results.length });
+    }
     const { prisma } = await import("@/lib/prisma");
     const cveId = detectCveId(q);
 

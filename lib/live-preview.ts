@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { EnrichedIoc, LiveIoc, Severity } from "@/lib/types";
 import type { NewsArticle } from "@/lib/news-feeds";
+import { getPublishedSnapshot } from './publication/snapshot';
 
 export interface PreviewBriefing {
   id: string;
@@ -32,6 +33,8 @@ export interface LivePreviewSnapshot {
 
 /** A local, read-only QA mode. It is never enabled on Vercel. */
 export async function getLivePreview(): Promise<LivePreviewSnapshot | null> {
+  const published = await getPublishedSnapshot();
+  if (published) return published;
   if (process.env.STATECRAFT_LIVE_PREVIEW !== "1" || process.env.VERCEL) return null;
   const file = join(process.cwd(), ".qa", "live-preview.json");
   return JSON.parse(await readFile(file, "utf8")) as LivePreviewSnapshot;

@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "updates:run": "tsx scripts/run-updates.ts",
+    "updates:local": "tsx scripts/run-local-updates.ts",
+    "publication:export": "tsx scripts/export-publication.ts",
+    "publication:deploy": "node scripts/publish-local.mjs",
     "updates:setup": "tsx scripts/setup-update-checkpoints.ts",
     "updates:check": "node scripts/check-updates.mjs",
     "test:updates:migration": "node scripts/verify-updates-migration.mjs",

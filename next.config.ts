@@ -19,6 +19,7 @@ const CSP = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  outputFileTracingIncludes: { '/*': ['./data/publication/current.json'] },
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }],
   },

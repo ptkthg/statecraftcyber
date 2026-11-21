@@ -16,6 +16,7 @@ const BUDGET = 15 * 60000;
 export interface WorkerOptions {
   collect: RunOptions['collect'];
   generate?: RunOptions['generate'];
+  generationEnabled?: boolean;
   collectNews?: (db: PrismaClient, owner: string, runId: string) => Promise<{ errors?: string[] } | void>;
   autoPublish: boolean;
   max?: number;
@@ -24,6 +25,7 @@ export interface WorkerOptions {
 }
 
 export async function runUpdateWorker(db: PrismaClient, checkpointer: BaseCheckpointSaver, options: WorkerOptions) {
+  const generationEnabled = options.generationEnabled !== false;
   const owner = randomUUID();
   const acquired = await db.$queryRaw<{ owner: string }[]>`
     INSERT INTO "PipelineLease" (key,owner,"expiresAt")
@@ -86,11 +88,15 @@ export async function runUpdateWorker(db: PrismaClient, checkpointer: BaseCheckp
           }
           if (Date.now() >= observeDeadline) break;
         }
-        const queue = await generationQueue(db, owner, Math.max(1, Math.min(4, options.max ?? 4)));
+        const queue = generationEnabled
+          ? await generationQueue(db, owner, Math.max(1, Math.min(4, options.max ?? 4)))
+          : [];
         await save('process');
         return queue;
       },
       process: async eventId => {
+        // A checkpoint can resume a queue selected before credentials were unavailable.
+        if (!generationEnabled) return;
         if (remainingMs() < 60000) throw new Error('worker_deadline');
         const before = await db.intelligenceEvent.findUniqueOrThrow({ where: { id: eventId } });
         await processEvent(db, eventId, run.id, owner, options.autoPublish, durableGenerator(db, owner, hash([eventId, before.revision, before.materialFingerprint]), options.generate));
@@ -104,12 +110,14 @@ export async function runUpdateWorker(db: PrismaClient, checkpointer: BaseCheckp
         await save('process');
       },
       enrichNews: async () => {
-        if (options.enrichNews && remainingMs() > 120000) {
+        if (generationEnabled && options.enrichNews && remainingMs() > 120000) {
           try { await options.enrichNews(); } catch { errors.push('news:enrichment_failed'); }
         }
         await save('verify');
       },
       finish: async () => {
+        const unavailable = 'ai:enrichment_unavailable';
+        if (!generationEnabled && !errors.includes(unavailable)) errors.push(unavailable);
         await save('verify');
         if (options.verify) await options.verify();
         metrics.deferred = await db.intelligenceEvent.count({ where: { status: { in: ['pending', 'retry'] } } });

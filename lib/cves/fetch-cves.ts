@@ -511,7 +511,7 @@ export async function saveCve(cve: CveEntry) {
       data: { analysisReady: !!safeCveEnrichment(previous).ptBrDescription },
     });
 }
-export async function fetchCves(): Promise<{
+export async function fetchCves({ requirePersistence = false }: { requirePersistence?: boolean } = {}): Promise<{
   cves: CveEntry[];
   total: number;
   updatedAt: string;
@@ -536,7 +536,8 @@ export async function fetchCves(): Promise<{
         updatedAt: newest.fetchedAt.toISOString(),
       };
     }
-  } catch {
+  } catch (error) {
+    if (requirePersistence) throw error;
     /* Preserve API fallback when PostgreSQL is unavailable. */
   }
   const cves = await collectCves();
@@ -545,6 +546,7 @@ export async function fetchCves(): Promise<{
     const { saveCveBatch } = await import("./persist");
     await saveCveBatch(prisma, cves);
   } catch (error) {
+    if (requirePersistence) throw error;
     console.error(
       "[CveCache] persistence unavailable",
       error instanceof Error ? error.name : "unknown",

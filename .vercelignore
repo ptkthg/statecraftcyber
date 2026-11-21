@@ -1,0 +1,12 @@
+.git
+.qa
+.superpowers
+.env*
+!.env.example
+node_modules
+.next
+imagens referencia
+screenshots-refactor
+*.log
+**/*-credentials.xml
+!data/publication/current.json

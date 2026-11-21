@@ -4,6 +4,7 @@ import { newsIsStale, sortRecentNews } from './news-order';
 import { fence } from './pipeline/service';
 import { getLivePreview } from './live-preview';
 import { validTextReport, validateTextFields } from './intelligence/text-validation';
+import { getPublishedSnapshot } from './publication/snapshot';
 
 export async function collectNews(db: PrismaClient, owner: string, runId: string) {
   await db.updateHealth.upsert({ where: { key: 'news' }, create: { key: 'news', runId, lastAttemptAt: new Date(), status: 'running' }, update: { runId, lastAttemptAt: new Date(), status: 'running' } });
@@ -28,6 +29,8 @@ export async function collectNews(db: PrismaClient, owner: string, runId: string
 }
 
 export async function getStoredNews() {
+  const published = await getPublishedSnapshot();
+  if (published) return { articles: sortRecentNews(published.news.articles), lastCollectionAt: published.news.lastCollectionAt, stale: newsIsStale(published.news.lastCollectionAt) || published.updates.find(u=>u.key==='news')?.status === 'failed' };
   const preview = await getLivePreview();
   if (preview) return { articles: sortRecentNews(preview.news.articles), lastCollectionAt: preview.capturedAt, stale: newsIsStale(preview.capturedAt) };
   const { prisma } = await import('./prisma');
@@ -47,6 +50,8 @@ export async function getStoredNews() {
 }
 
 export async function getStoredArticle(slug: string): Promise<NewsArticle | null> {
+  const published = await getPublishedSnapshot();
+  if (published) return published.news.articles.find(a=>a.slug===slug) ?? null;
   const { prisma } = await import('./prisma');
   const row = await prisma.newsArticleRecord.findUnique({ where: { slug } });
   return row ? row.payload as unknown as NewsArticle : null;

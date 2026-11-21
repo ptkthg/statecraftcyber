@@ -1,6 +1,7 @@
 import { validateTextFields, validTextReport } from "./intelligence/text-validation";
 import type { NewsArticle } from "./news-feeds";
 import { completeNewsJson } from "./news-ai-client";
+import { snapshotMode } from './publication/snapshot';
 
 export interface EnrichedNews {
   title: string;
@@ -107,6 +108,9 @@ export async function getEnrichedArticle(article: NewsArticle): Promise<Enriched
     content:   article.content ?? "",
     fromCache: false,
   };
+
+  // Public deployments only render already-published source content.
+  if (snapshotMode()) return fallback;
 
   const cachedCandidate = await getFromCache(article.slug);
   const source = [article.title, article.summary, htmlToText(article.content ?? "")].join("\n");

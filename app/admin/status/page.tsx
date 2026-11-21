@@ -1,6 +1,6 @@
 import Link from "next/link";
-import UpdateStatus from '@/components/editorial/UpdateStatus';
-import { prisma } from "@/lib/prisma";
+import { getPublishedSnapshot, type PublishedSnapshot } from "@/lib/publication/snapshot";
+import { snapshotHealth } from "@/lib/publication/health";
 import {
   Shield,
   CheckCircle,
@@ -15,6 +15,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Status Operacional | Statecraft Admin" };
 
 async function getStatus() {
+  const { prisma } = await import("@/lib/prisma");
   const [
     briefingCount,
     iocCount,
@@ -85,7 +86,99 @@ function timeAgo(d: Date): string {
   return `${Math.floor(h / 24)}d atrás`;
 }
 
+function StatusHeader() {
+  return (
+    <div className="border-b border-white/[0.04] sticky top-0 bg-canvas/95 backdrop-blur z-10">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Shield size={14} className="text-brand" />
+          <span className="text-xs font-bold text-white">Admin</span>
+          <span className="text-[#555]">/</span>
+          <span className="text-xs text-body">Status</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-1.5 text-xs text-dim hover:text-white transition-colors">
+            <ArrowLeft size={11} /> Site
+          </Link>
+          <form action="/api/admin/auth" method="POST">
+            <button
+              formMethod="DELETE"
+              formAction="/api/admin/auth"
+              className="flex items-center gap-1.5 text-xs text-dim hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 rounded px-1"
+            >
+              <LogOut size={11} /> Sair
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatusCounts({ briefingCount, iocCount, cveCount, newsCount }: {
+  briefingCount: number; iocCount: number; cveCount: number; newsCount: number;
+}) {
+  const stats = [
+    { label: "Briefings publicados", value: briefingCount, color: "text-brand-soft" },
+    { label: "IOCs coletados", value: iocCount.toLocaleString("pt-BR"), color: "text-orange-400" },
+    { label: "CVEs em cache", value: cveCount, color: "text-yellow-400" },
+    { label: "Notícias cacheadas", value: newsCount, color: "text-blue-400" },
+  ];
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      {stats.map((stat) => (
+        <div key={stat.label} className="bg-raised border border-white/[0.06] rounded-xl p-5">
+          <p className="text-xs text-dim uppercase tracking-widest mb-2">{stat.label}</p>
+          <p className={`text-3xl font-bold font-mono ${stat.color}`}>{stat.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PublishedStatus({ snapshot }: { snapshot: PublishedSnapshot }) {
+  const health = snapshotHealth(snapshot);
+  const format = (date: Date | null) => date ? formatDate(date) : "Ainda não registrada";
+  return (
+    <main className="min-h-screen bg-canvas pt-16">
+      <StatusHeader />
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        <h1 className="text-2xl font-display font-bold tracking-tight text-white mb-1">Status Operacional</h1>
+        <p className="text-sm text-body mb-8">
+          A coleta e o processamento são executados localmente. Este site usa a cópia publicada e dispensa um banco de dados remoto.
+        </p>
+        <section className="mb-8 rounded-xl border p-5">
+          <h2 className="text-lg font-bold">Atualização automática</h2>
+          <p className="mt-2 text-sm text-body">
+            Cópia gerada em {formatDate(new Date(health.snapshotGeneratedAt))} · {health.status === "degraded" ? "degradada" : "atualizada"}
+          </p>
+          {Object.entries(health.pipelines).map(([key, pipeline]) => (
+            <div key={key} className="mt-4">
+              <h3 className="font-bold">{key === "news" ? "Notícias" : "Briefings"} · {pipeline.status}</h3>
+              <dl className="text-sm text-body">
+                <dt>Última tentativa</dt><dd>{format(pipeline.lastAttemptAt)}</dd>
+                <dt>Última coleta bem-sucedida</dt><dd>{format(pipeline.lastCollectionAt)}</dd>
+                <dt>Última publicação</dt><dd>{format(pipeline.lastPublicationAt)}</dd>
+              </dl>
+            </div>
+          ))}
+        </section>
+        <StatusCounts
+          briefingCount={health.briefings.published}
+          iocCount={health.iocs.total}
+          cveCount={health.cves.cached}
+          newsCount={snapshot.news.articles.length}
+        />
+        <Link href="/api/health" className="text-xs text-dim hover:text-white transition-colors font-mono">/api/health ↗</Link>
+      </div>
+    </main>
+  );
+}
+
 export default async function AdminStatusPage() {
+  const snapshot = await getPublishedSnapshot();
+  if (snapshot) return <PublishedStatus snapshot={snapshot} />;
+  const { default: UpdateStatus } = await import('@/components/editorial/UpdateStatus');
   const {
     briefingCount,
     iocCount,
@@ -97,21 +190,6 @@ export default async function AdminStatusPage() {
     queue,
   } = await getStatus();
   const lastRun = cronLogs[0];
-
-  const stats = [
-    {
-      label: "Briefings publicados",
-      value: briefingCount,
-      color: "text-brand-soft",
-    },
-    {
-      label: "IOCs coletados",
-      value: iocCount.toLocaleString("pt-BR"),
-      color: "text-orange-400",
-    },
-    { label: "CVEs em cache", value: cveCount, color: "text-yellow-400" },
-    { label: "Notícias cacheadas", value: newsCount, color: "text-blue-400" },
-  ];
 
   return (
     <main className="min-h-screen bg-canvas pt-16">
@@ -166,36 +244,7 @@ export default async function AdminStatusPage() {
           </details>
         ))}
       </section>
-      {/* Header */}
-      <div className="border-b border-white/[0.04] sticky top-0 bg-canvas/95 backdrop-blur z-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Shield size={14} className="text-brand" />
-            <span className="text-xs font-bold text-white">Admin</span>
-            <span className="text-[#555]">/</span>
-            <span className="text-xs text-body">Status</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="flex items-center gap-1.5 text-xs text-dim hover:text-white transition-colors"
-            >
-              <ArrowLeft size={11} />
-              Site
-            </Link>
-            <form action="/api/admin/auth" method="POST">
-              <button
-                formMethod="DELETE"
-                formAction="/api/admin/auth"
-                className="flex items-center gap-1.5 text-xs text-dim hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 rounded px-1"
-              >
-                <LogOut size={11} />
-                Sair
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
+      <StatusHeader />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         <h1 className="text-2xl font-display font-bold tracking-tight text-white mb-1">
@@ -206,22 +255,7 @@ export default async function AdminStatusPage() {
         </p>
 
         <UpdateStatus />
-        {/* Stat cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {stats.map((s) => (
-            <div
-              key={s.label}
-              className="bg-raised border border-white/[0.06] rounded-xl p-5"
-            >
-              <p className="text-xs text-dim uppercase tracking-widest mb-2">
-                {s.label}
-              </p>
-              <p className={`text-3xl font-bold font-mono ${s.color}`}>
-                {s.value}
-              </p>
-            </div>
-          ))}
-        </div>
+        <StatusCounts briefingCount={briefingCount} iocCount={iocCount} cveCount={cveCount} newsCount={newsCount} />
 
         {/* Last cron run */}
         {lastRun && (

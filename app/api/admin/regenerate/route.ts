@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { verifyAdminToken } from "@/lib/security/admin-token";
 import { requestReprocessing } from "@/lib/pipeline/control";
+import { localMutationResponse } from "@/lib/publication/admin";
 import type { RawThreatItem } from "@/lib/threat-sources/types";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -17,6 +17,8 @@ export async function POST(req: NextRequest) {
     );
   if (!authorized)
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const local = localMutationResponse();
+  if (local) return local;
   const body = (await req.json().catch(() => null)) as {
     slug?: string;
     last?: number;
@@ -28,6 +30,7 @@ export async function POST(req: NextRequest) {
       { error: "Informe slug, last ou all" },
       { status: 400 },
     );
+  const { prisma } = await import("@/lib/prisma");
   const rows = await prisma.briefing.findMany({
     where: body.slug ? { slug: body.slug } : { cves: { isEmpty: false } },
     orderBy: { createdAt: "desc" },

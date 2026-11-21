@@ -1,11 +1,10 @@
 import { PUBLIC_BRIEFING_WHERE } from "@/lib/intelligence/publication";
-import { MetadataRoute } from "next";
-import { prisma } from "@/lib/prisma";
+import type { MetadataRoute } from "next";
+import { getPublishedSnapshot } from "@/lib/publication/snapshot";
 import { campaigns } from "@/data/campaigns";
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = "https://statecraftcyber.vercel.app";
-
+async function storedRoutes() {
+  const { prisma } = await import("@/lib/prisma");
   const [briefingsResult, newsResult, cvesResult] = await Promise.allSettled([
     prisma.briefing.findMany({
       where: { ...PUBLIC_BRIEFING_WHERE },
@@ -24,14 +23,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       take: 200,
     }),
   ]);
-  const briefings = briefingsResult.status === "fulfilled" ? briefingsResult.value : [];
-  const newsArticles = newsResult.status === "fulfilled" ? newsResult.value : [];
-  const cves = cvesResult.status === "fulfilled" ? cvesResult.value : [];
+  return {
+    briefings: briefingsResult.status === "fulfilled" ? briefingsResult.value : [],
+    newsArticles: newsResult.status === "fulfilled" ? newsResult.value.map(({ slug, enrichedAt }) => ({ slug, lastModified: enrichedAt })) : [],
+    cves: cvesResult.status === "fulfilled" ? cvesResult.value : [],
+  };
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const base = "https://statecraftcyber.vercel.app";
+  const snapshot = await getPublishedSnapshot();
+  const { briefings, newsArticles, cves } = snapshot ? {
+    briefings: snapshot.briefings.briefings.map((briefing) => ({ slug: briefing.slug, updatedAt: briefing.updatedAt ?? briefing.createdAt })),
+    newsArticles: snapshot.news.articles.map((article) => ({ slug: article.slug, lastModified: article.publishedAt })),
+    cves: snapshot.cves,
+  } : await storedRoutes();
 
   const staticRoutes = ["/", "/threat-briefings", "/campanhas", "/noticias", "/cves", "/iocs", "/sobre", "/metodologia", "/creditos-visuais"].map(
     (r) => ({
       url: `${base}${r}`,
-      lastModified: new Date(),
+      lastModified: snapshot?.generatedAt ?? new Date(),
       changeFrequency: "daily" as const,
       priority: r === "/" ? 1 : 0.8,
     })
@@ -46,7 +57,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const newsRoutes = newsArticles.map((n) => ({
     url: `${base}/noticias/${n.slug}`,
-    lastModified: n.enrichedAt,
+    lastModified: n.lastModified,
     changeFrequency: "weekly" as const,
     priority: 0.5,
   }));
