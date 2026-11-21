@@ -9,6 +9,7 @@ import type { RawThreatItem } from '../threat-sources/types';
 import { collectNews } from '../news-store';
 import { durableGenerator } from './durable-generation';
 import { hasSuccessfulCollection } from './health';
+import { generationQueue } from './generation-queue';
 
 const json = (value: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(value));
 const BUDGET = 15 * 60000;
@@ -85,9 +86,9 @@ export async function runUpdateWorker(db: PrismaClient, checkpointer: BaseCheckp
           }
           if (Date.now() >= observeDeadline) break;
         }
-        const queue = await db.intelligenceEvent.findMany({ where: { status: { in: ['pending', 'retry'] }, OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: new Date() } }] }, orderBy: { firstObservedAt: 'asc' }, take: Math.max(1, Math.min(4, options.max ?? 4)), select: { id: true } });
+        const queue = await generationQueue(db, owner, Math.max(1, Math.min(4, options.max ?? 4)));
         await save('process');
-        return queue.map(e => e.id);
+        return queue;
       },
       process: async eventId => {
         if (remainingMs() < 60000) throw new Error('worker_deadline');

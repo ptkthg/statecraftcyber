@@ -34,6 +34,14 @@ Definir `UPDATES_ENABLED=false`, aguardar o worker terminar e reverter o deploy 
 
 ## Limites
 
+O watchdog continua ativo quando `UPDATES_ENABLED=false`; pausar o processamento não deve silenciar a indisponibilidade do site.
+
+Antes de reativar após erro de cota, conferir no painel Neon a categoria de uso excedida (compute, armazenamento ou transferência), restabelecer capacidade e validar novamente banco, health e páginas. Não repetir geração ou migrações enquanto o banco recusar conexões. Monitorar consumo e capacidade no provedor; o health detecta indisponibilidade, mas não prevê o esgotamento da franquia. Aumentar um plano pago exige decisão do responsável pela conta.
+
+A geração automática seleciona identificadores de trechos originais; a aplicação expande os textos e as referências sem reescrevê-los. O limite Groq é de 6.000 tokens, com raciocínio baixo apenas para GPT-OSS. Os mesmos validadores continuam bloqueando incompletude, contradições e ações sem suporte. Trechos podem permanecer no idioma original; traduções exigem revisão semântica.
+
+Campanhas são um catálogo editorial em `data/campaigns.ts`, com revisão registrada em 28/09/2026. A coleta de notícias não cria nem revisa automaticamente esses casos. Notícias relacionadas não comprovam atividade atual. Indicadores da API dependem de briefings publicados e validados; não interpretar coleta recente como novos indicadores aprovados.
+
 GitHub Actions pode atrasar ou desativar schedules por inatividade do repositório. O monitor independente no mesmo GitHub não detecta indisponibilidade total do próprio GitHub; para essa cobertura, configurar futuramente um monitor externo de `/api/health`. Não há garantia de recuperação de conteúdo apagado sem backup.
 
 ## Validação desta entrega
@@ -45,3 +53,9 @@ GitHub Actions pode atrasar ou desativar schedules por inatividade do repositór
 - Chrome headless isolado: página de notícias e botão Atualizar verificados com snapshot local, sem gravar em produção.
 - A revisão independente encontrou três falhas importantes; todas foram reproduzidas e corrigidas. Nenhum apontamento menor ficou pendente.
 - A auditoria de dependências de produção reportou 12 alertas existentes, sem alertas nos pacotes novos LangGraph/pg. Atualizações amplas de Next.js/Prisma não fazem parte desta migração e precisam de avaliação própria antes da publicação.
+
+## Implantação de 21/11/2026
+
+Migração aditiva e checkpoints aplicados após backup consistente e restauração local verificada. Aplicação publicada em produção. A coleta de notícias gravou 60 artigos e foi observada na API e na página. O primeiro workflow coletou ameaças, mas não publicou briefings: a fila antiga consumiu vagas com entradas sem metadados e as três chamadas Groq falharam com JSON incompleto. As correções posteriores filtram entradas inelegíveis e usam seleção de evidências por ID; a revisão adicionou cobertura para fontes em um único parágrafo.
+
+Às 15:21 UTC, o banco Neon passou a recusar consultas por cota excedida. A verificação pública confirmou health degradado, notícias HTTP 503 e página HTTP 500. `UPDATES_ENABLED` foi mantido em `false`. Não foi possível confirmar novos briefings ou indicadores públicos nem duas execuções consecutivas após as correções. Não declarar o site normalizado até restabelecer a capacidade do banco e repetir a verificação completa. Nenhum dado editorial foi removido para contornar a cota.

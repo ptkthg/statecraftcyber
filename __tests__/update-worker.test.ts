@@ -61,3 +61,17 @@ it('still generates after collection exceeds the old serverless time budget', as
     expect(tables.briefing).toHaveLength(1);
   } finally { vi.useRealTimers(); }
 });
+it('does not spend every generation slot on records already blocked by source metadata', async () => {
+  const { db, tables } = memoryDatabase();
+  const item = groundedFixture().item;
+  const blocked = Array.from({ length: 4 }, (_, i) => {
+    const cve = 'CVE-2026-' + (20001 + i);
+    return { ...item, externalId: 'blocked-' + i, title: cve + ' source report', sourceUrl: 'https://nvd.nist.gov/vuln/detail/' + cve, cves: [cve], cvssScore: undefined, epssScore: undefined };
+  });
+  const generate = vi.fn(async (raw: Parameters<typeof generateBriefing>[0], slugs: Set<string>) => generateBriefing(raw, slugs));
+  await runUpdateWorker(db, new MemorySaver(), { collect: async () => ({ items: [...blocked, item], sources: ['fixture'], errors: [] }), collectNews: async () => {}, generate, autoPublish: true });
+  expect(generate).toHaveBeenCalledTimes(1);
+  expect(generate.mock.calls[0][0].cves).toEqual(item.cves);
+  expect(tables.intelligenceEvent.filter(row => row.status === 'quarantined')).toHaveLength(4);
+  expect(tables.sourceRecord).toHaveLength(5);
+});
