@@ -1,0 +1,33 @@
+name: Atualizar inteligência
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: statecraft-intelligence-production
+  cancel-in-progress: false
+jobs:
+  update:
+    if: vars.UPDATES_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run updates:run
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+          OTX_API_KEY: ${{ secrets.OTX_API_KEY }}
+          ABUSE_CH_AUTH_KEY: ${{ secrets.ABUSE_CH_AUTH_KEY }}
+          AUTO_PUBLISH: 'true'
+          SITE_ORIGIN: https://statecraftcyber.vercel.app
