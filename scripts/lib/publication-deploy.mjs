@@ -92,3 +92,17 @@ export async function verifyPublication(origin,snapshot,fetcher=fetch,expectedHa
   }
   return {status:health.status,pipelines:health.pipelines,generatedAt:health.snapshotGeneratedAt,news:news.total,cves:cves.total,briefings:health.briefings.published,iocs:iocs.total};
 }
+// Deployments fora do domínio de produção ficam atrás do Vercel Authentication.
+// O segredo "automation-bypass" do projeto vem da API da Vercel em cada execução e não é gravado em disco.
+export function automationBypassSecret(project) {
+  const entry=Object.entries(project?.protectionBypass??{}).find(([,value])=>value?.scope==='automation-bypass');
+  return entry?.[0]??null;
+}
+export function withProtectionBypass(fetcher,secret) {
+  if(!secret) return fetcher;
+  return (url,init={})=>{
+    const headers=new Headers(init.headers);
+    headers.set('x-vercel-protection-bypass',secret);
+    return fetcher(url,{...init,headers});
+  };
+}

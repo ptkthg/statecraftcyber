@@ -1,4 +1,4 @@
-import {expect,it} from 'vitest';
+import {describe,expect,it} from 'vitest';
 import {safeDeploymentPath,deploymentEnvironment,verifyPublication,stagePublication} from '../scripts/lib/publication-deploy.mjs';
 import {mkdtemp,writeFile,mkdir,readFile,access,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -94,4 +94,17 @@ it('rejects a failed campaign dossier even when the campaign index returns HTTP 
   const snapshot = publicationFixture();
   const { fetcher } = verificationFetcher(snapshot, { '/campanhas/unc6240-oracle-peoplesoft': () => new Response('Unavailable', { status: 503 }) });
   await expect(verifyPublication('https://example.org', snapshot, fetcher, 'expected')).rejects.toThrow('publication_page_failed:/campanhas/unc6240-oracle-peoplesoft');
+});
+
+describe('protection bypass for candidate verification', () => {
+  it('picks only the automation bypass secret and sends it as a header', async () => {
+    const { automationBypassSecret, withProtectionBypass } = await import('../scripts/lib/publication-deploy.mjs');
+    expect(automationBypassSecret({ protectionBypass: { shareable: { scope: 'shareable-link' }, fictitious_secret: { scope: 'automation-bypass' } } })).toBe('fictitious_secret');
+    expect(automationBypassSecret({})).toBeNull();
+    const seen: Headers[] = [];
+    const fetcher = withProtectionBypass(async (_url: URL | string, init?: RequestInit) => { seen.push(new Headers(init?.headers)); return new Response('{}'); }, 'fictitious_secret');
+    await fetcher('https://example.com/api/health', { cache: 'no-store', headers: { accept: 'application/json' } });
+    expect(seen[0].get('x-vercel-protection-bypass')).toBe('fictitious_secret');
+    expect(seen[0].get('accept')).toBe('application/json');
+  });
 });

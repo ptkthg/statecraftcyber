@@ -10,10 +10,10 @@ export default async function NoticiasPage({ searchParams }: { searchParams: Pro
   const { tab } = await searchParams;
   let news;
   try { news = await getStoredNews(); } catch {
-    return <main className="editorial-page page-shell news-editorial-page" data-content="news"><PageHeader eyebrow="NOTÍCIAS" title="Cobertura em contexto." description="Notícias de cibersegurança com as fontes originais preservadas." /><section role="status"><h2>Fonte de notícias indisponível</h2><p>Não foi possível carregar a publicação. Tente novamente mais tarde.</p></section></main>;
+    return <main className="editorial-page page-shell news-editorial-page"><PageHeader eyebrow="NOTÍCIAS" title="Cobertura em contexto." description="Notícias de cibersegurança com as fontes originais preservadas." /><section role="status"><h2>Fonte de notícias indisponível</h2><p>Não foi possível carregar a publicação. Tente novamente mais tarde.</p></section></main>;
   }
   const articles = sortRecentNews(news.articles);
-  return <main className="editorial-page page-shell news-editorial-page">
+  return <main className="editorial-page page-shell news-editorial-page" data-content="news">
     <PageHeader eyebrow="NOTÍCIAS" title="Cobertura em contexto." description="Notícias de cibersegurança com as fontes originais preservadas." capturedAt={news.lastCollectionAt} />
     {news.stale && <p className="story-meta" role="status">Atualização atrasada. Exibindo o último conteúdo disponível.</p>}
     {articles.length ? <><div className="section-heading"><h2>ARQUIVO DE NOTÍCIAS</h2><span>FONTES ORIGINAIS NOS ARTIGOS</span></div><NewsExplorer initialArticles={articles} initialTab={tab === 'contexto' ? 'contexto' : 'alertas'} /></> : <section><h2>Nenhuma notícia publicada</h2><p>O arquivo ainda não tem notícias nesta publicação.</p></section>}

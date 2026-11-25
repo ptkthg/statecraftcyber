@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
-import { mkdir,writeFile } from 'node:fs/promises';
+import { mkdir,readFile,writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { stagePublication,deploymentEnvironment,verifyPublication,removePublicationStage } from './lib/publication-deploy.mjs';
+import { stagePublication,deploymentEnvironment,verifyPublication,removePublicationStage,automationBypassSecret,withProtectionBypass } from './lib/publication-deploy.mjs';
 import { promoteWithRecovery } from './lib/publication-promote.mjs';
 const repo=process.cwd();
 const environment=deploymentEnvironment();
@@ -35,10 +35,14 @@ async function main() {
   const candidate=urls?.at(-1);
   if(!candidate) throw new Error('deployment_url_missing');
   console.log(JSON.stringify({stage:'verify_candidate',url:candidate}));
+  const {projectId}=JSON.parse(await readFile(join(stage.app,'.vercel/project.json'),'utf8'));
+  const secret=automationBypassSecret(JSON.parse(await vercel(['api','/v9/projects/'+encodeURIComponent(projectId)],stage.app)));
+  if(!secret) throw new Error('protection_bypass_missing');
+  const candidateFetch=withProtectionBypass(fetch,secret);
   const {verified,live}=await promoteWithRecovery({
     candidate,previous:previous.id,
     promote:deployment=>vercel(['promote',deployment,'--yes'],stage.app),
-    verifyCandidate:()=>verifyPublication(candidate,stage.snapshot,fetch,stage.sha256),
+    verifyCandidate:()=>verifyPublication(candidate,stage.snapshot,candidateFetch,stage.sha256),
     verifyLive:()=>verifyPublication(stage.snapshot.origin,stage.snapshot,fetch,stage.sha256),
     verifyPrevious:async()=>{const restored=await inspectCurrent();if(restored.id!==previous.id)throw new Error('previous_publication_not_restored');return {id:restored.id};},
   });

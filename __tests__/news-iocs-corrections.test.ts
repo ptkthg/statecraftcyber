@@ -33,10 +33,12 @@ it('renders news source failure separately from an empty archive', async () => {
   const failed = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }));
   expect(failed).toContain('Fonte de notícias indisponível');
   expect(failed).not.toContain('database unavailable');
+  expect(failed).not.toContain('data-content="news"');
   mocks.news.mockResolvedValueOnce({ articles: [], lastCollectionAt: null, stale: false });
   const empty = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }));
   expect(empty).toContain('Nenhuma notícia publicada');
   expect(empty).not.toContain('Fonte de notícias indisponível');
+  expect(empty).toContain('data-content="news"');
 });
 
 it('renders an article source failure instead of a not-found page', async () => {
