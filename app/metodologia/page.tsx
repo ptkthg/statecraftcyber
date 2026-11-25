@@ -26,7 +26,7 @@ const PIPELINE = [
   { step: "1", title: "Coleta local horária", desc: "A rotina horária no computador do operador consulta as fontes abertas e grava os dados no PostgreSQL local. O computador precisa estar ligado e conectado para que a rotina execute." },
   { step: "2", title: "Deduplicação e validação", desc: "Os itens são deduplicados e as evidências verificadas antes da publicação. Uma falha de fonte não equivale a uma coleção vazia." },
   { step: "3", title: "Análise com evidências", desc: "Os briefings usam seleção de trechos das fontes, validação de conteúdo e controles de qualidade. A prioridade operacional das CVEs é calculada por regras determinísticas, não pelo modelo." },
-  { step: "4", title: "Modelos de briefing", desc: "O padrão é openai/gpt-oss-120b via Groq. Quando não há resposta utilizável, o fallback é anthropic/claude-3.5-haiku via OpenRouter, se configurado. Os modelos podem ser alterados pelo operador." },
+  { step: "4", title: "Modelos de briefing", desc: "O padrão é Claude Sonnet 5.5 via Anthropic, com redação e fechamento editorial separados. Groq e OpenRouter são reservas apenas quando não há chave Anthropic. Os modelos podem ser alterados pelo operador." },
   { step: "5", title: "Exportação e publicação", desc: "A rotina local exporta o snapshot público do PostgreSQL e publica o site com esse arquivo. Apenas conteúdo elegível é incluído; a leitura pública não precisa acessar o banco local." },
   { step: "6", title: "Leitura e monitoramento", desc: "As páginas servem o snapshot publicado, sem coleta externa nem geração de texto ao abrir artigos. /api/health retorna estado degradado e HTTP 503 quando o snapshot passa de 3 horas sem publicação, ou quando os pipelines indicam degradação." },
 ];
@@ -104,7 +104,11 @@ export default async function MetodologiaPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
         {/* Fontes */}
-        <Section id="fontes" icon={Globe} title="Fontes de dados">
+        <Section id="redacao-automatizada" icon={Cpu} title="Redação automatizada">
+        <p>A política editorial-v1 combina checagens determinísticas de números, versões, entidades e estilo com duas chamadas à Anthropic: o Claude Sonnet 5.5 escreve e o Claude Haiku 5.5 confere. Cada notícia é escrita por um de cinco jornalistas fictícios, sorteado com peso pelo tipo do assunto e mantido fixo para a notícia: Helena Duarte (plantão), Rafael Nogueira (análise técnica), Marina Tavares (investigação), Caio Montenegro (geopolítica) e Luiza Campos (explicação). Os briefings são da Mesa de Inteligência. Os estilos mudam a forma; o padrão de fatos é o mesmo para todos. Veja os perfis em <Link href="/redacao">Nossa redação</Link>.</p>
+        <p>O repórter escreve a partir da fonte original. O editor de fechamento confere as afirmações e seus trechos de apoio. A aprovação exige citações reais e conteúdo fiel; recusas ou reprovações preservam o texto original. O selo identifica automação, sem implicar revisão humana. A avaliação fica separada no bloco “Por que importa”. A política phase1-v1 continua exigindo suporte literal nos caminhos legados.</p>
+      </Section>
+      <Section id="fontes" icon={Globe} title="Fontes de dados">
           <div className="bg-raised border border-white/[0.06] rounded-xl overflow-hidden">
             {SOURCES.map((s, i) => (
               <div key={i} className="flex flex-wrap items-start gap-4 px-5 py-4 border-b border-white/[0.04] last:border-0">

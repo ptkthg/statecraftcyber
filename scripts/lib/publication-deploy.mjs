@@ -74,7 +74,7 @@ export async function verifyPublication(origin,snapshot,fetcher=fetch,expectedHa
   if(!Array.isArray(briefings.briefings) || briefings.briefings.length!==Math.min(1,snapshot.briefings.briefings.length)) throw new Error('publication_briefings_mismatch');
   const iocs=await json('/api/iocs');
   if(iocs.total!==snapshot.iocs.length) throw new Error('publication_iocs_mismatch');
-  const paths=['/','/noticias','/campanhas','/threat-briefings','/iocs','/cves','/metodologia','/sobre','/creditos-visuais'];
+  const paths=['/','/noticias','/campanhas','/threat-briefings','/iocs','/cves','/metodologia','/sobre','/creditos-visuais','/redacao'];
   if(snapshot.news.articles[0]) paths.push('/noticias/'+encodeURIComponent(snapshot.news.articles[0].slug));
   if(snapshot.cves[0]) paths.push('/cves/'+encodeURIComponent(snapshot.cves[0].id));
   if(snapshot.briefings.briefings[0]) paths.push('/threat-briefings/'+encodeURIComponent(snapshot.briefings.briefings[0].slug));

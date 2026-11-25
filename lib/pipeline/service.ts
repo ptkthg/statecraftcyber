@@ -420,17 +420,29 @@ export async function processEvent(
     );
     const briefing = await generator(raw, slugs);
     if (metrics) metrics.generated++;
+    const editorial = briefing.qualityReport.editorialReport;
+    const editorialDeferred = editorial?.reason.startsWith('deferred:') ?? false;
+    if (editorial) editorial.attempts = editorialDeferred ? event.attempts : event.attempts + 1;
+    const editorialPending = !!editorial && !editorial.publishable;
+    const editorialNext = !editorialPending ? null : editorial!.state === 'kill'
+      ? new Date(Date.now() + 7 * 86400000)
+      : editorialDeferred || editorial!.attempts < 3 ? new Date(Date.now() + 1) : null;
     const failure = currentContext()?.lastAiFailure;
     if (currentContext()) currentContext()!.lastAiFailure = undefined;
-    if (failure && !briefing.structuredContent)
+    if (failure && !briefing.structuredContent && !editorial)
       throw Object.assign(new Error(failure), { code: failure });
     // A failed replacement must never unpublish the last validated edition.
     if (event.briefing?.status === "published" && !briefing.qualityReport.publishable) {
       await db.$transaction(async tx => {
         await fence(tx, owner);
+        if (editorial) await tx.briefingCandidate.upsert({
+          where: { key: 'editorial-attempt:' + event.id + ':' + event.revision + ':' + editorial.attempts },
+          create: { key: 'editorial-attempt:' + event.id + ':' + event.revision + ':' + editorial.attempts, payload: json(briefing) },
+          update: { payload: json(briefing) },
+        });
         await tx.intelligenceEvent.updateMany({
           where: { id: event.id, revision: event.revision },
-          data: { status: "quarantined", lastErrorCode: "replacement_validation_failed", nextAttemptAt: null },
+          data: editorial ? { status: editorialNext ? "retry" : "quarantined", lastErrorCode: editorial.reason, nextAttemptAt: editorialNext, attempts: editorial.attempts } : { status: "quarantined", lastErrorCode: "replacement_validation_failed", nextAttemptAt: null },
         });
       });
       if (metrics) metrics.rejected++;
@@ -447,11 +459,11 @@ export async function processEvent(
               materialFingerprint: event.materialFingerprint,
             },
             data: {
-              status: "processed",
-              processedFingerprint: event.materialFingerprint,
-              attempts: 0,
-              nextAttemptAt: null,
-              lastErrorCode: null,
+              status: editorialPending ? editorialNext ? "retry" : "quarantined" : "processed",
+              processedFingerprint: editorialPending ? null : event.materialFingerprint,
+              attempts: editorialPending ? editorial!.attempts : 0,
+              nextAttemptAt: editorialNext,
+              lastErrorCode: editorialPending ? editorial!.reason : null,
             },
           });
           if (!locked.count) throw new Error("stale_generation");

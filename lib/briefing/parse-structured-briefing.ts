@@ -28,6 +28,7 @@ export function parseStructuredBriefing(raw: string, fallback: Partial<Structure
       iocs.push({ type: c.type as IocType, value: c.value, confidence: CONFIDENCE.has(String(c.confidence)) ? c.confidence as Confidence : "low" });
     }
     return postProcess({
+      editorialReport: v.editorialReport as StructuredBriefing["editorialReport"],
       title: text(v.title, fallback.title ?? ""),
       executiveSummary: text(v.executiveSummary, fallback.executiveSummary ?? ""),
       whatHappened: text(v.whatHappened), whyItMatters: text(v.whyItMatters),

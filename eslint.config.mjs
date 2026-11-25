@@ -10,6 +10,8 @@ const eslintConfig = defineConfig([
     // Default ignores of eslint-config-next:
     ".next/**",
     ".qa/**",
+    ".cache/**",
+    ".superpowers/**",
     "screenshots-refactor/.chrome-qa-*/**",
     "out/**",
     "build/**",

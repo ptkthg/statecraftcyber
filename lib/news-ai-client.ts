@@ -7,6 +7,7 @@ export async function completeNewsJson(
   prompt: string,
   maxTokens: number,
 ): Promise<string | null> {
+  if (process.env.ANTHROPIC_API_KEY?.trim()) return null;
   if (process.env.GROQ_API_KEY) {
     try {
       groq ??= new Groq({ apiKey: process.env.GROQ_API_KEY, timeout: 20000, maxRetries: 0 });

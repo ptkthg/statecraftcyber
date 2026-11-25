@@ -3,7 +3,7 @@ import { fetchNewsCollection, type NewsArticle } from './news-feeds';
 import { newsIsStale, sortRecentNews } from './news-order';
 import { fence } from './pipeline/service';
 import { getLivePreview } from './live-preview';
-import { validTextReport, validateTextFields } from './intelligence/text-validation';
+import { newsForPublication } from './publication/news';
 import { getPublishedSnapshot } from './publication/snapshot';
 
 export async function collectNews(db: PrismaClient, owner: string, runId: string) {
@@ -40,13 +40,9 @@ export async function getStoredNews() {
   ]);
   const articles = rows.map(row => row.payload as unknown as NewsArticle);
   // Read cached enrichment only. Listing pages never wait for the LLM.
-  const cached = await prisma.newsCache.findMany({ where: { slug: { in: articles.map(a => a.slug) } }, select: { slug: true, title: true, summary: true, qualityReport: true } });
-  const translations = new Map(cached.filter(row => {
-    const original = articles.find(a => a.slug === row.slug);
-    return original && validTextReport(row.qualityReport, original.title + '\n' + original.summary) && validateTextFields(original.title + '\n' + original.summary, { title: row.title, summary: row.summary }).publishable;
-  }).map(row => [row.slug, row]));
+  const cached = await prisma.newsCache.findMany({ where: { slug: { in: articles.map(a => a.slug) } } });
   const lastCollectionAt = health?.lastCollectionAt?.toISOString() ?? null;
-  return { articles: sortRecentNews(articles.map(a => { const t = translations.get(a.slug); return t ? { ...a, title: t.title, summary: t.summary } : a; })), lastCollectionAt, stale: newsIsStale(lastCollectionAt) || health?.status === 'failed' };
+  return { articles: sortRecentNews(newsForPublication(articles, cached)), lastCollectionAt, stale: newsIsStale(lastCollectionAt) || health?.status === 'failed' };
 }
 
 export async function getStoredArticle(slug: string): Promise<NewsArticle | null> {
@@ -54,5 +50,8 @@ export async function getStoredArticle(slug: string): Promise<NewsArticle | null
   if (published) return published.news.articles.find(a=>a.slug===slug) ?? null;
   const { prisma } = await import('./prisma');
   const row = await prisma.newsArticleRecord.findUnique({ where: { slug } });
-  return row ? row.payload as unknown as NewsArticle : null;
+  if (!row) return null;
+  const article = row.payload as unknown as NewsArticle;
+  const cache = await prisma.newsCache.findUnique({where:{slug}});
+  return newsForPublication([article], cache ? [cache] : [])[0];
 }

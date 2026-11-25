@@ -7,6 +7,50 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model AiUsageLedger {
+  id String @id @default(cuid())
+  occurredAt DateTime @default(now())
+  model String
+  purpose String
+  itemKey String
+  reservationId String?
+  inputTokens Int
+  outputTokens Int
+  cacheReadTokens Int
+  cacheWriteTokens Int
+  batch Boolean
+  costUsd Float
+  deduplicationKey String? @unique
+  @@index([occurredAt])
+  @@index([purpose, itemKey])
+}
+
+model AiReservation {
+  id String @id
+  purpose String
+  itemKey String
+  periodStart String
+  day String
+  reservedUsd Float
+  liabilityUsd Float @default(0)
+  state String @default("active")
+  createdAt DateTime @default(now())
+  @@index([state, periodStart])
+  @@index([purpose, itemKey, state])
+}
+
+model AiBatch {
+  id String @id
+  type String
+  slugs String[]
+  payload Json
+  state String @default("pending")
+  submittedAt DateTime @default(now())
+  endedAt DateTime?
+  leaseUntil DateTime?
+  @@index([type, state])
+}
+
 model Briefing {
   id                  String                   @id @default(cuid())
   title               String
@@ -83,6 +127,9 @@ model Ioc {
 }
 
 model NewsCache {
+  porQueImporta String? @db.Text
+  persona String?
+  desk String?
   qualityReport     Json?
   sourceSnapshot    Json?
   sourcePublishedAt DateTime?

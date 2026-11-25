@@ -27,6 +27,7 @@ export interface EnrichedIoc extends Ioc {
 // ── Structured briefing content ───────────────────────────────────────────────
 
 export interface StructuredBriefing {
+  editorialReport?: import('./intelligence/editorial-validation').EditorialReport;
   claims?: EvidenceClaim[];
   mitreEvidence?: TechniqueEvidence[];
   quality?: QualityReport;

@@ -31,12 +31,16 @@ O computador do operador precisa estar ligado e conectado para a rotina horária
 | Aplicação | Next.js 16.2.6 App Router, TypeScript, Tailwind CSS v4 |
 | Coleta e persistência | PostgreSQL local + Prisma 6 |
 | Leitura em produção | Snapshot JSON publicado com a aplicação na Vercel |
-| Briefings: padrão | Groq, `openai/gpt-oss-120b` |
-| Briefings: fallback | OpenRouter, `anthropic/claude-3.5-haiku` |
+| Redação e fechamento: padrão | Sonnet 5.5 escreve em lote; Haiku 5.5 confere |
+| Reserva sem chave Anthropic | Groq e OpenRouter |
 | Markdown e sanitização | marked, sanitize-html e DOMPurify |
 | Fontes | NVD, CISA KEV, FIRST EPSS, AlienVault OTX e feeds RSS |
 
-Os modelos acima são os defaults de `lib/ai-briefing.ts`. `GROQ_MODEL` e `OPENROUTER_MODEL` permitem configuração pelo operador; o fallback depende de credenciais válidas. A IA apoia a organização de evidências e o enriquecimento textual e pode errar. A prioridade operacional das CVEs não é determinada pelo modelo.
+Os modelos de reserva são configurados em `lib/ai-briefing.ts`. `GROQ_MODEL` e `OPENROUTER_MODEL` permitem configuração pelo operador; o fallback depende de credenciais válidas. A IA apoia a organização de evidências e o enriquecimento textual e pode errar. A prioridade operacional das CVEs não é determinada pelo modelo.
+
+A redação seleciona notícias das últimas 72 horas por relevância e envia um lote por execução. Execuções seguintes recolhem os resultados e fazem o fechamento com Haiku. O ledger e as reservas persistentes controlam o crédito por recarga; 20% da cota diária ficam reservados para até três briefings e cinco fichas novas de CVE crítica ou no CISA KEV. Ao esgotar o período, a notícia mantém o texto original e a fonte. Para recarregar, ajuste `AI_BUDGET_USD`, `AI_BUDGET_DAYS` e `AI_BUDGET_START`.
+
+Antes de executar a próxima coleta, aplique as migrações pendentes, inclusive `20261125010000_ai_budget`. Lotes cancelados continuam sendo reconciliados até o término remoto. Falhas de rede com cobrança incerta preservam cobertura financeira; registros `uncertain` em `AiBatch` ou `awaiting_usage` em `AiReservation` exigem conferência com o provedor antes de liberar essa cobertura.
 
 ## Desenvolvimento local
 
@@ -54,7 +58,15 @@ A aplicação fica em [localhost:3000](http://localhost:3000).
 |---|---|
 | `DATABASE_URL` | Conexão PostgreSQL local; SSL conforme o ambiente |
 | `STATECRAFT_DATA_SOURCE` | `snapshot` para o arquivo publicado; modo banco para coleta local |
-| `GROQ_API_KEY`, `GROQ_MODEL` | Credencial e modelo principal de briefings |
+| `ANTHROPIC_API_KEY` | Credencial do Claude para redação e fechamento editorial |
+| `CLAUDE_WRITER_MODEL`, `CLAUDE_EDITOR_MODEL` | Padrões `claude-sonnet-5-5` e `claude-haiku-5-5` |
+| `CLAUDE_WRITER_EFFORT`, `CLAUDE_EDITOR_EFFORT` | Padrões `low` e `medium` |
+| `CLAUDE_USE_BATCH` | Padrão `true`; `false` permite chamadas normais para teste |
+| `AI_BUDGET_USD`, `AI_BUDGET_DAYS` | Crédito por período; padrões US$ 5 e 20 dias, com margem de 10% |
+| `AI_BUDGET_START` | Início da recarga (`YYYY-MM-DD`, America/Sao_Paulo); sem valor, primeira chamada no ledger |
+| `AI_RUN_TOKEN_BUDGET` | Teto por execução, padrão 2.000.000 tokens, incluindo cache |
+| `NEWS_ARTICLES_PER_RUN` | Notícias por rodada, padrão 30 |
+| `GROQ_API_KEY`, `GROQ_MODEL` | Credencial e modelo de reserva sem chave Anthropic |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | Credencial e modelo de fallback |
 | `NVD_API_KEY`, `OTX_API_KEY` | Credenciais opcionais das fontes |
 | `CRON_SECRET` | Autenticação das rotas protegidas de atualização |
@@ -85,3 +97,11 @@ Coleta e publicação são operações separadas da verificação de código e d
 Cobertura e atualidade dependem das fontes e da última coleta publicada. CVSS mede severidade técnica; EPSS estima a probabilidade em 30 dias e não confirma exploração. Dados de inteligência devem ser validados em fontes primárias antes de ações críticas.
 
 Desenvolvido por [Patrick Santos](https://portfolioptk.vercel.app).
+
+## Redação automatizada
+
+O Claude Sonnet 5.5 escreve com as personas das mesas de Vulnerabilidades, Ameaças e Crime Digital, Ciberespionagem e Geopolítica e Inteligência. A política `editorial-v1` verifica números, identificadores, nomes próprios, estilo e trechos citados antes de chamar um editor de fechamento separado. A publicação exige aprovação do editor e citações reais da fonte. O relatório guarda modelos, persona, decisões, consumo e digests da fonte e do conteúdo. A política literal `phase1-v1` continua nos caminhos legados e nas demais travas dos briefings.
+
+As notícias aprovadas têm assinatura da mesa e selo com link para a fonte. O bloco “Por que importa” separa a avaliação dos fatos. Não há alegação de revisão humana. Reprovações mantêm o original; `hold` permite até duas novas tentativas em outras rodadas, `kill` suspende tentativas por sete dias e erros transitórios ficam para a próxima rodada.
+
+A migração aditiva `prisma/migrations/20261125000000_editorial_news/migration.sql` acrescenta a avaliação, a persona e a mesa ao cache de notícias. Aplique-a antes de executar a coleta com esta versão. Credenciais ficam no ambiente, nunca em arquivos versionados. As páginas não geram textos ao serem abertas, inclusive no modo banco.

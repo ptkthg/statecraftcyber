@@ -1,6 +1,7 @@
 ﻿import type { ReactNode, CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import AutomationCredit from "@/components/ui/AutomationCredit";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -462,6 +463,7 @@ export default async function CveDetailPage({ params }: Props) {
               </p>
             </Section>
             <Section n={4}>
+              <AutomationCredit contentOrigin={cve.contentOrigin} desk={cve.desk} source="NVD" sourceUrl={cve.nvdUrl} />
               {cve.ptBrDescription ? (
                 <>
                   <p className={styles.leadText}>{cve.ptBrDescription}</p>

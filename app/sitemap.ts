@@ -39,7 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     cves: snapshot.cves,
   } : await storedRoutes();
 
-  const staticRoutes = ["/", "/threat-briefings", "/campanhas", "/noticias", "/cves", "/iocs", "/sobre", "/metodologia", "/creditos-visuais"].map(
+  const staticRoutes = ["/", "/threat-briefings", "/campanhas", "/noticias", "/cves", "/iocs", "/sobre", "/metodologia", "/creditos-visuais", "/redacao"].map(
     (r) => ({
       url: `${base}${r}`,
       lastModified: snapshot?.generatedAt ?? new Date(),

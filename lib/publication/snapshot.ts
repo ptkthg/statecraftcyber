@@ -7,6 +7,9 @@ import type { StructuredBriefing, Ioc } from '../types';
 import type { CveDetail } from '../cves/get-cve-detail';
 
 export interface PublishedBriefing extends PreviewBriefing {
+  contentOrigin?: 'source' | 'automated';
+  persona?: string;
+  desk?: string;
   updatedAt?: string;
   content: string;
   structuredContent: StructuredBriefing | null;

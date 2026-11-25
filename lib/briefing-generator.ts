@@ -32,8 +32,9 @@ function fallback(item: RawThreatItem): { summary: string; content: string } {
   ].join("\n\n");
   return { summary, content };
 }
-function assemble(item: RawThreatItem, slugs: Set<string>, result: {title:string; summary:string; content:string; structuredContent:StructuredBriefing|null}): GeneratedBriefing {
+function assemble(item: RawThreatItem, slugs: Set<string>, result: {title:string; summary:string; content:string; structuredContent:StructuredBriefing|null; editorialReport?: import("./intelligence/editorial-validation").EditorialReport}): GeneratedBriefing {
   const quality = validateBriefing(item, result.structuredContent);
+  quality.editorialReport = result.editorialReport ?? result.structuredContent?.editorialReport;
   const risk = quality.risk;
   const slug = ensureUniqueSlug(generateSlug(item.title), slugs);
   slugs.add(slug);

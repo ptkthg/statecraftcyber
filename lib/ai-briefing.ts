@@ -83,6 +83,7 @@ async function callOpenRouter(
 }
 
 export interface AiBriefingResult {
+  editorialReport?: import("./intelligence/editorial-validation").EditorialReport;
   evidenceSources: EvidenceSource[];
   title: string;
   summary: string;
@@ -120,6 +121,11 @@ export async function generateAiBriefing(
   templateSummary: string,
   templateContent: string,
 ): Promise<AiBriefingResult> {
+  if (process.env.ANTHROPIC_API_KEY?.trim()) {
+    const { generateClaudeBriefing } = await import('./ai/claude-briefing');
+    const { briefing: structured, editorialReport } = await generateClaudeBriefing(item);
+    return { editorialReport, title: structured?.title ?? item.title, summary: structured?.executiveSummary ?? templateSummary, content: structured ? buildMarkdownFallback(structured) : templateContent, structuredContent: structured, evidenceSources: item.evidenceSources ?? [] };
+  }
   const groq = getGroq();
   const hasOpenRouter = !!process.env.OPENROUTER_API_KEY;
 

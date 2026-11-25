@@ -12,6 +12,9 @@ import {
   validateTextFields,
 } from "../intelligence/text-validation";
 import Groq from "groq-sdk";
+import { canRetryEditorial, type EditorialReport } from "../intelligence/editorial-validation";
+import { enrichClaudeCves } from "../ai/claude-cve";
+import { completeNewsJson } from "../news-ai-client";
 
 let _groq: Groq | null = null;
 function getGroq(): Groq | null {
@@ -23,15 +26,19 @@ function getGroq(): Groq | null {
 const CVE_SYSTEM = `Você é um analista sênior de segurança cibernética da Statecraft. Escreva sempre em português brasileiro. Tom técnico, objetivo e didático. Nunca use travessões (— ou –). Sem emojis.`;
 
 interface CveAiResult {
+  editorialReport?: EditorialReport;
   id: string;
   ptBrDescription: string;
   mitigation: string;
   aiPriority: "Crítica" | "Alta" | "Média" | "Baixa";
 }
 
-async function enrichBatch(batch: CveEntry[]): Promise<CveAiResult[]> {
+export async function enrichBatch(batch: CveEntry[], previous = new Map<string, Partial<EditorialReport> | null>()): Promise<CveAiResult[]> {
+  if (process.env.ANTHROPIC_API_KEY?.trim()) {
+    return enrichClaudeCves(batch, previous);
+  }
   const groq = getGroq();
-  if (!groq || batch.length === 0) return [];
+  if ((!groq && !process.env.OPENROUTER_API_KEY) || batch.length === 0) return [];
 
   const input = batch.map((c) => ({
     id: c.id,
@@ -58,6 +65,11 @@ Vulnerabilidades:
 ${JSON.stringify(input)}`;
 
   try {
+    if (!groq) {
+      const raw = await completeNewsJson(CVE_SYSTEM, userPrompt, 4000);
+      const data = raw ? JSON.parse(raw) : {};
+      return Array.isArray(data.cves) ? data.cves : [];
+    }
     const res = await groq.chat.completions.create({
       model: process.env.GROQ_MODEL ?? "openai/gpt-oss-120b",
       response_format: { type: "json_object" },
@@ -88,29 +100,18 @@ export async function enrichAndSave(entries: CveEntry[]): Promise<void> {
     const previous = new Map(
       attempted.map((row) => [
         row.id,
-        row.qualityReport as { sourceDigest?: string } | null,
+        row.qualityReport as Partial<EditorialReport> | null,
       ]),
     );
     const unenriched = entries.filter(
       (e) =>
         !e.ptBrDescription &&
-        previous.get(e.id)?.sourceDigest !== sourceDigest(e.description),
+        (previous.get(e.id)?.policyVersion === "editorial-v1"
+          ? previous.get(e.id)?.state === "published" && previous.get(e.id)?.sourceDigest !== sourceDigest(e.description) || canRetryEditorial(previous.get(e.id))
+          : previous.get(e.id)?.sourceDigest !== sourceDigest(e.description)),
     );
-    if (unenriched.length === 0) return;
-
-    const BATCH = 15;
-    for (let i = 0; i < unenriched.length && i < 60; i += BATCH) {
-      const batch = unenriched.slice(i, i + BATCH);
-      const results = await enrichBatch(batch);
-      for (const r of results) {
-        const original = batch.find((entry) => entry.id === r.id);
-        if (
-          !original ||
-          typeof r.ptBrDescription !== "string" ||
-          typeof r.mitigation !== "string"
-        )
-          continue;
-        const report = validateTextFields(original.description, {
+    const save = async (r: CveAiResult, original: CveEntry) => {
+        const report = r.editorialReport ?? validateTextFields(original.description, {
           ptBrDescription: r.ptBrDescription,
           mitigation: r.mitigation,
         });
@@ -135,6 +136,17 @@ export async function enrichAndSave(entries: CveEntry[]): Promise<void> {
             enrichedAt: new Date(),
           },
         });
+    };
+    if (process.env.ANTHROPIC_API_KEY?.trim()) {
+      await enrichClaudeCves(unenriched, previous, save);
+      return;
+    }
+    const BATCH = 15;
+    for (let i = 0; i < unenriched.length && i < 60; i += BATCH) {
+      const batch = unenriched.slice(i, i + BATCH);
+      for (const r of await enrichBatch(batch, previous)) {
+        const original = batch.find(entry => entry.id === r.id);
+        if (original && typeof r.ptBrDescription === 'string' && typeof r.mitigation === 'string') await save(r, original);
       }
     }
   } catch (err) {
@@ -335,6 +347,9 @@ export interface CveEntry {
   vulnType: VulnType;
   cweId: string;
   vulnExplanation: string;
+  contentOrigin?: "source" | "automated";
+  persona?: string;
+  desk?: string;
   ptBrDescription?: string | null;
   mitigation?: string | null;
   aiPriority?: string | null;

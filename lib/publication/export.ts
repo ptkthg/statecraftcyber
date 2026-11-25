@@ -5,7 +5,11 @@ import type { NewsArticle } from '../news-feeds';
 import type { StructuredBriefing, Ioc, Confidence } from '../types';
 import type { EvidenceSource, QualityReport } from '../intelligence/types';
 import { safeSourceUrl } from '../intelligence/evidence';
+import { validEditorialReport } from '../intelligence/editorial-validation';
+import { briefingNarrativeFields, briefingEditorialSource } from '../intelligence/briefing-editorial';
+import { PERSONAS } from '../ai/editorial-personas';
 import { sortRecentNews } from '../news-order';
+import { journalistForPersona } from '../journalists';
 import type { PublishedSnapshot, PublishedBriefing } from './snapshot';
 
 export interface SnapshotInput {
@@ -31,7 +35,7 @@ function publicQuality(q: QualityReport, structured: StructuredBriefing): Qualit
   return {...pick(q,['policyVersion','analysisStatus','publishable','checkedAt','contentType']),issues:[],risk:pick(q.risk,['severity','severityBasis','technicalSeverity','cvssScore','exploitationProbability','knownExploitation','operationalPriority','confidence','confidenceReason']),techniques,sources};
 }
 function publicStructured(s: StructuredBriefing, q: QualityReport): StructuredBriefing {
-  return {...pick(s,['title','executiveSummary','whatHappened','whyItMatters','whoIsAtRisk','technicalDetails','recommendedActions','detectionSuggestions','falsePositiveNotes','confidenceLevel','confidenceReason','sourceName','sourceUrl']),
+  return {...pick(s,['editorialReport','title','executiveSummary','whatHappened','whyItMatters','whoIsAtRisk','technicalDetails','recommendedActions','detectionSuggestions','falsePositiveNotes','confidenceLevel','confidenceReason','sourceName','sourceUrl']),
     relatedCves:[...s.relatedCves],mitreTechniques:[...s.mitreTechniques],identifiedIocs:s.identifiedIocs.map(publicIoc),
     claims:(s.claims ?? []).map(c=>pick(c,['field','kind','sourceId','quote'])),
     mitreEvidence:(s.mitreEvidence ?? []).map(t=>pick(t,['id','name','kind','sourceId','quote'])),quality:publicQuality(q,s)};
@@ -40,7 +44,8 @@ function publicBriefing(row: Briefing): PublishedBriefing | null {
   const q=row.qualityReport as unknown as QualityReport | null;
   const s=row.structuredContent as unknown as StructuredBriefing | null;
   if (row.status!=='published' || row.analysisStatus!=='validated' || q?.policyVersion!=='phase1-v1' || !q.publishable || q.analysisStatus!=='validated' || q.issues.length || !s || !safeSourceUrl(row.sourceUrl)) return null;
-  return {...pick(row,['id','title','slug','summary','content','severity','category','tags','affectedRegions','affectedSectors','sourceName','sourceUrl','cves','mitreTechniques','epssScore','cvssScore','confidence','readingTime','operationalPriority','severityBasis']),
+  const automated = validEditorialReport(s.editorialReport, briefingEditorialSource(q.sources), briefingNarrativeFields(s));
+  return {...(automated ? { contentOrigin: 'automated' as const, persona: 'inteligencia', desk: PERSONAS.inteligencia.desk } : {}),...pick(row,['id','title','slug','summary','content','severity','category','tags','affectedRegions','affectedSectors','sourceName','sourceUrl','cves','mitreTechniques','epssScore','cvssScore','confidence','readingTime','operationalPriority','severityBasis']),
     createdAt:iso(row.createdAt)!,updatedAt:iso(row.updatedAt)!,sourcePublishedAt:iso(row.sourcePublishedAt),
     structuredContent:publicStructured(s,q),iocs:(Array.isArray(row.iocs)?row.iocs as unknown as Ioc[]:[]).map(publicIoc)};
 }
@@ -55,7 +60,7 @@ function publicMetadata(m: CveSourceMetadata | null | undefined): CveSourceMetad
 }
 function publicNews(article: NewsArticle): NewsArticle | null {
   if (!safeSourceUrl(article.url) || !iso(article.publishedAt) || !article.title || !article.summary) return null;
-  return pick(article,['id','slug','title','summary','content','imageUrl','url','source','sourceRegion','publishedAt','tags','cves','importance','type']);
+  return { ...pick(article,['id','slug','title','summary','content','imageUrl','url','source','sourceRegion','publishedAt','tags','cves','importance','type','contentOrigin','porQueImporta','persona','desk']), ...(article.contentOrigin === 'automated' && journalistForPersona(article.persona) ? { journalist: journalistForPersona(article.persona) } : {}) };
 }
 
 export function buildPublicSnapshot(input: SnapshotInput, now=new Date()): PublishedSnapshot {

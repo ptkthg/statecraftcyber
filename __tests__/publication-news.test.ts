@@ -4,7 +4,8 @@ import {validateTextFields} from '../lib/intelligence/text-validation';
 import type {NewsArticle} from '../lib/news-feeds';
 const date='2026-11-21T12:00:00Z';
 const original:NewsArticle={id:'old',slug:'old-news',title:'Original source title.',summary:'Original source summary.',content:'Original full source paragraph.',url:'https://example.org/news',source:'Source',sourceRegion:'Global',publishedAt:date,tags:[],cves:[],importance:1,type:'Ameaça'};
-const source=[original.title,original.summary,original.content].join('\n');
+// A fonte abre com o veículo e a data de publicação (newsEvidence), para atribuição e datas terem apoio.
+const source=['Fonte: Source','Publicado em 2026-11-21',original.title,original.summary,original.content].join('\n');
 const cached={slug:original.slug,title:original.title,summary:original.summary,content:original.content!,originalUrl:original.url,source:original.source,sourceSnapshot:JSON.parse(JSON.stringify(original)),sourcePublishedAt:new Date(date),qualityReport:JSON.parse(JSON.stringify(validateTextFields(source,{title:original.title,summary:original.summary,content:original.content!})))};
 it('retains a validated full historical article even after its RSS row is unavailable',()=>{
   const articles=newsForPublication([], [cached]);

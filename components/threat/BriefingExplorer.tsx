@@ -1,5 +1,6 @@
 "use client";
 
+import AutomationCredit from "@/components/ui/AutomationCredit";
 import { useState } from "react";
 import { Search, X } from "lucide-react";
 import Link from "next/link";
@@ -12,6 +13,8 @@ import { Pagination } from "@/components/ui/Pagination";
 const PAGE_SIZE = 6;
 
 export interface BriefingItem {
+  contentOrigin?: "source" | "automated";
+  desk?: string;
   id: string;
   title: string;
   slug: string;
@@ -64,6 +67,7 @@ function timeAgo(dateStr: string): string {
 
 function FeaturedCard({ briefing }: { briefing: BriefingItem }) {
   return (
+    <article>
     <BentoCard
       href={`/threat-briefings/${briefing.slug}`}
       action="Ler briefing completo"
@@ -85,11 +89,14 @@ function FeaturedCard({ briefing }: { briefing: BriefingItem }) {
         {briefing.iocs.length > 0 && <><span>·</span><span>{briefing.iocs.length} IOCs</span></>}
       </div>
     </BentoCard>
+    <AutomationCredit contentOrigin={briefing.contentOrigin} desk={briefing.desk} source={briefing.sourceName} sourceUrl={briefing.sourceUrl} />
+    </article>
   );
 }
 
 function BriefingRowCard({ briefing }: { briefing: BriefingItem }) {
   return (
+    <article>
     <BentoCard href={`/threat-briefings/${briefing.slug}`} action="Ler briefing" className="min-h-[150px]">
       <div className="mb-2.5 flex items-center gap-2">
         <Tag variant={SEVERITY_VARIANT[briefing.severity]}>{SEVERITY_LABELS[briefing.severity]}</Tag>
@@ -102,6 +109,8 @@ function BriefingRowCard({ briefing }: { briefing: BriefingItem }) {
         {briefing.cves.length > 0 && <span className="text-cold flex-shrink-0">{briefing.cves[0]}</span>}
       </div>
     </BentoCard>
+    <AutomationCredit contentOrigin={briefing.contentOrigin} desk={briefing.desk} source={briefing.sourceName} sourceUrl={briefing.sourceUrl} />
+    </article>
   );
 }
 

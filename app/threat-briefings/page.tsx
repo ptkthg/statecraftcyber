@@ -25,12 +25,13 @@ async function getBriefings(): Promise<{ briefings: BriefingItem[]; trending: Br
         id: true, title: true, slug: true, summary: true,
         severity: true, category: true, tags: true,
         sourceName: true, sourceUrl: true, cves: true,
-        iocs: true, createdAt: true, readingTime: true,
+        iocs: true, createdAt: true, readingTime: true, structuredContent: true,
       },
     });
 
     const briefings: BriefingItem[] = rows.map((r) => ({
       ...r,
+      ...((r.structuredContent as unknown as import("@/lib/types").StructuredBriefing)?.editorialReport?.publishable ? {contentOrigin:"automated" as const,desk:"Mesa de Inteligência do Statecraft"} : {}),
       iocs: (r.iocs as Ioc[] | null) ?? [],
       createdAt: r.createdAt.toISOString(),
     }));

@@ -4,6 +4,8 @@ import type { EvidenceClaim, QualityReport, ValidationIssue } from "./types";
 import { originalQuote, sourceEvidence, safeSourceUrl } from "./evidence";
 import { scoreSeverity, validScore } from "../severity-scoring";
 import { validateTechnique } from "./mitre";
+import { validEditorialReport, checkEditorialFields } from './editorial-validation';
+import { briefingNarrativeFields, briefingEditorialSource } from './briefing-editorial';
 export const POLICY_VERSION = "phase1-v1" as const;
 const REQUIRED = ["executiveSummary", "whatHappened", "whyItMatters", "whoIsAtRisk", "technicalDetails"] as const;
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -48,6 +50,10 @@ export function validateBriefing(item: RawThreatItem, briefing: StructuredBriefi
     if (contentType === "ioc-report" && (!briefing.falsePositiveNotes.trim() || generic(briefing.falsePositiveNotes))) { complete = false; add("content.false_positives", "falsePositiveNotes", "Relato de IOCs exige contexto concreto para falsos positivos."); }
     if (briefing.sourceName !== item.sourceName || briefing.sourceUrl !== item.sourceUrl) add("source.mismatch", "sourceUrl", "A IA alterou a origem do conteúdo.");
     if (briefing.confidenceLevel !== risk.confidence) add("confidence.contradiction", "confidenceLevel", "Confiança declarada diverge dos critérios de procedência e temporalidade.");
+    const fields = briefingNarrativeFields(briefing);
+    const editorialSource = briefingEditorialSource(sources);
+    const editorialApproved = validEditorialReport(briefing.editorialReport, editorialSource, fields) && !checkEditorialFields(editorialSource, fields).length;
+    if (briefing.editorialReport && !editorialApproved) add("editorial.unapproved", "editorialReport", "Fechamento editorial ausente, reprovado ou desatualizado.");
     const claims = briefing.claims ?? [];
     for (const [field,value] of Object.entries(values)) {
       if (!value.trim()) continue;
@@ -60,9 +66,9 @@ export function validateBriefing(item: RawThreatItem, briefing: StructuredBriefi
       if (claim.kind === "observed" && !source?.telemetry) add("claim.not_observed", field, "Relato de terceiros não constitui observação própria.");
       if (claim.kind === "inferred") {
         if (!value.startsWith("Avaliação analítica:")) add("claim.unlabelled_inference", field, "Avaliação analítica precisa estar explicitamente rotulada.");
-        add("claim.semantic_review", field, "Inferência armazenada, mas não verificável automaticamente por correspondência textual.");
+        if (!editorialApproved) add("claim.semantic_review", field, "Inferência armazenada, mas não verificável automaticamente por correspondência textual.");
       } else if (!["reported","observed"].includes(claim.kind) || claim.quote!.trim() !== value.trim()) {
-        add("claim.semantic_review", field, "Paráfrase ou detalhe novo não pode ser validado apenas pela presença de uma citação; requer revisão semântica.");
+        if (!editorialApproved) add("claim.semantic_review", field, "Paráfrase ou detalhe novo não pode ser validado apenas pela presença de uma citação; requer revisão semântica.");
       }
     }
     const text = Object.values(values).join("\n");

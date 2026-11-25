@@ -50,3 +50,6 @@ data/publication/*.json
 
 # Transient headless-browser profiles are not project source.
 screenshots-refactor/.chrome-qa-*/
+
+# Local tooling cache
+/.cache/

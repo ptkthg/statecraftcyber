@@ -38,6 +38,7 @@ export interface RiskAssessment {
   confidenceReason: string;
 }
 export interface QualityReport {
+  editorialReport?: import("./editorial-validation").EditorialReport;
   policyVersion: "phase1-v1";
   analysisStatus: "preliminary" | "enriched" | "validated";
   publishable: boolean;

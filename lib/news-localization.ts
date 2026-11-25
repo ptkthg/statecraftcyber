@@ -60,6 +60,7 @@ async function translateBatch(articles: NewsArticle[]): Promise<Map<string, Prev
 /** Translate RSS previews once, then reuse the existing NewsCache rows on every surface. */
 export async function localizeNewsArticles(articles: NewsArticle[]): Promise<NewsArticle[]> {
   if (articles.length === 0) return articles;
+  if (process.env.ANTHROPIC_API_KEY?.trim()) return (await import("./news-writing")).writeNewsBatch(articles);
 
   try {
     const { prisma } = await import("./prisma");

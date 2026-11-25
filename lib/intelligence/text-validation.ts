@@ -21,5 +21,5 @@ export function validateTextFields(source: string, fields: Record<string,string>
 export function validTextReport(report: unknown, source: string): boolean {
   if (!report || typeof report !== "object") return false;
   const r = report as Partial<TextReport>;
-  return r.policyVersion === "phase1-v1" && r.publishable === true && r.sourceDigest === sourceDigest(source);
+  return (r.policyVersion === "phase1-v1" || (r as {policyVersion?:string}).policyVersion === "editorial-v1") && r.publishable === true && r.sourceDigest === sourceDigest(source);
 }

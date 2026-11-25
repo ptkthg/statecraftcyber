@@ -10,6 +10,7 @@ import Image from "next/image";
 import { getLivePreview } from "@/lib/live-preview";
 import { getPublishedSnapshot } from "@/lib/publication/snapshot";
 import type { NewsArticle } from "@/lib/news-feeds";
+import JournalistByline from '@/components/ui/JournalistByline';
 
 export const revalidate = 300;
 export const metadata: Metadata = { alternates: { canonical: "/" } };
@@ -76,7 +77,7 @@ export default async function HomePage() {
       </div> : !sourceUnavailable && <p className="editorial-empty">Dados do radar indisponíveis no momento.</p>}
     </section>
     <section className="editorial-section"><div className="section-heading"><h2>NOTÍCIAS RECENTES</h2><Link href="/noticias">Ver todas →</Link></div>
-      {news.length > 0 ? <div className="editorial-three">{news.map((article) => <article className="story-tile story-tile--text" key={article.slug}><div className="story-copy"><p className="story-meta">{article.source} · {formatDate(article.publishedAt)}</p><h3><Link href={`/noticias/${article.slug}`}>{article.title}</Link></h3><p>{article.summary}</p></div></article>)}</div> : <p className="editorial-empty">{sourceUnavailable || newsUnavailable ? "Notícias indisponíveis no momento." : "Nenhuma notícia publicada no momento."}</p>}
+      {news.length > 0 ? <div className="editorial-three">{news.map((article) => <article className="story-tile story-tile--text" key={article.slug}><div className="story-copy"><p className="story-meta">{article.source} · {formatDate(article.publishedAt)}</p><h3><Link href={`/noticias/${article.slug}`}>{article.title}</Link></h3><p>{article.summary}</p><JournalistByline compact contentOrigin={article.contentOrigin} journalist={article.journalist} source={article.source} sourceUrl={article.url} /></div></article>)}</div> : <p className="editorial-empty">{sourceUnavailable || newsUnavailable ? "Notícias indisponíveis no momento." : "Nenhuma notícia publicada no momento."}</p>}
     </section>
     <section className="editorial-section"><div className="section-heading"><h2>CAMPANHAS DOCUMENTADAS</h2><Link href="/campanhas">Ver todas →</Link></div><div className="editorial-three">{campaigns.slice(0, 3).map((campaign) => <StoryTile key={campaign.slug} section="CAMPANHA" title={campaign.title} description={campaign.summary} href={`/campanhas/${campaign.slug}`} image="antena" imageAlt="Antena de telecomunicações em Teresópolis" />)}</div></section>
     {featured && <section className="editorial-section"><div className="section-heading"><h2>BRIEFING EM DESTAQUE</h2><Link href="/threat-briefings">Ver todos →</Link></div>

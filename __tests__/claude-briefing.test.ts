@@ -1,0 +1,21 @@
+﻿import { beforeEach, expect, it, vi } from 'vitest';
+import { groundedFixture, NOW } from './fixtures/intelligence';
+import { validateBriefing } from '../lib/intelligence/validation';
+import { sourceEvidence } from '../lib/intelligence/evidence';
+import { editorialDraft } from '../lib/intelligence/editorial-validation';
+import { PERSONAS } from '../lib/ai/editorial-personas';
+import { briefingNarrativeFields, briefingEditorialSource } from '../lib/ai/claude-briefing';
+const mocks = vi.hoisted(() => ({ claudeJson: vi.fn() }));
+vi.mock('../lib/ai/claude-client', async original => ({ ...await original<typeof import('../lib/ai/claude-client')>(), claudeJson: mocks.claudeJson }));
+beforeEach(() => { vi.clearAllMocks(); });
+it('aprova paráfrase apenas com fechamento editorial vinculado aos campos e à fonte', () => {
+  const { item, briefing } = groundedFixture();
+  briefing.executiveSummary = 'O fornecedor descreve uma falha que exige avaliação pela equipe de defesa.';
+  const fields = briefingNarrativeFields(briefing), source = briefingEditorialSource(sourceEvidence(item, NOW));
+  const report = { ...editorialDraft(source, fields, PERSONAS.inteligencia), publishable: true, state: 'published' as const, editorDecision: 'publicar' as const, claims: Object.values(fields).filter(Boolean).map(texto => ({ texto, trechoDaFonte: item.title + '\n' + item.description, situacao: 'apoiada' as const })) };
+  expect(validateBriefing(item, briefing, NOW).issues.some(i => i.code === 'claim.semantic_review')).toBe(true);
+  briefing.editorialReport = report;
+  expect(validateBriefing(item, briefing, NOW).issues.some(i => i.code === 'claim.semantic_review')).toBe(false);
+  briefing.executiveSummary += ' Alteração após fechamento.';
+  expect(validateBriefing(item, briefing, NOW).issues.some(i => i.code === 'claim.semantic_review')).toBe(true);
+});

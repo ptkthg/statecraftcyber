@@ -33,6 +33,8 @@ export interface RunMetrics {
     failed: number;
     inputTokens: number;
     outputTokens: number;
+    cacheReadInputTokens?: number;
+    cacheCreationInputTokens?: number;
     usageKnown: number;
     usageUnknown: number;
     parseErrors: number;
@@ -60,6 +62,8 @@ export function emptyMetrics(): RunMetrics {
       failed: 0,
       inputTokens: 0,
       outputTokens: 0,
+      cacheReadInputTokens: 0,
+      cacheCreationInputTokens: 0,
       usageKnown: 0,
       usageUnknown: 0,
       parseErrors: 0,
@@ -238,26 +242,22 @@ export function aiStarted() {
   if (c) c.metrics.ai.requests++;
 }
 export function aiFinished(
-  usage?: { prompt_tokens?: number; completion_tokens?: number },
+  usage?: { prompt_tokens?: number; completion_tokens?: number; input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number },
   failure?: string,
 ) {
   const c = currentContext();
   if (!c) return;
-  if (failure) {
-    c.metrics.ai.failed++;
-    c.lastAiFailure = failure;
-    return;
-  }
-  c.metrics.ai.successful++;
-  if (
-    usage &&
-    Number.isFinite(usage.prompt_tokens) &&
-    Number.isFinite(usage.completion_tokens)
-  ) {
-    c.metrics.ai.inputTokens += usage.prompt_tokens!;
-    c.metrics.ai.outputTokens += usage.completion_tokens!;
+  if (failure) { c.metrics.ai.failed++; c.lastAiFailure = failure; }
+  else c.metrics.ai.successful++;
+  const input = usage?.input_tokens ?? usage?.prompt_tokens;
+  const output = usage?.output_tokens ?? usage?.completion_tokens;
+  if (Number.isFinite(input) && Number.isFinite(output)) {
+    c.metrics.ai.inputTokens += input!;
+    c.metrics.ai.outputTokens += output!;
+    c.metrics.ai.cacheReadInputTokens = (c.metrics.ai.cacheReadInputTokens ?? 0) + (usage?.cache_read_input_tokens ?? 0);
+    c.metrics.ai.cacheCreationInputTokens = (c.metrics.ai.cacheCreationInputTokens ?? 0) + (usage?.cache_creation_input_tokens ?? 0);
     c.metrics.ai.usageKnown++;
-  } else c.metrics.ai.usageUnknown++;
+  } else if (!failure) c.metrics.ai.usageUnknown++;
 }
 
 export function sourceSkipped(code: string) {

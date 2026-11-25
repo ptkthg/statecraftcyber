@@ -1,4 +1,6 @@
-import { validTextReport } from "@/lib/intelligence/text-validation";
+import { WhyItMatters } from "@/components/ui/AutomationCredit";
+import JournalistByline from "@/components/ui/JournalistByline";
+import { newsForPublication } from "@/lib/publication/news";
 import { PUBLIC_BRIEFING_WHERE } from "@/lib/intelligence/publication";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -8,7 +10,7 @@ import { linkifyCves } from "@/lib/news-html";
 import { renderSafeMarkdown } from "@/lib/security/sanitize-markdown";
 import {
   ArrowLeft, ExternalLink, Globe, MapPin, Clock,
-  Tag, AlertCircle, Loader2, Sparkles, BookOpen, Shield, ChevronRight,
+  Tag, AlertCircle, BookOpen, Shield, ChevronRight,
 } from "lucide-react";
 import { sanitizeContent, type NewsArticle, type ArticleType } from "@/lib/news-feeds";
 import { getStoredNews, getStoredArticle } from '@/lib/news-store';
@@ -54,51 +56,6 @@ function abntSourceName(source: string): string {
   return source.toUpperCase();
 }
 
-// ── Skeleton enquanto a IA processa ──────────────────────────────────────────
-
-function ArticleBodySkeleton({ article }: { article: NewsArticle }) {
-  return (
-    <div>
-      {/* Status de geração */}
-      <div className="flex items-center gap-2.5 px-4 py-3.5 bg-raised border border-white/[0.06] rounded-xl mb-8">
-        <Loader2 size={14} className="text-brand animate-spin flex-shrink-0" />
-        <div>
-          <p className="text-xs text-dim">Gerando notícia em português...</p>
-          <p className="text-xs text-dim mt-0.5">O conteúdo será exibido somente se houver suporte verificável nas fontes. Aguarde alguns segundos.</p>
-        </div>
-      </div>
-
-      {/* Título placeholder */}
-      <div className="space-y-3 mb-8">
-        <div className="h-11 bg-white/[0.04] rounded-lg animate-pulse w-full" />
-        <div className="h-11 bg-white/[0.04] rounded-lg animate-pulse w-4/5" />
-        <div className="h-7 bg-white/[0.03] rounded-lg animate-pulse w-3/5 mt-2" />
-      </div>
-
-      {/* Lead placeholder */}
-      <div className="space-y-2.5 mb-10 pl-5 border-l-2 border-brand/20">
-        <div className="h-4 bg-white/[0.04] rounded animate-pulse w-full" />
-        <div className="h-4 bg-white/[0.04] rounded animate-pulse w-11/12" />
-        <div className="h-4 bg-white/[0.04] rounded animate-pulse w-4/5" />
-        <div className="h-4 bg-white/[0.04] rounded animate-pulse w-3/4" />
-      </div>
-
-      {/* Corpo placeholder */}
-      <div className="space-y-2 mb-6">
-        {[1, 0.95, 0.88, 1, 0.92, 0.78, 1, 0.85, 0.65].map((w, i) => (
-          <div key={i} className="h-4 bg-white/[0.025] rounded animate-pulse" style={{ width: `${w * 100}%` }} />
-        ))}
-      </div>
-
-      {/* Resumo original como fallback */}
-      <div className="p-5 bg-raised border border-white/[0.04] rounded-xl mt-8">
-        <p className="text-xs text-dim uppercase tracking-widest mb-3 font-semibold">Resumo original (fonte)</p>
-        <p className="text-sm text-dim leading-relaxed italic">{article.summary}</p>
-      </div>
-    </div>
-  );
-}
-
 // ── Corpo enriquecido ─────────────────────────────────────────────────────────
 
 async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
@@ -135,18 +92,19 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
       >
         {displayTitle}
       </h1>
+      <JournalistByline contentOrigin={origin} journalist={article.journalist} source={article.source} sourceUrl={article.url} />
 
       {/* Subtítulo — categoria/fonte */}
       <p
         className="text-lg md:text-xl text-dim font-normal italic leading-snug mb-6"
       >
-        {isAi ? "Síntese extrativa automatizada da fonte original" : `Fonte: ${article.source}`}
+        {isAi ? "Redação automatizada com fechamento editorial" : `Fonte: ${article.source}`}
       </p>
 
       {/* Linha de creditos */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-8 pb-6 border-b border-white/[0.07]">
         <span className="text-xs text-dim">
-          {origin ? <>Por <strong className="text-dim">{isAi ? "Statecraft · síntese automatizada" : article.source}</strong></> : `Conteúdo publicado pela Statecraft; fonte: ${article.source}`}
+          {origin ? <>Por <strong className="text-dim">{isAi ? article.desk ?? "Statecraft · síntese automatizada" : article.source}</strong></> : `Conteúdo publicado pela Statecraft; fonte: ${article.source}`}
         </span>
         <span className="text-dim">|</span>
         <span className="flex items-center gap-1 text-xs text-dim">
@@ -157,15 +115,6 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
           <Clock size={10} />
           {Math.max(3, Math.ceil((enriched.content || article.summary).split(/\s+/).length / 200))} min de leitura
         </span>
-        {isAi && (
-          <>
-            <span className="text-dim">|</span>
-            <span className="flex items-center gap-1 text-xs text-dim">
-              <Sparkles size={9} className="text-brand" />
-              {snapshotMode() ? "Síntese publicada" : enriched.fromCache ? "Cache" : "Gerado por IA"}
-            </span>
-          </>
-        )}
       </div>
 
       {/* Lide (parágrafo de abertura destacado) */}
@@ -194,6 +143,7 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
         </div>
       )}
 
+      <WhyItMatters contentOrigin={origin} text={article.porQueImporta} />
       {/* Divisor antes das referências */}
       <div className="border-t border-white/[0.07] pt-8 mb-8">
         <div className="flex items-center gap-2 mb-5">
@@ -389,23 +339,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     try {
       const { prisma } = await import("@/lib/prisma");
       const cached = await prisma.newsCache.findUnique({ where: { slug } });
-      const snapshot = cached?.sourceSnapshot as { title?:string; summary?:string; url?:string; publishedAt?:string } | null;
-      if (cached && snapshot?.title && snapshot.summary && snapshot.publishedAt && validTextReport(cached.qualityReport, snapshot.title + "\n" + snapshot.summary)) {
-        article = {
-          id: cached.slug,
-          slug: cached.slug,
-          title: cached.title,
-          summary: cached.summary,
-          url: cached.originalUrl,
-          source: cached.source,
-          sourceRegion: "Global" as const,
-          publishedAt: snapshot!.publishedAt!,
-          tags: [],
-          cves: [],
-          importance: 0,
-          type: "Ameaça" as const,
-        };
-      }
+      article = cached ? newsForPublication([], [cached])[0] : undefined;
     } catch {}
   }
 
@@ -507,8 +441,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           </div>
         )}
 
-        {/* Corpo via Suspense (IA) */}
-        <Suspense fallback={snapshotMode() ? null : <ArticleBodySkeleton article={article} />}>
+        {/* Conteúdo preparado na coleta */}
+        <Suspense fallback={null}>
           <EnrichedArticleBody article={article} />
         </Suspense>
 

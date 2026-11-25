@@ -1,4 +1,6 @@
 import { EvidenceNotes } from "@/components/briefing/EvidenceNotes";
+import AutomationCredit from "@/components/ui/AutomationCredit";
+import { PERSONAS } from "@/lib/ai/editorial-personas";
 import { PUBLIC_BRIEFING_WHERE } from "@/lib/intelligence/publication";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -25,6 +27,8 @@ import { getPublishedSnapshot, snapshotMode } from '@/lib/publication/snapshot';
 // ── Types ─────────────────────────────────────────────────────────────────
 
 interface Briefing {
+  contentOrigin?: "source" | "automated";
+  desk?: string;
   id: string;
   title: string;
   slug: string;
@@ -116,6 +120,7 @@ async function getBriefing(slug: string): Promise<Briefing | null> {
 
     return {
       ...b,
+      ...(b.structuredContent && (b.structuredContent as unknown as StructuredBriefing).editorialReport?.publishable ? {contentOrigin:"automated" as const,desk:PERSONAS.inteligencia.desk} : {}),
       sourcePublishedAt: b.sourcePublishedAt?.toISOString() ?? null,
       createdAt: b.createdAt.toISOString(),
       iocs: b.iocs as unknown as Ioc[],
@@ -278,6 +283,7 @@ export default async function BriefingPage({
 
           {/* ── Article ─────────────────────────────────────────────────── */}
           <article className="flex-1 min-w-0">
+            <AutomationCredit contentOrigin={briefing.contentOrigin} desk={briefing.desk} source={briefing.sourceName} sourceUrl={briefing.sourceUrl} />
 
             {/* Header */}
             <div className="mb-8">

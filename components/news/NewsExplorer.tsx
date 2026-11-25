@@ -1,5 +1,6 @@
 "use client";
 
+import JournalistByline from "@/components/ui/JournalistByline";
 import { useState, useMemo, useTransition } from "react";
 import { useRouter } from 'next/navigation';
 import { sortRecentNews } from '@/lib/news-order';
@@ -54,8 +55,7 @@ function ArticleRow({ article, alert }: { article: NewsArticle; alert: boolean }
   const colors = getSourceColor(article.source);
 
   return (
-    <Link
-      href={`/noticias/${article.slug}`}
+    <article
       className="group flex gap-4 p-4 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.015] transition-colors"
     >
       <div className="relative flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden hidden sm:flex items-center justify-center bg-canvas">
@@ -74,10 +74,11 @@ function ArticleRow({ article, alert }: { article: NewsArticle; alert: boolean }
           )}
           <span className="font-mono text-[11px] text-dim">{timeAgo(article.publishedAt)}</span>
         </div>
-        <h3 className="news-row-title">{article.title}</h3>
+        <h3 className="news-row-title"><Link href={`/noticias/${article.slug}`}>{article.title}</Link></h3>
         {article.summary && (
           <p className="news-row-summary">{article.summary}</p>
         )}
+        <JournalistByline contentOrigin={article.contentOrigin} journalist={article.journalist} source={article.source} sourceUrl={article.url} compact />
         <div className="flex flex-wrap gap-1">
           {article.cves.slice(0, 2).map((cve) => (
             <span key={cve} className="px-1.5 py-0.5 rounded text-xs font-mono font-bold text-brand-soft bg-[rgba(var(--primary-rgb),0.12)]">{cve}</span>
@@ -88,7 +89,7 @@ function ArticleRow({ article, alert }: { article: NewsArticle; alert: boolean }
         </div>
       </div>
       <ChevronRight size={14} className="flex-shrink-0 text-dim group-hover:text-white transition-colors self-start mt-0.5" />
-    </Link>
+    </article>
   );
 }
 
@@ -112,9 +113,11 @@ function DateGroup({ label, articles, alert }: { label: string; articles: NewsAr
 interface Props {
   initialArticles: NewsArticle[];
   initialTab?: "alertas" | "contexto";
+  initialJournalist?: string;
+  journalists: NonNullable<NewsArticle['journalist']>[];
 }
 
-export default function NewsExplorer({ initialArticles, initialTab = "alertas" }: Props) {
+export default function NewsExplorer({ initialArticles, initialTab = "alertas", initialJournalist = '', journalists }: Props) {
   const articles = useMemo(() => sortRecentNews(initialArticles), [initialArticles]);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -146,9 +149,10 @@ export default function NewsExplorer({ initialArticles, initialTab = "alertas" }
       if ((classifyNewsTitle(a.title) === "alert") !== isAlert) return false;
       if (region && a.sourceRegion !== region) return false;
       if (articleType && a.type !== articleType) return false;
+      if (initialJournalist && (a.contentOrigin !== 'automated' || a.journalist?.id !== initialJournalist)) return false;
       return true;
     });
-  }, [articles, isAlert, region, articleType]);
+  }, [articles, isAlert, region, articleType, initialJournalist]);
 
   const tabCounts = useMemo(() => {
     let alert = 0, context = 0;
@@ -234,6 +238,17 @@ export default function NewsExplorer({ initialArticles, initialTab = "alertas" }
             {r === "" ? "Todas regiões" : r}
           </FilterPill>
         ))}
+        <search aria-label="Filtrar por jornalista" className="journalist-filter">
+          <form action="/noticias" method="get">
+            <input type="hidden" name="tab" value={tab} />
+            <label htmlFor="journalist-filter">Jornalistas</label>
+            <select id="journalist-filter" name="jornalista" key={initialJournalist} defaultValue={initialJournalist}>
+              <option value="">Todos</option>
+              {journalists.map(persona => <option key={persona.id} value={persona.id}>{persona.name}</option>)}
+            </select>
+            <button type="submit">Filtrar</button>
+          </form>
+        </search>
       </div>
 
       {(refreshing || pending) && <progress aria-label="Atualizando notícias" className="w-full h-1" />}
@@ -255,6 +270,7 @@ export default function NewsExplorer({ initialArticles, initialTab = "alertas" }
             <button onClick={() => { setArticleType(""); setRegion(""); reset(); }} className="mt-3 text-xs text-cold hover:text-white transition-colors">
               Limpar filtros
             </button>
+            {initialJournalist && <Link href={`/noticias?tab=${tab}`} className="under-link block mt-3">Todos os jornalistas</Link>}
           </div>
         ) : (
           grouped.map(({ label, articles: arts }) => (

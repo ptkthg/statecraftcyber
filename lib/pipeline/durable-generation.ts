@@ -15,7 +15,7 @@ export function durableGenerator(db: PrismaClient, owner: string, key: string, g
     }
     const result = await generate(raw, slugs);
     // Failed AI responses remain retryable, never cached as completed work.
-    if (result.structuredContent) await db.$transaction(async tx => {
+    if (result.structuredContent && (!result.qualityReport.editorialReport || result.qualityReport.editorialReport.publishable)) await db.$transaction(async tx => {
       await fence(tx, owner);
       await tx.briefingCandidate.upsert({ where: { key }, create: { key, payload: JSON.parse(JSON.stringify(result)) as Prisma.InputJsonValue }, update: {} });
     });

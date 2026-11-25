@@ -22,6 +22,10 @@ export interface NewsArticle {
   content?: string;
   /** Provenance of the published text, including title/summary enrichment. Absent in legacy snapshots. */
   contentOrigin?: 'source' | 'automated';
+  porQueImporta?: string;
+  persona?: string;
+  desk?: string;
+  journalist?: { id: string; name: string; beat: string; initials: string; color: string };
   imageUrl?: string;
   url: string;
   source: string;
