@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import EditorialHero from "@/components/editorial/EditorialHero";
+import PageHeader from "@/components/PageHeader";
+import { getPublishedSnapshot } from "@/lib/publication/snapshot";
 
-export const metadata: Metadata = { title: "Sobre o projeto" };
+export const metadata: Metadata = { title: "Sobre o projeto", description: "Propósito, princípios editoriais e responsabilidade pelo conteúdo da Statecraft.", alternates: { canonical: "/sobre" } };
 const pillars = [
   { title: "Cibersegurança", description: "Campanhas, atores, malware, vulnerabilidades e indicadores com aplicação operacional.", image: "datacenter" },
   { title: "Geopolítica", description: "Conexão entre ameaças cibernéticas e o cenário internacional, com atenção às fontes.", image: "porto" },
   { title: "Contexto brasileiro", description: "Leitura de riscos globais à luz das instituições, empresas e infraestrutura do Brasil.", image: "congresso" },
   { title: "Impacto operacional", description: "Informação técnica organizada para apoiar triagem, investigação e mitigação.", image: "antena" },
 ] as const;
-export default function SobrePage() {
+export default async function SobrePage() {
+  const snapshot = await getPublishedSnapshot().catch(() => null);
   return <main className="editorial-page page-shell about-page">
-    <EditorialHero eyebrow="SOBRE O PROJETO" title={<>Inteligência<br />para decisões reais.</>} description="O Statecraft Cyber Intelligence é um projeto independente de inteligência e análise de cibersegurança com foco no Brasil e na América Latina. Conecta ameaças globais à realidade operacional de governos, empresas e setores estratégicos." image="congresso" imageAlt="Congresso Nacional em Brasília, fotografia histórica do Acervo Arquivo Nacional" labels={["AMEAÇAS", "GEOPOLÍTICA", "INFRAESTRUTURA", "BRASIL"]} />
+    <PageHeader eyebrow="SOBRE O PROJETO" title="Sobre o projeto" description="Projeto independente de análise de cibersegurança com foco no Brasil e na América Latina." capturedAt={snapshot?.capturedAt ?? snapshot?.generatedAt} />
     <section className="editorial-section"><div className="section-heading"><h2>NOSSOS PILARES</h2><span>ESCOPO EDITORIAL</span></div><div className="pillar-grid">{pillars.map((pillar) => <article key={pillar.title}><div className="pillar-image"><Image src={`/editorial/${pillar.image === "datacenter" ? "datacenter-ache" : pillar.image}.webp`} alt={pillar.title === "Contexto brasileiro" ? "Congresso Nacional em Brasília" : "Fotografia documental ilustrativa"} fill sizes="(max-width: 700px) 30vw, 9vw" /></div><div><h3>{pillar.title}</h3><p>{pillar.description}</p></div></article>)}</div></section>
     <section className="editorial-section about-columns"><div><p className="eyebrow">PROPÓSITO</p><h2>Transformar informação técnica em inteligência acionável.</h2><p>O projeto reúne dados públicos, preserva a ligação com as fontes originais e apresenta o contexto necessário para interpretar sinais de ameaça. As análises são apoio à decisão e exigem validação antes de qualquer ação crítica.</p><Link className="editorial-button" href="/metodologia">Nossa abordagem →</Link></div><div><p className="eyebrow">COMO TRABALHAMOS</p><ol><li><strong>01 · Monitoramento</strong><span>Coleta de fontes abertas e feeds especializados.</span></li><li><strong>02 · Análise de contexto</strong><span>Relação entre dados técnicos, setor e geografia.</span></li><li><strong>03 · Produção editorial</strong><span>Briefings estruturados em português com referências rastreáveis.</span></li><li><strong>04 · Aplicação</strong><span>Consulta de CVEs e IOCs para investigação e priorização.</span></li></ol></div><div><p className="eyebrow">AUTOR E RESPONSÁVEL</p><div className="about-author-image"><Image src="/editorial/congresso.webp" alt="Congresso Nacional em Brasília, imagem editorial ilustrativa" fill sizes="30vw" /></div><h2>Um projeto independente.</h2><p>A Statecraft é um projeto pessoal de Patrick Santos, analista de segurança com foco em Blue Team, conforme a apresentação original da plataforma.</p><a className="under-link" href="https://portfolioptk.vercel.app/" target="_blank" rel="noopener noreferrer">Conhecer o autor ↗</a></div></section>
     <section className="editorial-section"><div className="section-heading"><h2>FONTES E PRINCÍPIOS</h2></div><p className="about-wide">A cobertura usa fontes abertas como CISA KEV, NVD, FIRST EPSS e OTX AlienVault. Dados de probabilidade, severidade, atribuição e exploração mantêm significados distintos. Cada análise aponta para a fonte primária e descreve as limitações do material.</p><Link className="under-link" href="/metodologia">Ler metodologia completa →</Link></section>

@@ -4,9 +4,12 @@ import {
   Database, Cpu, ShieldCheck, AlertTriangle,
   ArrowRight, ChevronRight, Globe,
 } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
+import { getPublishedSnapshot } from "@/lib/publication/snapshot";
 
 export const metadata: Metadata = {
-  title: "Metodologia | Statecraft Cyber Intelligence",
+  title: "Metodologia",
+  alternates: { canonical: "/metodologia" },
   description:
     "Como a Statecraft coleta, processa e apresenta dados de threat intelligence: fontes, pipeline, papel da IA, normalização de IOCs e limitações.",
 };
@@ -20,20 +23,20 @@ const SOURCES = [
 ];
 
 const PIPELINE = [
-  { step: "1", title: "Coleta horária", desc: "cron-job.org dispara a rota protegida a cada hora. Dados são coletados de todas as fontes ativas em paralelo." },
-  { step: "2", title: "Deduplicação", desc: "Cada item recebe um hash SHA-256 baseado em externalId + source + CVEs. Itens já presentes no banco são descartados antes de qualquer chamada à IA." },
-  { step: "3", title: "Priorização", desc: "Itens são ordenados por severidade (Critical → High → Medium), presença no CISA KEV e CVSS score. Uma função de diversificação limita o domínio por fonte." },
-  { step: "4", title: "Geração de briefing", desc: "Os itens prioritários são enviados ao LLaMA 3.3 70B via Groq. O modelo gera título, resumo, conteúdo técnico, severidade, IOCs, CVEs e técnicas MITRE ATT&CK em PT-BR." },
-  { step: "5", title: "Persistência", desc: "O briefing é salvo no PostgreSQL. IOCs são normalizados e persistidos na tabela relacional Ioc com índices por tipo, valor e confiança." },
-  { step: "6", title: "Log de execução", desc: "Cada execução gera um registro em CronLog com status, duração, fontes consultadas, briefings criados e erros por fonte." },
+  { step: "1", title: "Coleta local horária", desc: "A rotina horária no computador do operador consulta as fontes abertas e grava os dados no PostgreSQL local. O computador precisa estar ligado e conectado para que a rotina execute." },
+  { step: "2", title: "Deduplicação e validação", desc: "Os itens são deduplicados e as evidências verificadas antes da publicação. Uma falha de fonte não equivale a uma coleção vazia." },
+  { step: "3", title: "Análise com evidências", desc: "Os briefings usam seleção de trechos das fontes, validação de conteúdo e controles de qualidade. A prioridade operacional das CVEs é calculada por regras determinísticas, não pelo modelo." },
+  { step: "4", title: "Modelos de briefing", desc: "O padrão é openai/gpt-oss-120b via Groq. Quando não há resposta utilizável, o fallback é anthropic/claude-3.5-haiku via OpenRouter, se configurado. Os modelos podem ser alterados pelo operador." },
+  { step: "5", title: "Exportação e publicação", desc: "A rotina local exporta o snapshot público do PostgreSQL e publica o site com esse arquivo. Apenas conteúdo elegível é incluído; a leitura pública não precisa acessar o banco local." },
+  { step: "6", title: "Leitura e monitoramento", desc: "As páginas servem o snapshot publicado, sem coleta externa nem geração de texto ao abrir artigos. /api/health retorna estado degradado e HTTP 503 quando o snapshot passa de 3 horas sem publicação, ou quando os pipelines indicam degradação." },
 ];
 
 const PRIORITIZATION = [
-  { label: "CVSS ≥ 9.0 (Critical)",  weight: "Prioridade máxima" },
-  { label: "CISA KEV",               weight: "Forçado para o topo — exploração confirmada" },
-  { label: "EPSS > 0,5 (50%)",       weight: "Maior probabilidade estimada de exploração em 30 dias; não confirma exploração" },
-  { label: "CVSS 7.0–8.9 (High)",    weight: "Incluído na fila padrão" },
-  { label: "CVSS < 7.0 (Medium/Low)",weight: "Baixa prioridade — incluído se houver espaço" },
+  { label: "P1 · CISA KEV", weight: "Presença reportada no catálogo; avaliar exposição imediatamente" },
+  { label: "P2 · Evidência de exploit", weight: "Referência Exploit no NVD, ou CVSS ≥ 9 e EPSS ≥ 10%" },
+  { label: "P3 · Sinais de risco", weight: "CVSS ≥ 7 ou EPSS ≥ 10%" },
+  { label: "P4 · Demais registros", weight: "Dados disponíveis abaixo dos limiares anteriores" },
+  { label: "Dados insuficientes", weight: "CVSS e EPSS ausentes, sem os sinais anteriores" },
 ];
 
 const IOC_NORMALIZATION = [
@@ -46,9 +49,9 @@ const IOC_NORMALIZATION = [
 ];
 
 const AI_ROLES = [
-  { area: "Briefings",   desc: "Gera título, resumo executivo, conteúdo técnico, severidade, IOCs, CVEs, técnicas MITRE e recomendações em PT-BR a partir dos dados brutos da fonte." },
-  { area: "CVEs",        desc: "Enriquece cada CVE com descrição técnica em PT-BR, mitigação recomendada e prioridade operacional (Crítica/Alta/Média/Baixa) considerando CVSS, EPSS e CISA KEV." },
-  { area: "Notícias",    desc: "Quando o usuário abre um artigo, a IA gera uma matéria jornalística completa em PT-BR a partir do RSS feed. O resultado é cacheado em NewsCache para leituras subsequentes." },
+  { area: "Briefings", desc: "Seleciona e organiza evidências das fontes em campos estruturados. A validação pode rejeitar conteúdo sem sustentação. A IA pode cometer erros e exige conferência das fontes." },
+  { area: "CVEs", desc: "Pode apoiar o enriquecimento textual em português durante o processamento local. CVSS, EPSS e CISA KEV mantêm suas fontes; a prioridade operacional segue regras determinísticas visíveis na plataforma." },
+  { area: "Notícias", desc: "O processamento local pode preparar texto validado antes da exportação. No modo snapshot, abrir uma notícia lê apenas o conteúdo publicado e não dispara chamadas ao modelo." },
 ];
 
 function Section({ id, icon: Icon, title, children }: {
@@ -70,23 +73,12 @@ function Section({ id, icon: Icon, title, children }: {
   );
 }
 
-export default function MetodologiaPage() {
+export default async function MetodologiaPage() {
+  const snapshot = await getPublishedSnapshot().catch(() => null);
   return (
     <main className="article-page methodology-page min-h-screen bg-canvas pt-16">
-      {/* Hero */}
-      <section className="relative py-14 border-b border-white/[0.04] overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-canvas" aria-hidden />
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 mb-4">
-            <ShieldCheck size={14} className="text-brand" aria-hidden />
-            <span className="text-xs font-semibold text-dim uppercase tracking-widest">Transparência</span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight text-white mb-4 leading-tight">Metodologia</h1>
-          <p className="text-body text-base leading-relaxed max-w-2xl mb-6">
-            Como a Statecraft coleta, processa e apresenta dados de threat intelligence.
-            Esta página documenta as fontes, o pipeline de dados, o papel da IA e as limitações do sistema.
-          </p>
-
+      <PageHeader eyebrow="TRANSPARÊNCIA" title="Metodologia" description="Fontes, coleta local, publicação do snapshot e critérios de análise da Statecraft." capturedAt={snapshot?.capturedAt ?? snapshot?.generatedAt ?? null} />
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Nav rápida */}
           <nav aria-label="Seções da metodologia" className="flex flex-wrap gap-2">
             {[
@@ -107,8 +99,7 @@ export default function MetodologiaPage() {
               </Link>
             ))}
           </nav>
-        </div>
-      </section>
+      </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
@@ -150,8 +141,9 @@ export default function MetodologiaPage() {
         {/* Priorização */}
         <Section id="priorizacao" icon={AlertTriangle} title="Priorização de CVEs">
           <p className="text-xs text-dim leading-relaxed mb-5">
-            CVEs são filtrados e ordenados com base em três sinais independentes: CVSS, EPSS e CISA KEV.
-            Vulnerabilidades com exploração confirmada têm prioridade incondicional.
+            As regras determinísticas são aplicadas em ordem, sem soma de sinais ou prioridade gerada por IA.
+            O limiar EPSS de 10% é uma escolha operacional da Statecraft. EPSS estima a probabilidade em 30 dias;
+            não confirma exploração. Dados ausentes não são pontuação zero.
           </p>
           <div className="bg-raised border border-white/[0.06] rounded-xl overflow-hidden">
             {PRIORITIZATION.map((p, i) => (
@@ -166,8 +158,8 @@ export default function MetodologiaPage() {
         {/* IA */}
         <Section id="ia" icon={ShieldCheck} title="Papel da inteligência artificial">
           <p className="text-xs text-dim leading-relaxed mb-5">
-            O modelo LLaMA 3.3 70B (via Groq) é utilizado em três contextos distintos.
-            Em nenhum deles a IA inventa dados — ela processa e reformata informações das fontes primárias.
+            Para briefings, os defaults são openai/gpt-oss-120b via Groq e fallback anthropic/claude-3.5-haiku via OpenRouter.
+            O processamento ocorre antes da publicação. A interface pública em modo snapshot não gera conteúdo durante a leitura.
           </p>
           <div className="space-y-3">
             {AI_ROLES.map((r) => (
@@ -218,11 +210,11 @@ export default function MetodologiaPage() {
               },
               {
                 title: "Latência do pipeline",
-                desc: "O cron executa a cada hora. Ameaças publicadas entre execuções não aparecem imediatamente. Para monitoramento em tempo real, consulte as fontes diretamente.",
+                desc: "A rotina horária depende do computador do operador. Sem execução ou publicação bem-sucedida, o site continua servindo o último snapshot. Após 3 horas sem publicação, /api/health indica degradação. Consulte a data da coleta e as fontes primárias.",
               },
               {
                 title: "Cobertura de IOCs",
-                desc: "IOCs são extraídos automaticamente pela IA a partir do conteúdo das fontes. Indicadores não mencionados explicitamente no texto ou feed não são capturados.",
+                desc: "A publicação de IOCs exige evidência nas fontes e validação do pipeline. A cobertura pode ser incompleta. Valide fonte, confiança, contexto e possíveis falsos positivos antes de bloquear indicadores.",
               },
               {
                 title: "Dependência de disponibilidade externa",

@@ -21,6 +21,7 @@ const defaultFilters = {
   to: "",
   analysis: "",
   sort: "priority",
+  window: "",
 };
 type Filters = typeof defaultFilters;
 const date = (v: string | null | undefined) =>
@@ -134,7 +135,7 @@ export default function CveExplorer({
             <span>Consultar</span>
           </button>
         </div>
-        <div className={styles.advancedFilters}>
+        <div className={styles.primaryFilters}>
           <label>
             Severidade
             <select
@@ -150,6 +151,33 @@ export default function CveExplorer({
               <option value="UNKNOWN">Não informada</option>
             </select>
           </label>
+          <label>
+            CISA KEV
+            <select
+              value={filters.kev}
+              onChange={(e) => update("kev", e.target.value)}
+            >
+              <option value="">Todos os estados</option>
+              <option value="yes">Catalogada</option>
+              <option value="no">Não catalogada na consulta</option>
+            </select>
+          </label>
+          <label>
+            Ordenar por
+            <select
+              value={filters.sort}
+              onChange={(e) => update("sort", e.target.value)}
+            >
+              <option value="priority">Prioridade operacional</option>
+              <option value="cvss">Maior CVSS</option>
+              <option value="epss">Maior EPSS</option>
+              <option value="recent">Publicação mais recente</option>
+            </select>
+          </label>
+        </div>
+        <details className={styles.moreFilters}><summary>Mais filtros</summary><div className={styles.advancedFilters}>
+
+
           <label>
             Fabricante ou produto
             <input
@@ -170,17 +198,7 @@ export default function CveExplorer({
               ))}
             </select>
           </label>
-          <label>
-            CISA KEV
-            <select
-              value={filters.kev}
-              onChange={(e) => update("kev", e.target.value)}
-            >
-              <option value="">Todos os estados</option>
-              <option value="yes">Catalogada</option>
-              <option value="no">Não catalogada na consulta</option>
-            </select>
-          </label>
+
           <fieldset>
             <legend>CVSS · 0 a 10</legend>
             <div>
@@ -272,19 +290,8 @@ export default function CveExplorer({
               <option value="no">Sem análise validada</option>
             </select>
           </label>
-          <label>
-            Ordenar por
-            <select
-              value={filters.sort}
-              onChange={(e) => update("sort", e.target.value)}
-            >
-              <option value="priority">Prioridade operacional</option>
-              <option value="cvss">Maior CVSS</option>
-              <option value="epss">Maior EPSS</option>
-              <option value="recent">Publicação mais recente</option>
-            </select>
-          </label>
-        </div>
+
+        </div></details>
         <div className={styles.filterActions}>
           <button type="submit" disabled={busy}>
             Aplicar filtros
@@ -310,7 +317,7 @@ export default function CveExplorer({
       <div ref={resultRef} className={styles.resultsHead} aria-live="polite">
         <p>
           {busy
-            ? "Consultando fontes e registros…"
+            ? "Consultando registros publicados…"
             : `${data.total} resultados · página ${data.page} de ${data.totalPages}`}
         </p>
       </div>
@@ -393,10 +400,9 @@ export default function CveExplorer({
           })
         ) : (
           <div className={styles.emptyState}>
-            <h3>Nenhum resultado nesta combinação</h3>
+            <h3>{data.available === false ? "Dados indisponíveis" : "Nenhum resultado nesta combinação"}</h3>
             <p>
-              Ajuste os filtros. Dados ausentes não são tratados como pontuação
-              zero.
+              {data.available === false ? "A fonte de dados está indisponível. Última coleta: " + date(data.updatedAt) + ". Tente novamente mais tarde." : "Ajuste os filtros. Dados ausentes não são tratados como pontuação zero."}
             </p>
           </div>
         )}

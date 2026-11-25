@@ -1,28 +1,21 @@
-import Image from "next/image";
-import Link from "next/link";
 import { getStoredNews } from '@/lib/news-store';
 import { sortRecentNews } from '@/lib/news-order';
-import { editorialImageForNews } from "@/lib/editorial-image";
-import NewsExplorer from "@/components/news/NewsExplorer";
+import NewsExplorer from '@/components/news/NewsExplorer';
+import PageHeader from '@/components/PageHeader';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: "Notícias", description: "Notícias de cibersegurança agregadas de fontes especializadas, com origem preservada e contexto para análise." };
+export const metadata = { title: 'Notícias', description: 'Notícias de cibersegurança agregadas de fontes especializadas, com origem preservada e contexto para análise.', alternates: { canonical: '/noticias' } };
 
 export default async function NoticiasPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const [news, { tab }] = await Promise.all([getStoredNews(), searchParams]);
+  const { tab } = await searchParams;
+  let news;
+  try { news = await getStoredNews(); } catch {
+    return <main className="editorial-page page-shell news-editorial-page" data-content="news"><PageHeader eyebrow="NOTÍCIAS" title="Cobertura em contexto." description="Notícias de cibersegurança com as fontes originais preservadas." /><section role="status"><h2>Fonte de notícias indisponível</h2><p>Não foi possível carregar a publicação. Tente novamente mais tarde.</p></section></main>;
+  }
   const articles = sortRecentNews(news.articles);
-  const lead = [...articles].sort((a, b) => b.importance - a.importance || Date.parse(b.publishedAt) - Date.parse(a.publishedAt))[0];
-  const image = lead ? editorialImageForNews(lead) : null;
-  const categoryLeads = [...new Set(articles.map((article) => article.type).filter(Boolean))].slice(0, 3).map((type) => ({ type, article: articles.find((item) => item.type === type)! }));
   return <main className="editorial-page page-shell news-editorial-page">
-    <p className="story-meta">{news.lastCollectionAt ? <>Última coleta: <time dateTime={news.lastCollectionAt}>{new Date(news.lastCollectionAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} (Brasília)</time>.</> : 'Aguardando a primeira coleta.'} {news.stale && 'Atualização atrasada. Exibindo o último conteúdo disponível.'}</p>
-    {lead && image ? <section className={`news-lead ${lead.title.length > 72 ? "long-headline" : ""}`}>
-      <div className="news-lead-copy"><p className="eyebrow">NOTÍCIAS / EM DESTAQUE</p><h1><Link href={`/noticias/${lead.slug}`}>{lead.title}</Link></h1><p className="news-summary">{lead.summary}</p><p className="story-meta">{new Date(lead.publishedAt).toLocaleDateString("pt-BR")} · {lead.type || "CIBERSEGURANÇA"} · {lead.source}</p><Link className="editorial-button" href={`/noticias/${lead.slug}`}>Ler notícia completa →</Link></div>
-      <div className="news-lead-photo"><Image src={image.src} alt={image.alt} fill sizes="(max-width: 940px) 100vw, 40vw" priority /></div>
-      <aside className="news-latest"><h2>ÚLTIMAS NOTÍCIAS</h2>{articles.slice(0, 4).map((article) => <Link href={`/noticias/${article.slug}`} key={article.slug}><small>{new Date(article.publishedAt).toLocaleDateString("pt-BR")} · {article.source}</small><strong>{article.title}</strong></Link>)}</aside>
-    </section> : <div className="news-empty"><p className="eyebrow">NOTÍCIAS</p><h1>Cobertura em contexto.</h1><p>As notícias dos feeds estão indisponíveis no momento.</p></div>}
-    {categoryLeads.length > 0 && <section className="editorial-section news-categories"><div className="section-heading"><h2>EDITORIAS</h2><span>CATEGORIAS PRESENTES NA COBERTURA</span></div><div className="editorial-three">{categoryLeads.map(({ type, article }) => <article className="news-category" key={type}><p className="eyebrow">{type}</p><p className="story-meta">{new Date(article.publishedAt).toLocaleDateString("pt-BR")} · {article.source}</p><h3><Link href={`/noticias/${article.slug}`}>{article.title}</Link></h3><p className="news-summary">{article.summary}</p><Link href={`/noticias/${article.slug}`} className="under-link">Ler notícia →</Link></article>)}</div></section>}
-    <div className="section-heading"><h2>ARQUIVO DE NOTÍCIAS</h2><span>CONTEÚDO AGREGADO · FONTES ORIGINAIS NOS ARTIGOS</span></div>
-    <NewsExplorer initialArticles={articles} initialTab={tab === "contexto" ? "contexto" : "alertas"} />
+    <PageHeader eyebrow="NOTÍCIAS" title="Cobertura em contexto." description="Notícias de cibersegurança com as fontes originais preservadas." capturedAt={news.lastCollectionAt} />
+    {news.stale && <p className="story-meta" role="status">Atualização atrasada. Exibindo o último conteúdo disponível.</p>}
+    {articles.length ? <><div className="section-heading"><h2>ARQUIVO DE NOTÍCIAS</h2><span>FONTES ORIGINAIS NOS ARTIGOS</span></div><NewsExplorer initialArticles={articles} initialTab={tab === 'contexto' ? 'contexto' : 'alertas'} /></> : <section><h2>Nenhuma notícia publicada</h2><p>O arquivo ainda não tem notícias nesta publicação.</p></section>}
   </main>;
 }

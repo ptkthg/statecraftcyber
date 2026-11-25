@@ -1,167 +1,87 @@
 # Statecraft Cyber Intelligence
 
-Plataforma de threat intelligence em português construída do zero como projeto pessoal de Blue Team. Agrega dados de fontes abertas globais e os transforma em briefings técnicos, notícias classificadas, CVEs enriquecidos e IOCs estruturados — tudo em PT-BR, atualizado continuamente.
+Publicação independente de inteligência de ameaças em português com briefings, notícias, CVEs e IOCs baseados em fontes abertas, contextualizados para o Brasil e a América Latina.
 
 **Site:** [statecraftcyber.vercel.app](https://statecraftcyber.vercel.app)
 
----
+## Fluxo de dados
 
-## O que a plataforma oferece
+A rotina horária roda no computador do operador e usa PostgreSQL local para a coleta. A publicação na Vercel leva um snapshot de leitura:
 
-- **Threat Briefings** — fichas técnicas geradas por IA (Groq / LLaMA 3.3 70B) a cada hora, com severidade, IOCs, CVEs e recomendações diretas para o Blue Team
-- **CVEs** — vulnerabilidades das últimas 72h com CVSS, EPSS, CISA KEV e classificação por tipo (Execução de Código, Injeção, Estouro de Buffer etc.)
-- **Notícias** — 20 feeds RSS de fontes internacionais e brasileiras (CISA, Krebs, Google Threat Intelligence, CERT.br, WeLiveSecurity Brasil e outras), classificadas por tipo de ameaça e região. Quando o usuário abre um artigo, a IA Statecraft enriquece o conteúdo sob demanda, gerando uma matéria jornalística completa em PT-BR. O resultado é cacheado em `NewsCache` para servir leituras subsequentes sem nova chamada ao LLM
-- **IOC Search** — busca de indicadores de comprometimento extraídos dos briefings, com suporte a IP, domínio, hash, URL e e-mail
-- **Health Endpoint** — `/api/health` para monitoramento de disponibilidade e integridade do banco
-- **Sobre** — contexto técnico da plataforma e do pipeline de dados
+Fontes abertas → rotina local horária → PostgreSQL local → deduplicação, enriquecimento e validação → exportação do snapshot → publicação na Vercel → leitura pública do arquivo.
 
----
+O fluxo completo está em `scripts/local/run-local.ps1`: coleta com `updates:local`, backup, exportação com `publication:export` e publicação com `publication:deploy`. O publicador `scripts/publish-local.mjs` recebe o snapshot já exportado; não faz coleta. O modo banco continua disponível para processamento local.
 
-## Stack
+Em produção, `STATECRAFT_DATA_SOURCE=snapshot` lê `data/publication/current.json`. Abrir uma notícia, briefing ou ficha de CVE nesse modo não inicia coleta externa nem geração de texto. A interface apresenta a data da coleta.
+
+O computador do operador precisa estar ligado e conectado para a rotina horária executar. Se uma etapa falhar, o site pode continuar servindo o último snapshot. `/api/health` indica `degraded` e responde HTTP 503 quando o snapshot passa de **3 horas sem publicação**, quando falta um arquivo válido ou quando os pipelines indicam degradação. Nesse modo, o banco não é necessário para a leitura pública.
+
+## Conteúdo e critérios
+
+- **Briefings:** análise estruturada com evidências e validação antes da publicação. Um item coletado pode ser rejeitado pelos controles de qualidade.
+- **CVEs:** CVSS, EPSS, CISA KEV, produtos afetados e referências das fontes. A prioridade operacional é determinística e aplica regras em ordem: P1 para presença reportada no KEV; P2 para referência Exploit no NVD ou CVSS ≥ 9 com EPSS ≥ 10%; P3 para CVSS ≥ 7 ou EPSS ≥ 10%; P4 para os demais registros com dados. Sem CVSS e EPSS e sem os sinais anteriores, o estado é de dados insuficientes. O limiar EPSS de 10% é uma escolha operacional da Statecraft.
+- **Notícias:** arquivo de fontes brasileiras e internacionais. Não há geração ao abrir a página no modo snapshot.
+- **IOCs:** indicadores estruturados com confiança e vínculo com o briefing. Valide fonte, contexto e possíveis falsos positivos antes de bloquear.
+- **Campanhas:** dossiês editoriais documentados no repositório.
+
+## Stack e modelos
 
 | Camada | Tecnologia |
 |---|---|
-| Frontend / Backend | Next.js 16.2.6 (App Router), TypeScript, Tailwind CSS v4 |
-| Banco de dados | PostgreSQL (Neon) + Prisma 6 |
-| IA | Groq API (LLaMA 3.3 70B) |
-| Sanitização | isomorphic-dompurify + marked |
-| Fontes de ameaça | NVD API, CISA KEV, OTX AlienVault, EPSS (FIRST.org) |
-| Feeds de notícias | 20 fontes RSS internacionais e brasileiras |
-| Deploy | Vercel (app) + cron-job.org (scheduler horário externo, plano Hobby) |
+| Aplicação | Next.js 16.2.6 App Router, TypeScript, Tailwind CSS v4 |
+| Coleta e persistência | PostgreSQL local + Prisma 6 |
+| Leitura em produção | Snapshot JSON publicado com a aplicação na Vercel |
+| Briefings: padrão | Groq, `openai/gpt-oss-120b` |
+| Briefings: fallback | OpenRouter, `anthropic/claude-3.5-haiku` |
+| Markdown e sanitização | marked, sanitize-html e DOMPurify |
+| Fontes | NVD, CISA KEV, FIRST EPSS, AlienVault OTX e feeds RSS |
 
----
+Os modelos acima são os defaults de `lib/ai-briefing.ts`. `GROQ_MODEL` e `OPENROUTER_MODEL` permitem configuração pelo operador; o fallback depende de credenciais válidas. A IA apoia a organização de evidências e o enriquecimento textual e pode errar. A prioridade operacional das CVEs não é determinada pelo modelo.
 
-## Arquitetura e Pipeline de Dados
+## Desenvolvimento local
 
-```
-Fontes externas (NVD, CISA KEV, OTX, RSS)
-        │
-        ▼
-  cron-job.org → Vercel — executa a cada hora (Hobby plan)
-  vercel.json define o schedule para migração futura ao plano Pro
-        │
-        ├── Coleta notícias (RSS feeds) → NewsCache (PostgreSQL)
-        │
-        └── Coleta ameaças (NVD, CISA, OTX)
-                │
-                ▼
-          Groq LLaMA 3.3 70B
-          Gera briefing estruturado (título, resumo,
-          severidade, IOCs, CVEs, MITRE ATT&CK)
-                │
-                ▼
-          Briefing → PostgreSQL (status: published)
-                │
-                ├── IOCs estruturados → tabela Ioc
-                └── Expostos via API REST → Frontend (Next.js)
-```
-
----
-
-## Modelos Prisma
-
-| Modelo | Descrição |
-|---|---|
-| `Briefing` | Briefing completo gerado por IA com metadados de ameaça |
-| `Ioc` | Indicadores de comprometimento normalizados com índices |
-| `NewsCache` | Notícias enriquecidas dos feeds RSS |
-| `CronLog` | Log de execução dos cron jobs |
-
----
-
-## Setup local
-
-### Pré-requisitos
-
-- Node.js 20+
-- PostgreSQL (ou conta Neon gratuita)
-- Chaves de API: Groq, NVD (opcional), OTX (opcional)
-
-### Instalação
+Pré-requisitos: Node.js 20+ e PostgreSQL local para o modo banco. Instale as dependências e copie `.env.example` para `.env`, preenchendo as credenciais necessárias ao ambiente.
 
 ```bash
-git clone https://github.com/ptkthg/statecraftcyber
-cd statecraftcyber
 npm install
-```
-
-### Variáveis de ambiente
-
-Copie o arquivo de exemplo e preencha as variáveis:
-
-```bash
-cp .env.example .env
-```
-
-| Variável | Descrição |
-|---|---|
-| `DATABASE_URL` | URL de conexão PostgreSQL com `?sslmode=require` |
-| `GROQ_API_KEY` | Chave da API Groq (groq.com) |
-| `NVD_API_KEY` | Chave da API NVD — opcional, sem chave o rate limit é mais baixo |
-| `OTX_API_KEY` | Chave AlienVault OTX — opcional |
-| `CRON_SECRET` | Token secreto para autenticar chamadas de cron (header `Authorization: Bearer`) |
-| `ADMIN_SECRET` | Senha de acesso ao painel `/admin/status` |
-| `AUTO_PUBLISH` | `true` para publicar briefings automaticamente |
-| `MAX_HOURLY_BRIEFINGS` | Limite de briefings por hora (padrão: 3) |
-
-### Banco de dados
-
-```bash
-# Criar tabelas e aplicar migrações
 npx prisma migrate dev
-
-# Visualizar dados no browser
-npx prisma studio
-```
-
-### Desenvolvimento
-
-```bash
 npm run dev
 ```
 
-Acesse [http://localhost:3000](http://localhost:3000).
+A aplicação fica em [localhost:3000](http://localhost:3000).
 
-### Build para produção
+| Variável | Uso |
+|---|---|
+| `DATABASE_URL` | Conexão PostgreSQL local; SSL conforme o ambiente |
+| `STATECRAFT_DATA_SOURCE` | `snapshot` para o arquivo publicado; modo banco para coleta local |
+| `GROQ_API_KEY`, `GROQ_MODEL` | Credencial e modelo principal de briefings |
+| `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | Credencial e modelo de fallback |
+| `NVD_API_KEY`, `OTX_API_KEY` | Credenciais opcionais das fontes |
+| `CRON_SECRET` | Autenticação das rotas protegidas de atualização |
+| `ADMIN_SECRET` | Acesso ao painel administrativo |
+
+Consulte `.env.example` e os scripts locais para as demais opções. Não versione credenciais.
+
+## Verificação
 
 ```bash
+npx tsc --noEmit
+npm run lint
+npm test
 npm run build
-npm start
 ```
 
----
+Para verificar o build com o snapshot existente no PowerShell:
 
-## Comandos Prisma úteis
-
-```bash
-# Aplicar migrações em produção (sem gerar arquivos de migração)
-npx prisma migrate deploy
-
-# Regenerar o Prisma Client após mudanças no schema
-npx prisma generate
-
-# Resetar banco (CUIDADO: apaga todos os dados)
-npx prisma migrate reset
+```powershell
+$env:STATECRAFT_DATA_SOURCE = 'snapshot'
+npm run build
 ```
 
----
+Coleta e publicação são operações separadas da verificação de código e devem ser executadas pelo operador no fluxo local autorizado.
 
-## Fontes de dados
+## Limitações
 
-| Fonte | Tipo | Endpoint |
-|---|---|---|
-| NVD (NIST) | CVEs | `services.nvd.nist.gov/rest/json/cves/2.0` |
-| CISA KEV | Vulnerabilidades exploradas | `www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json` |
-| EPSS (FIRST.org) | Score de exploração | `api.first.org/data/v1/epss` |
-| AlienVault OTX | IOCs e pulsos | `otx.alienvault.com/api/v1` |
-| 20x RSS feeds | Notícias | CISA, Google Threat Intelligence, Cisco Talos, CERT.br, Elastic Security Labs e outros |
+Cobertura e atualidade dependem das fontes e da última coleta publicada. CVSS mede severidade técnica; EPSS estima a probabilidade em 30 dias e não confirma exploração. Dados de inteligência devem ser validados em fontes primárias antes de ações críticas.
 
----
-
-## Aviso
-
-> Dados de Threat Intelligence devem ser validados em fontes primárias antes de qualquer ação crítica em produção.
-
----
-
-Desenvolvido por [Patrick Santos](https://portfolioptk.vercel.app) — Analista de Segurança, Blue Team.
+Desenvolvido por [Patrick Santos](https://portfolioptk.vercel.app).

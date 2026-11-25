@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-export const metadata: Metadata = { title: "Créditos visuais" };
+export const metadata: Metadata = { title: "Créditos visuais", description: "Autores, origens e licenças das fotografias e do mapa usados como ilustração editorial.", alternates: { canonical: "/creditos-visuais" } };
 const credits = [
   { title: "Congresso Nacional, Brasília", author: "Autor não identificado / Acervo Arquivo Nacional", license: "Domínio público. Atribuição solicitada: Domínio público / Acervo Arquivo Nacional.", url: "https://commons.wikimedia.org/wiki/File:Congresso_Nacional_Bras%C3%ADlia_-_BR_RJANRIO_PH_0_FOT_00743_0018,_Acervo_do_Arquivo_Nacional.jpg" },
   { title: "Antena em Teresópolis", author: "Vitor Paladini", license: "Unsplash License", url: "https://unsplash.com/photos/a-satellite-dish-sitting-on-top-of-a-building-Pi3TvIKNmjM" },

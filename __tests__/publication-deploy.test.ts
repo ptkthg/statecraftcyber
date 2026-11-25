@@ -56,3 +56,42 @@ it('refuses an older deployment even if all endpoints return HTTP 200',async()=>
   const fetcher=async()=>new Response(JSON.stringify({source:'local-snapshot',database:'not_required',snapshotGeneratedAt:'2026-11-20T12:00:00Z',cves:{cached:0},briefings:{published:0},iocs:{total:0}}));
   await expect(verifyPublication('https://example.org',snapshot,fetcher)).rejects.toThrow('publication_identity_mismatch');
 });
+
+function verificationFetcher(snapshot: ReturnType<typeof publicationFixture>, overrides: Record<string, () => Response> = {}) {
+  const visited: string[] = [];
+  const fetcher: typeof fetch = async input => {
+    const url = new URL(input instanceof Request ? input.url : input);
+    visited.push(url.pathname);
+    const key = url.pathname + url.search;
+    if (overrides[key]) return overrides[key]();
+    const payloads: Record<string, unknown> = {
+      '/api/health': { status: 'ok', source: 'local-snapshot', database: 'not_required', snapshotGeneratedAt: snapshot.generatedAt, snapshotSha256: 'expected', cves: { cached: snapshot.cves.length }, briefings: { published: snapshot.briefings.briefings.length }, iocs: { total: snapshot.iocs.length } },
+      '/api/noticias': { total: snapshot.news.articles.length, lastCollectionAt: snapshot.news.lastCollectionAt },
+      '/api/cves?limit=1': { total: snapshot.cves.length },
+      '/api/briefings?limit=1': { briefings: [] },
+      '/api/iocs': { total: snapshot.iocs.length },
+    };
+    if (key in payloads) return Response.json(payloads[key]);
+    if (key === '/noticias') return new Response('<main data-content="news">Arquivo publicado</main>');
+    if (key === '/cves') return new Response("<main data-content='cves'>Registros publicados</main>");
+    if (key === '/campanhas') return new Response('<main><a href="/campanhas/unc6240-oracle-peoplesoft">Campanha</a></main>');
+    return new Response('<main>Conteúdo publicado</main>');
+  };
+  return { fetcher, visited };
+}
+it('checks a campaign dossier and the editorial information routes after verifying publication identity', async () => {
+  const snapshot = publicationFixture();
+  const { fetcher, visited } = verificationFetcher(snapshot);
+  expect(await verifyPublication('https://example.org', snapshot, fetcher, 'expected')).toMatchObject({ status: 'ok', cves: 1 });
+  expect(visited).toEqual(expect.arrayContaining(['/campanhas/unc6240-oracle-peoplesoft', '/metodologia', '/sobre', '/creditos-visuais']));
+});
+it.each(['/noticias', '/cves'])('rejects a fallback HTTP 200 page without its content marker: %s', async path => {
+  const snapshot = publicationFixture();
+  const { fetcher } = verificationFetcher(snapshot, { [path]: () => new Response('<main>Conteúdo indisponível</main>') });
+  await expect(verifyPublication('https://example.org', snapshot, fetcher, 'expected')).rejects.toThrow('publication_content_missing:' + path);
+});
+it('rejects a failed campaign dossier even when the campaign index returns HTTP 200', async () => {
+  const snapshot = publicationFixture();
+  const { fetcher } = verificationFetcher(snapshot, { '/campanhas/unc6240-oracle-peoplesoft': () => new Response('Unavailable', { status: 503 }) });
+  await expect(verifyPublication('https://example.org', snapshot, fetcher, 'expected')).rejects.toThrow('publication_page_failed:/campanhas/unc6240-oracle-peoplesoft');
+});

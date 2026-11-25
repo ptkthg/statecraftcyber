@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Threat Briefings",
   description:
-    "Briefings operacionais de threat intelligence gerados por IA a cada hora. Análise de APTs, ransomware, vulnerabilidades e IOCs em PT-BR.",
+    "Briefings operacionais com análise de APTs, ransomware, vulnerabilidades e IOCs em português, a partir de fontes documentadas.",
+  alternates: { canonical: "/threat-briefings" },
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {

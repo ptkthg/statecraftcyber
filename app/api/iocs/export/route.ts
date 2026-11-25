@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       const { searchParams } = req.nextUrl;
       const { filtered } = filterPreviewIocs(preview.iocs, searchParams.get("q") ?? "", searchParams.get("type")?.toLowerCase() ?? "");
       const results = filtered.slice(0, 500);
-      return NextResponse.json({ results, total: results.length });
+      return NextResponse.json({ results, total: filtered.length, truncated: filtered.length > 500, limit: 500 });
     }
     const { prisma } = await import("@/lib/prisma");
     const { searchParams } = req.nextUrl;
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       ...(q ? { normalized: { contains: q } } : {}),
     };
 
-    const rows = await prisma.ioc.findMany({
+    const [rows, total] = await Promise.all([prisma.ioc.findMany({
       where,
       orderBy: { createdAt: "desc" },
       take: 500,
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
           select: { slug: true, title: true, severity: true, sourceName: true, createdAt: true },
         },
       },
-    });
+    }), prisma.ioc.count({ where })]);
 
     const results: EnrichedIoc[] = rows.map((ioc) => ({
       type: ioc.type as EnrichedIoc["type"],
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
       sourceName: ioc.sourceName ?? ioc.briefing.sourceName,
     }));
 
-    return NextResponse.json({ results, total: results.length });
+    return NextResponse.json({ results, total, truncated: total > 500, limit: 500 });
   } catch (err) {
     console.error("[API /iocs/export]", err);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });

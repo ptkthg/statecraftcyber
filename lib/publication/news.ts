@@ -9,14 +9,17 @@ export function plainNewsContent(html:string) {
 const evidence=(article:Pick<NewsArticle,'title'|'summary'|'content'>)=>[article.title,article.summary,plainNewsContent(article.content ?? '')].join('\n');
 function approved(article:NewsArticle,cached:CachedNews):NewsArticle | null {
   const full=evidence(article), fields={title:cached.title,summary:cached.summary,content:cached.content};
-  if (validTextReport(cached.qualityReport,full) && validateTextFields(full,fields).publishable) return {...article,...fields};
+  if (validTextReport(cached.qualityReport,full) && validateTextFields(full,fields).publishable) return {...article,...fields,contentOrigin:'automated'};
   const preview=article.title+'\n'+article.summary;
-  if (validTextReport(cached.qualityReport,preview) && validateTextFields(preview,{title:cached.title,summary:cached.summary}).publishable) return {...article,title:cached.title,summary:cached.summary};
+  if (validTextReport(cached.qualityReport,preview) && validateTextFields(preview,{title:cached.title,summary:cached.summary}).publishable) return {...article,title:cached.title,summary:cached.summary,contentOrigin:'automated'};
   return null;
 }
 export function newsForPublication(originals:NewsArticle[],cache:CachedNews[]):NewsArticle[] {
   const indexed=new Map(cache.map(row=>[row.slug,row]));
-  const articles=new Map(originals.map(article=>[article.slug,indexed.has(article.slug) ? approved(article,indexed.get(article.slug)!) ?? article : article]));
+  const articles=new Map(originals.map(article=>{
+    const raw:NewsArticle={...article,contentOrigin:'source'};
+    return [article.slug,indexed.has(article.slug) ? approved(raw,indexed.get(article.slug)!) ?? raw : raw];
+  }));
   for (const row of cache) {
     if (articles.has(row.slug)) continue;
     const source=row.sourceSnapshot as Partial<NewsArticle> | null;

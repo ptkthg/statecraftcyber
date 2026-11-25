@@ -19,7 +19,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const campaign = campaigns.find((item) => item.slug === slug);
   return campaign ? {
-    title: `${campaign.title} | Statecraft Cyber Intelligence`,
+    title: campaign.title,
+    alternates: { canonical: `/campanhas/${slug}` },
     description: campaign.summary,
   } : {};
 }

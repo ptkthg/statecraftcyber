@@ -53,10 +53,10 @@
 }
 
 .news-editorial-page .news-row-title {
-  font-family: var(--font-bodoni), Georgia, serif;
+  font-family: var(--font-newsreader), Georgia, serif;
   font-size: clamp(24px, 1.8vw, 32px);
-  font-weight: 900;
-  letter-spacing: -.035em;
+  font-weight:600;
+  letter-spacing:normal;
   line-height: 1.06;
   color: var(--text);
   margin: 4px 0 10px;

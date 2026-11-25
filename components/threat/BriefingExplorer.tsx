@@ -183,10 +183,10 @@ export default function BriefingExplorer({ initialBriefings, initialTrending, in
           {filtered.length === 0 && briefings.length === 0 && (
             <div className="text-center py-20 border border-white/[0.05] rounded-[20px]">
               <div className="text-sm font-semibold text-dim mb-1">Nenhum briefing publicado</div>
-              <div className="text-xs text-dim">Os briefings são gerados automaticamente a cada hora.</div>
+              <div className="text-xs text-dim">Novos briefings aparecem após a publicação de uma coleta validada.</div>
             </div>
           )}
-          {filtered.length === 0 && briefings.length > 0 && (
+          {filtered.length === 0 && briefings.length > 0 && !(showFeatured && featured) && (
             <div className="text-center py-16 text-dim text-sm">Nenhum briefing corresponde ao filtro selecionado.</div>
           )}
           <Pagination

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -13,25 +13,30 @@ const TYPE_LABEL: Record<SearchResult["type"], string> = {
 
 const TYPE_COLOR: Record<SearchResult["type"], string> = {
   briefing: "bg-brand/20 text-brand-soft border-brand/30",
-  ioc: "bg-green-500/20 text-green-400 border-green-500/30",
-  noticia: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  cve: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  ioc: "bg-green-500/20 text-green-800 border-green-500/30",
+  noticia: "bg-blue-500/20 text-blue-800 border-blue-500/30",
+  cve: "bg-orange-500/20 text-orange-800 border-orange-500/30",
 };
 
 interface Props {
   result: SearchResult;
+  id: string;
   selected: boolean;
   onSelect: () => void;
 }
 
-export function SearchResultCard({ result, selected, onSelect }: Props) {
+export function SearchResultCard({ result, selected, onSelect, id }: Props) {
   return (
     <Link
+      id={id}
+      role="option"
+      aria-selected={selected}
+      tabIndex={-1}
       href={result.href}
       onClick={onSelect}
       className={cn(
         "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
-        selected ? "bg-white/10" : "hover:bg-white/5"
+        selected ? "bg-black/10 outline outline-1 outline-brand" : "hover:bg-black/5"
       )}
     >
       <span
@@ -47,8 +52,8 @@ export function SearchResultCard({ result, selected, onSelect }: Props) {
         className={cn(
           "flex-1 text-sm truncate",
           result.isMono
-            ? "font-mono text-green-400"
-            : "text-white"
+            ? "font-mono text-green-800"
+            : "text-ink"
         )}
       >
         {result.title}

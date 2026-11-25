@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Suspense } from "react";
+import { linkifyCves } from "@/lib/news-html";
 import { renderSafeMarkdown } from "@/lib/security/sanitize-markdown";
 import {
   ArrowLeft, ExternalLink, Globe, MapPin, Clock,
@@ -114,14 +115,11 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
     html = sanitizeContent(article.content);
   }
 
-  // CVEs no corpo viram links para o NVD
-  html = html.replace(
-    /\b(CVE-\d{4}-\d{4,7})\b/gi,
-    '<a href="https://nvd.nist.gov/vuln/detail/$1" target="_blank" rel="noopener noreferrer" ' +
-    'class="font-mono font-bold text-brand-soft hover:text-brand-soft no-underline hover:underline transition-colors">$1</a>'
-  );
+  html = linkifyCves(html);
 
-  const isAi = enriched.content.length > 100 && enriched.content !== (article.content ?? "");
+  const changed = enriched.title !== article.title || enriched.summary !== article.summary || (enriched.content.length > 100 && enriched.content !== (article.content ?? ""));
+  const origin = changed ? 'automated' : article.contentOrigin;
+  const isAi = origin === 'automated';
   const displayTitle = enriched.title;
   const displaySummary = enriched.summary;
 
@@ -148,7 +146,7 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
       {/* Linha de creditos */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-8 pb-6 border-b border-white/[0.07]">
         <span className="text-xs text-dim">
-          Por <strong className="text-dim">IA Statecraft</strong>
+          {origin ? <>Por <strong className="text-dim">{isAi ? "Statecraft · síntese automatizada" : article.source}</strong></> : `Conteúdo publicado pela Statecraft; fonte: ${article.source}`}
         </span>
         <span className="text-dim">|</span>
         <span className="flex items-center gap-1 text-xs text-dim">
@@ -164,7 +162,7 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
             <span className="text-dim">|</span>
             <span className="flex items-center gap-1 text-xs text-dim">
               <Sparkles size={9} className="text-brand" />
-              {enriched.fromCache ? "Cache" : "Gerado por IA"}
+              {snapshotMode() ? "Síntese publicada" : enriched.fromCache ? "Cache" : "Gerado por IA"}
             </span>
           </>
         )}
@@ -367,16 +365,22 @@ function RelatedCard({ article }: { article: NewsArticle }) {
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const preview = await getLivePreview();
+  let preview;
+  let articles: NewsArticle[];
+  let article: NewsArticle | undefined;
+  try {
+    preview = await getLivePreview();
+    articles = await getCachedArticles();
+    article = articles.find((a) => a.slug === slug) ?? (await getStoredArticle(slug)) ?? undefined;
+  } catch {
+    return <main className="editorial-page page-shell"><h1>Fonte de notícias indisponível</h1><p>Não foi possível carregar esta publicação. Tente novamente mais tarde.</p><Link href="/noticias">Voltar para notícias</Link></main>;
+  }
   if (preview && !snapshotMode()) {
     const item = preview.news.articles.find((article) => article.slug === slug);
     if (!item) notFound();
     const image = editorialImageForNews(item);
     return <PreviewDetail section="Notícias" backHref="/noticias" title={item.title} summary={item.summary} category={item.type || "Cibersegurança"} date={item.publishedAt} source={item.source} sourceUrl={item.url} fullUrl={`${preview.origin}/noticias/${slug}`} capturedAt={preview.capturedAt} image={image.src} imageAlt={image.alt} />;
   }
-  const articles = await getCachedArticles();
-  let article: NewsArticle | undefined = articles.find((a) => a.slug === slug);
-  if (!article) article = (await getStoredArticle(slug)) ?? undefined;
 
   // Cache de 15min pode estar desatualizado — tenta fetch fresco
 
@@ -504,7 +508,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         )}
 
         {/* Corpo via Suspense (IA) */}
-        <Suspense fallback={<ArticleBodySkeleton article={article} />}>
+        <Suspense fallback={snapshotMode() ? null : <ArticleBodySkeleton article={article} />}>
           <EnrichedArticleBody article={article} />
         </Suspense>
 
@@ -537,17 +541,18 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  try {
   const preview = await getLivePreview();
-  if (preview) {
-    const item = preview.news.articles.find((article) => article.slug === slug);
-    return item ? { title: item.title, description: item.summary.slice(0, 160), openGraph: { images: [{ url: editorialImageForNews(item).src }] } } : { title: "Notícia não encontrada" };
-  }
-  const articles = await getCachedArticles();
+  const articles = preview ? preview.news.articles : await getCachedArticles();
   const article = articles.find((a) => a.slug === slug) ?? await getStoredArticle(slug);
-  if (!article) return { title: "Notícia não encontrada" };
+  if (!article) return { title: "Notícia não encontrada", robots: { index: false } };
   return {
     title: article.title,
     description: article.summary.slice(0, 160),
-    openGraph: { images: [{ url: editorialImageForNews(article).src }] },
+    alternates: { canonical: `/noticias/${slug}` },
+    openGraph: { type: "article", publishedTime: article.publishedAt, ...(article.contentOrigin ? { authors: [article.contentOrigin === 'source' ? article.source : 'Statecraft'] } : {}), images: [{ url: editorialImageForNews(article).src }] },
   };
+  } catch {
+    return { title: "Notícia indisponível", robots: { index: false } };
+  }
 }

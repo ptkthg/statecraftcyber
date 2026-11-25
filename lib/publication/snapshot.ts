@@ -41,10 +41,21 @@ export interface PublishedSnapshot extends LivePreviewSnapshot {
   lastRun: { runAt: string; success: boolean; briefingsCreated: number; durationMs: number | null } | null;
 }
 export function snapshotMode() { return process.env.STATECRAFT_DATA_SOURCE === 'snapshot'; }
+export class SnapshotUnavailableError extends Error {
+  constructor(cause?: unknown) {
+    super('A cópia publicada está indisponível.', { cause });
+    this.name = 'SnapshotUnavailableError';
+  }
+}
 let cached: Promise<PublishedSnapshot> | undefined;
 export async function getPublishedSnapshot(): Promise<PublishedSnapshot | null> {
   if (!snapshotMode()) return null;
-  cached ??= readFile(join(process.cwd(), 'data/publication/current.json'), 'utf8').then(text => ({...parsePublishedSnapshot(JSON.parse(text)),snapshotSha256:createHash('sha256').update(text).digest('hex')}));
+  cached ??= readFile(join(process.cwd(), 'data/publication/current.json'), 'utf8')
+    .then(text => ({...parsePublishedSnapshot(JSON.parse(text)),snapshotSha256:createHash('sha256').update(text).digest('hex')}))
+    .catch(cause => {
+      cached = undefined;
+      throw new SnapshotUnavailableError(cause);
+    });
   return cached;
 }
 export function parsePublishedSnapshot(value: unknown): PublishedSnapshot {

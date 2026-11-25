@@ -46,7 +46,7 @@ export function IocTable({ iocs }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-dim">
-          Adicione ao SIEM, EDR e firewall.
+          Valide a fonte, a confiança e o contexto antes de bloquear indicadores no SIEM, EDR ou firewall.
           {iocs.length > 15 && ` ${iocs.length} indicadores.`}
         </p>
         <CopyButton text={allValues} label="Copiar todos" />

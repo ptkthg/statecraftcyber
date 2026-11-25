@@ -13,6 +13,13 @@ it('retains a validated full historical article even after its RSS row is unavai
 });
 it('keeps the approved full body when enriching a current feed record',()=>{
   expect(newsForPublication([original],[cached])[0].content).toBe(original.content);
+  expect(newsForPublication([original],[cached])[0].contentOrigin).toBe('automated');
+});
+it('marks raw feed content as source text and cache-only preview fields as automated',()=>{
+  expect(newsForPublication([original],[])[0].contentOrigin).toBe('source');
+  const previewSource=original.title+'\n'+original.summary;
+  const previewCache={...cached,qualityReport:JSON.parse(JSON.stringify(validateTextFields(previewSource,{title:cached.title,summary:cached.summary})))};
+  expect(newsForPublication([original],[previewCache])[0]).toMatchObject({content:original.content,contentOrigin:'automated'});
 });
 it('does not publish an unsupported candidate or apply old enrichment to changed evidence',()=>{
   expect(newsForPublication([],[{...cached,qualityReport:{...cached.qualityReport,publishable:false},content:'PRIVATE_CANARY'}])).toEqual([]);

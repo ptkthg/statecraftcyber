@@ -1,0 +1,6 @@
+﻿.header { max-width:1328px; margin:0 auto 18px; padding:22px 0 18px; border-bottom:1px solid var(--line); color:var(--text); }
+.header > :global(.eyebrow) { margin:0 0 6px; font:500 10px/1.5 var(--font-plex-mono),monospace; }
+.header h1 { margin:0 0 8px; font:600 clamp(32px,3.2vw,46px)/1.1 var(--font-newsreader),Georgia,serif; letter-spacing:normal; overflow-wrap:break-word; }
+.header > :global(.page-header-description) { margin:0; max-width:100ch; font:400 16px/1.45 var(--font-source),Georgia,serif; }
+.header > :global(.page-header-date) { margin:8px 0 0; color:var(--text-dim); font:400 10px/1.5 var(--font-plex-mono),monospace; }
+@media(max-width:640px) { .header { padding-top:18px; } .header > :global(.page-header-description) { font-size:15px; } }

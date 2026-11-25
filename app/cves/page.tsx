@@ -1,10 +1,12 @@
 ﻿import type { Metadata } from "next";
-import EditorialHero from "@/components/editorial/EditorialHero";
+import PageHeader from "@/components/PageHeader";
+import { getPublishedSnapshot } from "@/lib/publication/snapshot";
 import CveExplorer from "@/components/cves/CveExplorer";
 import { queryCves } from "@/lib/cves/query";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "CVEs | Statecraft Cyber Intelligence",
+  title: "CVEs",
+  alternates: { canonical: "/cves" },
   description:
     "Radar de vulnerabilidades com filtros combinados, CVSS, EPSS e exploração documentada.",
 };
@@ -27,26 +29,16 @@ export default async function CvesPage({
       totalPages: 1,
       limit: 12,
       updatedAt: null,
-      coverage: "Fontes indisponíveis. Tente atualizar a consulta.",
+      coverage: "Dados publicados indisponíveis. Tente novamente mais tarde.",
       types: [],
+      available: false,
     };
   }
+  const snapshot = await getPublishedSnapshot().catch(() => null);
+  const capturedAt = snapshot?.capturedAt ?? snapshot?.generatedAt ?? data.updatedAt;
   return (
-    <main className="editorial-page page-shell cve-editorial-page">
-      <EditorialHero
-        eyebrow="VULNERABILIDADES EM CONTEXTO"
-        title="Vulnerabilidades."
-        subtitle="Risco real, impacto concreto."
-        description="Compare evidências de exploração, probabilidade e severidade técnica. A prioridade é explicada, e os limites dos dados permanecem visíveis."
-        image="datacenter"
-        imageAlt="Racks de servidores em datacenter, fotografia de Kevin Ache"
-        labels={["EXPLORAÇÃO", "SUPERFÍCIE DE ATAQUE", "IMPACTO SETORIAL"]}
-        primary={{ label: "Explorar o radar", href: "#radar-cves" }}
-        secondary={{
-          label: "Critérios de priorização",
-          href: "#priorizacao-cves",
-        }}
-      />
+    <main className="editorial-page page-shell cve-editorial-page" data-content={data.available === false ? undefined : "cves"}>
+      <PageHeader eyebrow="VULNERABILIDADES EM CONTEXTO" title="Vulnerabilidades" description="Compare severidade técnica, probabilidade e evidências de exploração nos registros publicados." capturedAt={capturedAt} />
       <div className="section-heading" id="radar-cves">
         <h2>RADAR DE CVEs</h2>
         <span>NVD · FIRST EPSS · CISA KEV</span>

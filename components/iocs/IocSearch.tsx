@@ -12,6 +12,8 @@ import {
 import type { EnrichedIoc } from "@/lib/types";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { Pagination } from "@/components/ui/Pagination";
+import { toCsv } from "./export";
+import { LatestIocRequest } from "./request";
 
 interface Stats {
   total: number;
@@ -27,6 +29,8 @@ interface ApiResponse {
 }
 
 interface Props {
+  initialQuery?: string;
+  initialError?: string | null;
   initialResults: EnrichedIoc[];
   initialTotal: number;
   initialStats: Stats;
@@ -92,13 +96,6 @@ function downloadFile(content: string, filename: string, mimeType: string) {
   URL.revokeObjectURL(url);
 }
 
-function toCsv(iocs: EnrichedIoc[]): string {
-  const header = "tipo,valor,confiança,severidade,briefing_slug,fonte\n";
-  const rows = iocs.map((i) =>
-    [i.type, `"${i.value}"`, i.confidence, i.briefingSeverity, i.briefingSlug, i.sourceName ?? ""].join(",")
-  );
-  return header + rows.join("\n");
-}
 
 function toTxt(iocs: EnrichedIoc[]): string {
   return iocs.map((i) => i.value).join("\n");
@@ -167,17 +164,17 @@ function IocRow({ ioc }: { ioc: EnrichedIoc }) {
   const conf = CONFIDENCE_CONFIG[ioc.confidence] ?? { label: ioc.confidence, color: "text-dim" };
 
   return (
-    <div className="group flex items-center gap-3 px-4 py-3 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors">
+    <div className="group flex flex-wrap items-center gap-3 px-4 py-3 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors">
       <div className={`flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-bold font-mono uppercase ${cfg.color} ${cfg.bg} ${cfg.border}`}>
         <Icon size={8} aria-hidden />
         {cfg.label}
       </div>
       <div className="flex items-center min-w-0 flex-1">
-        <span className="font-mono text-xs text-body truncate">{ioc.value}</span>
+        <span className="font-mono text-xs text-body break-all">{ioc.value}</span>
         <CopyButton value={ioc.value} />
       </div>
-      <div className={`flex-shrink-0 text-xs font-medium ${conf.color} hidden sm:block`}>
-        {conf.label}
+      <div className={`flex-shrink-0 text-xs font-medium ${conf.color}`}>
+        <span className="sm:sr-only">Confiança: </span>{conf.label}
       </div>
       <div className="flex-shrink-0 hidden md:flex items-center gap-1.5">
         <div className={`w-1.5 h-1.5 rounded-full ${SEVERITY_DOT[ioc.briefingSeverity] ?? "bg-dim"}`} aria-hidden />
@@ -185,7 +182,7 @@ function IocRow({ ioc }: { ioc: EnrichedIoc }) {
       </div>
       <Link
         href={`/threat-briefings/${ioc.briefingSlug}`}
-        className="flex-shrink-0 flex items-center gap-1 text-xs text-dim hover:text-white transition-colors max-w-[180px] hidden lg:flex focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 rounded"
+        className="flex items-center gap-1 text-xs text-dim hover:text-ink transition-colors w-full lg:w-[180px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 rounded"
         title={ioc.briefingTitle}
       >
         <span className="truncate">{ioc.briefingTitle}</span>
@@ -226,7 +223,7 @@ function ToastNotice({ toast, onDismiss }: { toast: Toast; onDismiss: () => void
 
 // ── KQL Modal (Radix Dialog) ──────────────────────────────────────────────────
 
-function KqlModal({ kql, open, onClose }: { kql: string; open: boolean; onClose: () => void }) {
+function KqlModal({ kql, open, onClose, warning }: { kql: string; open: boolean; onClose: () => void; warning?: string | null }) {
   const [copied, setCopied] = useState(false);
   const hasKqlIocs = kql.includes("let ioc_");
 
@@ -244,7 +241,7 @@ function KqlModal({ kql, open, onClose }: { kql: string; open: boolean; onClose:
         <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-raised border border-white/[0.12] rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col shadow-2xl focus-visible:outline-none animate-in fade-in-0 zoom-in-95">
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.06]">
             <div>
-              <Dialog.Title className="text-sm font-bold text-white">
+              <Dialog.Title className="text-sm font-bold text-ink">
                 KQL — Microsoft Defender / Sentinel
               </Dialog.Title>
               <Dialog.Description className="text-xs text-dim">
@@ -254,7 +251,7 @@ function KqlModal({ kql, open, onClose }: { kql: string; open: boolean; onClose:
             <div className="flex items-center gap-2">
               <button
                 onClick={copy}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-dim hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-dim hover:text-ink bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
               >
                 {copied ? <Check size={11} className="text-green-400" aria-hidden /> : <Copy size={11} aria-hidden />}
                 {copied ? "Copiado!" : "Copiar"}
@@ -262,15 +259,16 @@ function KqlModal({ kql, open, onClose }: { kql: string; open: boolean; onClose:
               <Dialog.Close asChild>
                 <button
                   aria-label="Fechar modal KQL"
-                  className="px-3 py-1.5 text-xs text-dim hover:text-white border border-white/[0.06] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
+                  className="px-3 py-1.5 text-xs text-dim hover:text-ink border border-white/[0.06] rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
                 >
                   Fechar
                 </button>
               </Dialog.Close>
             </div>
           </div>
+          {warning && <p role="status" className="px-5 py-3 text-sm text-ink">{warning}</p>}
           {!hasKqlIocs && (
-            <div className="px-5 pt-4 flex items-start gap-2 text-xs text-yellow-300 bg-yellow-600/[0.06] border-b border-yellow-600/10">
+            <div className="px-5 pt-4 flex items-start gap-2 text-xs text-[#795200] bg-yellow-600/[0.06] border-b border-yellow-600/10">
               <Info size={12} className="flex-shrink-0 mt-0.5" aria-hidden />
               <p className="pb-3 leading-relaxed">
                 KQL requer IOCs dos tipos IP, domínio, URL ou hash. Nenhum desses tipos está presente nos resultados atuais.
@@ -300,13 +298,15 @@ function ExportToolbar({ query, typeFilter }: { query: string; typeFilter: strin
     toastTimerRef.current = setTimeout(() => setToast(null), 3500);
   };
 
+  const [exportWarning, setExportWarning] = useState<string | null>(null);
   const fetchAll = async (): Promise<EnrichedIoc[] | null> => {
     const params = new URLSearchParams();
     if (query) params.set("q", query);
     if (typeFilter) params.set("type", typeFilter);
     const res = await fetch(`/api/iocs/export?${params}`);
     if (!res.ok) return null;
-    const data = await res.json() as { results: EnrichedIoc[] };
+    const data = await res.json() as { results: EnrichedIoc[]; total: number; truncated?: boolean };
+    setExportWarning(data.truncated ? `Exportação limitada a 500 de ${data.total.toLocaleString("pt-BR")} IOCs. Refine os filtros para exportar os demais.` : null);
     return data.results ?? [];
   };
 
@@ -335,6 +335,8 @@ function ExportToolbar({ query, typeFilter }: { query: string; typeFilter: strin
       } else if (format === "kql") {
         setKqlState({ open: true, kql: generateKql(iocs) });
       }
+    } catch {
+      showToast("Erro ao buscar IOCs. Tente novamente.", "error");
     } finally {
       setLoadingFormat(null);
     }
@@ -369,9 +371,11 @@ function ExportToolbar({ query, typeFilter }: { query: string; typeFilter: strin
         )}
       </div>
 
+      {exportWarning && <p role="status" className="text-sm text-ink mb-4">{exportWarning}</p>}
       <KqlModal
         open={kqlState.open}
         kql={kqlState.kql}
+        warning={exportWarning}
         onClose={() => setKqlState((s) => ({ ...s, open: false }))}
       />
     </>
@@ -382,8 +386,10 @@ function ExportToolbar({ query, typeFilter }: { query: string; typeFilter: strin
 
 const LIMIT = 25;
 
-export default function IocSearch({ initialResults, initialTotal, initialStats }: Props) {
-  const [query, setQuery] = useState("");
+export default function IocSearch({ initialResults, initialTotal, initialStats, initialQuery = "", initialError = null }: Props) {
+  const [query, setQuery] = useState(initialQuery);
+  const [error, setError] = useState<string | null>(initialError);
+  const requests = useRef(new LatestIocRequest());
   const [typeFilter, setTypeFilter] = useState("");
   const [results, setResults] = useState<EnrichedIoc[]>(initialResults);
   const [total, setTotal] = useState(initialTotal);
@@ -396,35 +402,34 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
 
   const fetchIocs = useCallback(async (q: string, type: string, p: number, append = false) => {
     setLoading(true);
-    try {
+    setError(null);
       const params = new URLSearchParams({ page: String(p), limit: String(LIMIT) });
       if (q) params.set("q", q);
       if (type) params.set("type", type);
-      const res = await fetch(`/api/iocs?${params}`);
-      if (!res.ok) return;
-      const data: ApiResponse = await res.json();
+    await requests.current.run<ApiResponse>(`/api/iocs?${params}`, { success: (data) => {
       setResults((prev) => append ? [...prev, ...data.results] : data.results);
       setTotal(data.total);
       if (data.stats && !append) setStats(data.stats);
-    } catch {
-      // silently fail
-    } finally {
-      setLoading(false);
-    }
+    }, error: () => setError("Busca de IOCs indisponível. Os resultados anteriores foram preservados. Tente novamente."), settled: () => setLoading(false) });
   }, []);
 
   useEffect(() => {
+    const current = requests.current;
     if (isInitial.current) {
       isInitial.current = false;
       return;
     }
+    current.cancel();
+    setLoading(false);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setPage(1);
       fetchIocs(query, typeFilter, 1, false);
     }, 280);
-    return () => clearTimeout(debounceRef.current);
+    return () => { clearTimeout(debounceRef.current); current.cancel(); };
   }, [query, typeFilter, fetchIocs]);
+
+  useEffect(() => { const current = requests.current; return () => current.cancel(); }, []);
 
   const goToPage = (n: number) => {
     setPage(n);
@@ -451,7 +456,7 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="185.220.101.45, update-win32[.]net, a3f7c9d2..."
+            placeholder="198.51.100.23, update.example, a3f7c9d2..."
             autoComplete="off"
             className="w-full rounded-full bg-raised border border-white/[0.05] focus:border-white/15 focus-visible:outline-none pl-11 pr-10 py-3 text-sm text-ink placeholder-dim transition-colors font-mono"
           />
@@ -503,6 +508,7 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
 
         {/* Export toolbar */}
         <ExportToolbar query={query} typeFilter={typeFilter} />
+        {error && <div role="alert" className="text-sm text-ink mb-4"><p>{error}</p><button type="button" className="underline" onClick={() => fetchIocs(query, typeFilter, page)}>Tentar novamente</button></div>}
 
         {/* Table */}
         <div className="bg-raised border border-white/[0.05] rounded-[20px] overflow-hidden" role="region" aria-label="Lista de IOCs">
@@ -515,14 +521,14 @@ export default function IocSearch({ initialResults, initialTotal, initialStats }
             <span className="w-16 text-[9px] font-bold text-dim uppercase tracking-wider text-right">Quando</span>
           </div>
 
-          {loading && results.length === 0 ? (
+          {error && results.length === 0 ? null : loading && results.length === 0 ? (
             <div className="py-16 text-center" aria-live="polite">
               <div className="text-dim text-sm">Carregando...</div>
             </div>
           ) : results.length === 0 ? (
             <div className="py-16 text-center" aria-live="polite">
               <div className="text-dim text-sm mb-1">
-                {query ? `Nenhum IOC encontrado para "${query}"` : "Nenhum IOC disponível."}
+                {query ? `Nenhum IOC encontrado para "${query}"` : "Nenhum IOC publicado nesta coleção."}
               </div>
               {query && (
                 <div className="text-dim text-xs">

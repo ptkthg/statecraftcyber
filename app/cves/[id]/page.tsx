@@ -17,6 +17,7 @@ import {
 } from "@/lib/cves/assessment";
 import { vectorConditions } from "@/lib/cves/vector";
 import { relatedCveEvidence } from "@/lib/cves/relationships";
+import { SnapshotUnavailableError, snapshotMode } from "@/lib/publication/snapshot";
 import styles from "./cve-detail.module.css";
 type Props = { params: Promise<{ id: string }> };
 const labels: Record<string, string> = {
@@ -75,19 +76,28 @@ function Source({ href, children }: { href: string; children: ReactNode }) {
 }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const id = normalizeCveId((await params).id);
-  return id
+  if (!id) return { title: "Registro não encontrado", robots: { index: false } };
+  const cve = await getCveDetail(id).catch(error => {
+    if (error instanceof SnapshotUnavailableError) return null;
+    throw error;
+  });
+  return cve
     ? {
-        title: id + " | Statecraft Cyber Intelligence",
+        title: id,
+        alternates: { canonical: "/cves/" + id },
         description:
           "Ficha de vulnerabilidade: métricas, exposição, evidências e referências de " +
           id,
       }
-    : {};
+    : { title: "Registro indisponível", robots: { index: false, follow: true } };
 }
 export default async function CveDetailPage({ params }: Props) {
   const id = normalizeCveId((await params).id);
   if (!id) notFound();
-  const cve = await getCveDetail(id);
+  const cve = await getCveDetail(id).catch(error => {
+    if (error instanceof SnapshotUnavailableError) return null;
+    throw error;
+  });
   if (!cve)
     return (
       <main className={styles.page}>
@@ -100,8 +110,9 @@ export default async function CveDetailPage({ params }: Props) {
             <span className={styles.eyebrow}>Registro indisponível</span>
             <h1 className={styles.heroTitle}>{id}</h1>
             <p className={styles.leadText}>
-              Não foi possível consultar esta ficha. O registro pode estar
-              indisponível ou ainda não estar presente nas fontes.
+              {snapshotMode()
+                ? "Esta ficha não está disponível na cópia publicada. Consulte a fonte original pelo link abaixo."
+                : "Esta ficha não está disponível nos registros armazenados. Consulte a fonte original pelo link abaixo."}
             </p>
             <Source href={"https://nvd.nist.gov/vuln/detail/" + id}>
               Consultar no NVD
@@ -212,7 +223,9 @@ export default async function CveDetailPage({ params }: Props) {
               {rejected
                 ? "Esta CVE foi rejeitada na fonte."
                 : cve.dataState === "stale"
-                  ? "Consulta atual indisponível; exibindo o último registro armazenado."
+                  ? snapshotMode()
+                    ? "Dados da cópia publicada com coleta antiga; estimativas EPSS vencidas foram ocultadas."
+                    : "Consulta atual indisponível; exibindo o último registro armazenado."
                   : "Limitações das fontes"}
             </strong>
             {metadata?.warnings.map((w) => (

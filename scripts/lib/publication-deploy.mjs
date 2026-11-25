@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, mkdir, copyFile, writeFile, realpath, rm } from 'node:fs/promises';
-import { join, resolve, sep } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import {validPublicationSnapshot} from '../../lib/publication/format.mjs';
 const exec=promisify(execFile);
@@ -36,7 +36,10 @@ export async function stagePublication(repo) {
   await mkdir(source);
   const archive=join(directory,'source.tar');
   await exec('git',['archive','--format=tar','--output',archive,revision],{cwd:repo});
-  await exec(process.platform==='win32'?'tar.exe':'tar',['-xf',archive,'-C',source],{cwd:repo});
+  await exec(process.platform==='win32'?'tar.exe':'tar',[
+    '-xf',relative(repo,archive).replaceAll('\\','/'),
+    '-C',relative(repo,source).replaceAll('\\','/'),
+  ],{cwd:repo});
   for(const file of files) {
     const target=resolve(app,file);
     if(!target.startsWith(app+sep)) throw new Error('unsafe_archive_path');
@@ -71,14 +74,21 @@ export async function verifyPublication(origin,snapshot,fetcher=fetch,expectedHa
   if(!Array.isArray(briefings.briefings) || briefings.briefings.length!==Math.min(1,snapshot.briefings.briefings.length)) throw new Error('publication_briefings_mismatch');
   const iocs=await json('/api/iocs');
   if(iocs.total!==snapshot.iocs.length) throw new Error('publication_iocs_mismatch');
-  const paths=['/','/noticias','/campanhas','/threat-briefings','/iocs','/cves'];
+  const paths=['/','/noticias','/campanhas','/threat-briefings','/iocs','/cves','/metodologia','/sobre','/creditos-visuais'];
   if(snapshot.news.articles[0]) paths.push('/noticias/'+encodeURIComponent(snapshot.news.articles[0].slug));
   if(snapshot.cves[0]) paths.push('/cves/'+encodeURIComponent(snapshot.cves[0].id));
   if(snapshot.briefings.briefings[0]) paths.push('/threat-briefings/'+encodeURIComponent(snapshot.briefings.briefings[0].slug));
   for(const path of paths) {
     const response=await fetcher(new URL(path,origin),{cache:'no-store',signal:AbortSignal.timeout(30000)});
     if(!response.ok) throw new Error('publication_page_failed:'+path);
-    await response.arrayBuffer();
+    const html=await response.text();
+    const content={ '/noticias':'news', '/cves':'cves' }[path];
+    if(content && !new RegExp('<[a-z][^>]*\\bdata-content\\s*=\\s*(["\\\'])'+content+'\\1','i').test(html)) throw new Error('publication_content_missing:'+path);
+    if(path==='/campanhas') {
+      const detail=html.match(/<a\b[^>]*\bhref\s*=\s*["'](\/campanhas\/[^"'?#]+)["']/i)?.[1];
+      if(!detail) throw new Error('publication_campaign_detail_missing');
+      paths.push(detail);
+    }
   }
   return {status:health.status,pipelines:health.pipelines,generatedAt:health.snapshotGeneratedAt,news:news.total,cves:cves.total,briefings:health.briefings.published,iocs:iocs.total};
 }

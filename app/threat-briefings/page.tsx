@@ -1,22 +1,22 @@
 import { PUBLIC_BRIEFING_WHERE } from "@/lib/intelligence/publication";
 import { prisma } from "@/lib/prisma";
-import EditorialHero from "@/components/editorial/EditorialHero";
+import PageHeader from "@/components/PageHeader";
 import BriefingExplorer, { type BriefingItem } from "@/components/threat/BriefingExplorer";
 import type { Ioc, LiveIoc } from "@/lib/types";
 import { getLivePreview } from "@/lib/live-preview";
 
 export const revalidate = 300; // revalida a cada 5 min
 
-async function getBriefings(): Promise<{ briefings: BriefingItem[]; trending: BriefingItem[]; latestIocs: LiveIoc[] }> {
-  const preview = await getLivePreview();
-  if (preview) {
-    const briefings: BriefingItem[] = preview.briefings.briefings.map((item) => ({
-      ...item,
-      iocs: preview.iocs.filter((ioc) => ioc.briefingSlug === item.slug),
-    }));
-    return { briefings, trending: briefings.filter((item) => ["critical", "high"].includes(item.severity)).slice(0, 5), latestIocs: preview.briefings.latestIocs };
-  }
+async function getBriefings(): Promise<{ briefings: BriefingItem[]; trending: BriefingItem[]; latestIocs: LiveIoc[]; capturedAt: string | null; unavailable: boolean }> {
   try {
+    const preview = await getLivePreview();
+    if (preview) {
+      const briefings: BriefingItem[] = preview.briefings.briefings.map((item) => ({
+        ...item,
+        iocs: preview.iocs.filter((ioc) => ioc.briefingSlug === item.slug),
+      }));
+      return { briefings, trending: briefings.filter((item) => ["critical", "high"].includes(item.severity)).slice(0, 5), latestIocs: preview.briefings.latestIocs, capturedAt: preview.capturedAt, unavailable: false };
+    }
     const rows = await prisma.briefing.findMany({
       where: { ...PUBLIC_BRIEFING_WHERE },
       orderBy: [{ severity: "desc" }, { createdAt: "desc" }],
@@ -53,9 +53,9 @@ async function getBriefings(): Promise<{ briefings: BriefingItem[]; trending: Br
       )
       .slice(0, 6);
 
-    return { briefings, trending, latestIocs };
+    return { briefings, trending, latestIocs, capturedAt: null, unavailable: false };
   } catch {
-    return { briefings: [], trending: [], latestIocs: [] };
+    return { briefings: [], trending: [], latestIocs: [], capturedAt: null, unavailable: true };
   }
 }
 
@@ -64,21 +64,23 @@ export default async function ThreatBriefingsPage({
 }: {
   searchParams: Promise<{ sev?: string }>;
 }) {
-  const { briefings, trending, latestIocs } = await getBriefings();
+  const { briefings, trending, latestIocs, capturedAt, unavailable } = await getBriefings();
   const { sev } = await searchParams;
   const criticalCount = briefings.filter((b) => b.severity === "critical").length;
 
   return (
     <main className="editorial-page page-shell">
-      <EditorialHero eyebrow="INTELIGÊNCIA OPERACIONAL" title="Threat Briefings." subtitle={<>Ameaças em contexto.<br />Decisões com base em evidência.</>} description="Briefings de cibersegurança com foco no Brasil e na América Latina, análises operacionais, indicadores técnicos e implicações para governos, empresas e setores estratégicos." image="congresso" imageAlt="Congresso Nacional, fotografia histórica do Acervo Arquivo Nacional" labels={["AMEAÇAS", "INFRAESTRUTURA", "GEOPOLÍTICA", "BRASIL"]} />
-      <div className="section-heading"><h2>ARQUIVO DE BRIEFINGS</h2><span>{briefings.length} PUBLICADOS · {criticalCount} CRÍTICOS</span></div>
+      <PageHeader eyebrow="INTELIGÊNCIA OPERACIONAL" title="Threat Briefings" description="Ameaças em contexto, indicadores técnicos e análises operacionais para o Brasil e a América Latina." capturedAt={capturedAt} />
+      {unavailable ? <p className="editorial-empty" role="status">Arquivo de briefings indisponível. Tente consultar novamente mais tarde.</p> : <>
+        <div className="section-heading"><h2>ARQUIVO DE BRIEFINGS</h2><span>{briefings.length} PUBLICADOS · {criticalCount} CRÍTICOS</span></div>
 
-      <BriefingExplorer
-        initialBriefings={briefings}
-        initialTrending={trending}
-        initialIocs={latestIocs}
-        initialFilter={sev === "critical" ? "Crítico" : "Todos"}
-      />
+        <BriefingExplorer
+          initialBriefings={briefings}
+          initialTrending={trending}
+          initialIocs={latestIocs}
+          initialFilter={sev === "critical" ? "Crítico" : "Todos"}
+        />
+      </>}
     </main>
   );
 }

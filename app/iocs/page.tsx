@@ -2,13 +2,14 @@ import { PUBLIC_BRIEFING_WHERE, PUBLIC_IOC_WHERE } from "@/lib/intelligence/publ
 import type { Metadata } from "next";
 import type { Ioc, EnrichedIoc } from "@/lib/types";
 import IocSearch from "@/components/iocs/IocSearch";
-import EditorialHero from "@/components/editorial/EditorialHero";
+import PageHeader from "@/components/PageHeader";
 import { getLivePreview, filterPreviewIocs } from "@/lib/live-preview";
 
 export const revalidate = 120;
 
 export const metadata: Metadata = {
-  title: "Busca de IOCs | Statecraft Cyber Intelligence",
+  title: "Busca de IOCs",
+  alternates: { canonical: "/iocs" },
   description: "Pesquise IPs, domínios, hashes e URLs extraídos dos briefings de ameaças da Statecraft.",
 };
 
@@ -17,21 +18,22 @@ interface Stats {
   byType: Record<string, number>;
 }
 
-async function fetchInitialIocs(): Promise<{ results: EnrichedIoc[]; total: number; stats: Stats }> {
+async function fetchInitialIocs(query: string): Promise<{ results: EnrichedIoc[]; total: number; stats: Stats; capturedAt?: string | null; error?: string }> {
+  try {
   const preview = await getLivePreview();
   if (preview) {
-    const { stats } = filterPreviewIocs(preview.iocs, "", "");
-    return { results: preview.iocs.slice(0, 25), total: preview.iocs.length, stats };
+    const { filtered, stats } = filterPreviewIocs(preview.iocs, query, "");
+    return { results: filtered.slice(0, 25), total: filtered.length, stats, capturedAt: preview.capturedAt };
   }
-  try {
     const { prisma } = await import("@/lib/prisma");
 
+    const where = { ...PUBLIC_IOC_WHERE, ...(query ? { normalized: { contains: query.trim().toLowerCase() } } : {}) };
     const iocTableCount = await prisma.ioc.count({ where: PUBLIC_IOC_WHERE });
 
     if (iocTableCount > 0) {
-      const [rows, allForStats] = await Promise.all([
+      const [rows, allForStats, total] = await Promise.all([
         prisma.ioc.findMany({
-          where: PUBLIC_IOC_WHERE,
+          where,
           orderBy: { createdAt: "desc" },
           take: 25,
           include: {
@@ -41,6 +43,7 @@ async function fetchInitialIocs(): Promise<{ results: EnrichedIoc[]; total: numb
           },
         }),
         prisma.ioc.groupBy({ where: PUBLIC_IOC_WHERE, by: ["type"], _count: { type: true } }),
+        prisma.ioc.count({ where }),
       ]);
 
       const results: EnrichedIoc[] = rows.map((ioc) => ({
@@ -60,7 +63,7 @@ async function fetchInitialIocs(): Promise<{ results: EnrichedIoc[]; total: numb
         return acc;
       }, {});
 
-      return { results, total: iocTableCount, stats: { total: iocTableCount, byType } };
+      return { results, total, stats: { total: iocTableCount, byType } };
     }
 
     // Fallback: scan Briefing.iocs JSON field
@@ -92,24 +95,26 @@ async function fetchInitialIocs(): Promise<{ results: EnrichedIoc[]; total: numb
       return acc;
     }, {});
 
+    const filtered = allIocs.filter(ioc => !query || ioc.value.toLowerCase().includes(query.trim().toLowerCase()));
     return {
-      results: allIocs.slice(0, 25),
-      total: allIocs.length,
+      results: filtered.slice(0, 25),
+      total: filtered.length,
       stats: { total: allIocs.length, byType },
     };
   } catch {
-    return { results: [], total: 0, stats: { total: 0, byType: {} } };
+    return { results: [], total: 0, stats: { total: 0, byType: {} }, error: "Fonte de IOCs indisponível. Não foi possível carregar a publicação. Tente novamente mais tarde." };
   }
 }
 
-export default async function IocPage() {
-  const { results, total, stats } = await fetchInitialIocs();
+export default async function IocPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const { q = "" } = await searchParams;
+  const { results, total, stats, capturedAt, error } = await fetchInitialIocs(q);
 
   return (
     <main className="editorial-page page-shell ioc-editorial-page">
-      <EditorialHero eyebrow="INDICADORES / CONSULTA TÉCNICA" title={<>Indicadores<br />em contexto.</>} subtitle="Evidência para investigar." description="Consulte IPs, domínios, hashes e URLs associados aos briefings publicados. Cada indicador preserva sua fonte e relação com a análise original." image="antena" imageAlt="Antena de telecomunicações em Teresópolis, fotografia de Vitor Paladini" labels={["INDICADORES", "FONTES", "CONTEXTO", "BRASIL"]} />
+      <PageHeader eyebrow="INDICADORES / CONSULTA TÉCNICA" title="Indicadores em contexto." description="Consulte IPs, domínios, hashes e URLs associados aos briefings publicados, preservando sua fonte." capturedAt={capturedAt} />
       <div className="section-heading"><h2>CONSULTA DE IOCs</h2><span>{stats.total.toLocaleString("pt-BR")} REGISTROS INDEXADOS</span></div>
-      <IocSearch initialResults={results} initialTotal={total} initialStats={stats} />
+      <IocSearch key={q} initialResults={results} initialTotal={total} initialStats={stats} initialQuery={q} initialError={error} />
     </main>
   );
 }

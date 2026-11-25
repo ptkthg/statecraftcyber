@@ -1,7 +1,8 @@
-﻿import type { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { getPublishedSnapshot } from "../publication/snapshot";
 import type { CveEntry } from "./fetch-cves";
 import { operationalPriority } from "./assessment";
+import { withCveFreshness } from "./freshness";
 export interface CveFilters {
   q: string;
   severity: string;
@@ -18,6 +19,7 @@ export interface CveFilters {
   sort: "priority" | "cvss" | "epss" | "recent";
   page: number;
   limit: number;
+  window?: "" | "72h";
 }
 export class InvalidCveFilter extends Error {}
 export function parseCveFilters(params: URLSearchParams): CveFilters {
@@ -88,6 +90,7 @@ export function parseCveFilters(params: URLSearchParams): CveFilters {
     ) as CveFilters["sort"],
     page,
     limit,
+    window: one("window", ["", "72h"]) as CveFilters["window"],
   };
   for (const [lo, hi] of [
     [result.cvssMin, result.cvssMax],
@@ -162,6 +165,7 @@ export function cveWhere(f: CveFilters): Prisma.CveCacheWhereInput {
           : {}),
       },
     });
+  if (f.window === "72h") AND.push({ published: { gte: new Date(Date.now() - 72 * 3600000) } });
   if (f.analysis) AND.push({ analysisReady: f.analysis === "yes" });
   return AND.length ? { AND } : {};
 }
@@ -187,6 +191,7 @@ export function cveOrder(
 export function filterCveEntries(entries: CveEntry[], f: CveFilters) {
   const text = (v: string) => v.toLowerCase().replaceAll("_", " ");
   const rows = entries.filter((c) => {
+    if (f.window === "72h" && Date.parse(c.published) < Date.now() - 72 * 3600000) return false;
     if (c.sourceMetadata?.nvd.status === "Rejected") return false;
     const knownKev = c.sourceMetadata?.kev.status;
     if (
@@ -260,6 +265,7 @@ export function filterCveEntries(entries: CveEntry[], f: CveFilters) {
   );
 }
 export interface CvePage {
+  available?: boolean;
   cves: CveEntry[];
   total: number;
   page: number;
@@ -274,6 +280,7 @@ function cvePage(entries: CveEntry[], filters: CveFilters, updatedAt: string | n
   const totalPages = Math.max(1, Math.ceil(rows.length / filters.limit));
   const page = Math.min(filters.page, totalPages);
   return {
+    available: entries.length > 0,
     cves: rows.slice((page - 1) * filters.limit, page * filters.limit),
     total: rows.length,
     page,
@@ -291,66 +298,38 @@ export async function queryCves(params: URLSearchParams): Promise<CvePage> {
   if (snapshot) {
     const updatedAt = snapshot.cves.reduce<string | null>((latest, cve) =>
       cve.fetchedAt && (!latest || Date.parse(cve.fetchedAt) > Date.parse(latest)) ? cve.fetchedAt : latest, null);
-    return cvePage(snapshot.cves, f, updatedAt, "Registros disponíveis na cópia publicada da coleta local.");
+    return cvePage(snapshot.cves.map(cve => withCveFreshness(cve, cve.fetchedAt)), f,
+      updatedAt ?? snapshot.capturedAt ?? snapshot.generatedAt,
+      "Registros disponíveis na cópia publicada da coleta local.");
   }
-  const [{ prisma }, { fetchCves, fromStored }] = await Promise.all([
+  const [{ prisma }, { fromStored }] = await Promise.all([
     import("../prisma"), import("./fetch-cves"),
   ]);
-  try {
-    const fresh = await prisma.cveCache.findFirst({
-      where: {
-        fetchedAt: { gte: new Date(Date.now() - 6 * 3600000) },
-        sourceMetadata: { path: ["version"], equals: "phase3-v1" },
-      },
-      select: { id: true },
-    });
-    if (!fresh) {
-      try {
-        await fetchCves();
-      } catch {
-        if (!(await prisma.cveCache.count()))
-          throw new Error("No cached CVEs available");
-      }
-    }
-    const where = cveWhere(f);
-    const result = await prisma.$transaction(
-      async (tx) => {
-        const total = await tx.cveCache.count({ where }),
-          totalPages = Math.max(1, Math.ceil(total / f.limit)),
-          page = Math.min(f.page, totalPages);
-        const [rows, newest, types] = await Promise.all([
-          tx.cveCache.findMany({
-            where,
-            orderBy: cveOrder(f),
-            skip: (page - 1) * f.limit,
-            take: f.limit,
-          }),
-          tx.cveCache.findFirst({
-            orderBy: { fetchedAt: "desc" },
-            select: { fetchedAt: true },
-          }),
-          tx.cveCache.findMany({
-            distinct: ["vulnType"],
-            select: { vulnType: true },
-          }),
-        ]);
-        return {
-          cves: rows.map(fromStored),
-          total,
-          page,
-          totalPages,
-          limit: f.limit,
-          updatedAt: newest?.fetchedAt.toISOString() ?? null,
-          coverage:
-            "Registros disponíveis no cache local; não representa a totalidade do NVD.",
-          types: types.map((t) => t.vulnType).sort(),
-        };
-      },
-      { isolationLevel: "RepeatableRead", timeout: 12000 },
-    );
-    return result;
-  } catch {
-    const data = await fetchCves();
-    return cvePage(data.cves, f, data.updatedAt, "Consulta de contingência às fontes; resultados limitados à coleta disponível.");
-  }
+  // Keep selective database filters, but evaluate EPSS and priority only after
+  // freshness normalization. Stored score/rank columns can outlive their validity.
+  const where = cveWhere({ ...f, epssMin: null, epssMax: null });
+  const result = await prisma.$transaction(
+    async (tx) => {
+      const [rows, newest, types] = await Promise.all([
+        tx.cveCache.findMany({ where }),
+        tx.cveCache.findFirst({
+          orderBy: { fetchedAt: "desc" },
+          select: { fetchedAt: true },
+        }),
+        tx.cveCache.findMany({
+          distinct: ["vulnType"],
+          select: { vulnType: true },
+        }),
+      ]);
+      const entries = rows.map(row => withCveFreshness(fromStored(row), row.fetchedAt.toISOString()));
+      return {
+        ...cvePage(entries, f, newest?.fetchedAt.toISOString() ?? null,
+          "Registros disponíveis no cache local; não representa a totalidade do NVD."),
+        available: newest !== null,
+        types: types.map((t) => t.vulnType).sort(),
+      };
+    },
+    { isolationLevel: "RepeatableRead", timeout: 12000 },
+  );
+  return result;
 }
