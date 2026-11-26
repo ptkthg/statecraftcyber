@@ -101,3 +101,15 @@ it('falha sem resposta da API mantém o lote em submitting, porque ele pode exis
   expect(m.update).not.toHaveBeenCalled();
   expect(m.release).not.toHaveBeenCalled();
 });
+it('slug acima de 64 caracteres vira custom_id válido e o resultado volta ao slug certo', async () => {
+  const long = 'ai-agents-found-an-unpatched-flaw-after-being-told-to-break--jpesl9';
+  await submitAiBatch('news', [item(long)], schema, now);
+  const id = m.create.mock.calls[0][0].requests[0].custom_id;
+  expect(id).toMatch(/^[A-Za-z0-9_-]{1,64}$/);
+  m.findMany.mockResolvedValue([{ id: 'remote', slugs: [long], payload: [item(long)], submittedAt: now, state: 'pending' }]);
+  m.retrieve.mockResolvedValue({ processing_status: 'ended' });
+  m.results.mockResolvedValue((async function* () { yield { custom_id: id, result: { type: 'succeeded', message: { model: 'claude-sonnet-5-5', stop_reason: 'end_turn', content: [{ type: 'text', text: '{"texto":"A"}' }], usage: { input_tokens: 1, output_tokens: 2 } } } }; })());
+  const received: string[] = [];
+  await pollAiBatches<{ title: string }, typeof schema>('news', schema, async input => { received.push(input.title); return true; }, now);
+  expect(received).toEqual([long]);
+});

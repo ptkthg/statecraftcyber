@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { MessageBatchIndividualResponse } from '@anthropic-ai/sdk/resources/messages/batches';
 import { claudeJson, claudeModel, effort, consumeTokens, tokensAvailable, type ClaudeResult } from './claude-client';
 import { recordAiUsage, releaseAiItem, settleAiBatchItem, withAiItem, authorizeAiCall, type AiItem } from './budget';
@@ -10,6 +10,8 @@ import { emptyUsage } from './token-usage';
 import type { AiPurpose } from './budget-policy';
 export const claudeBatchEnabled = () => process.env.CLAUDE_USE_BATCH !== 'false';
 export const batchTokenEstimate = (prompt: string, system: string, schema: z.ZodType) => 16000 + Buffer.byteLength(prompt + system + JSON.stringify(z.toJSONSchema(schema)), 'utf8') + 4096;
+/** custom_id aceita só [A-Za-z0-9_-] e até 64 caracteres; slugs maiores viram prefixo + hash. */
+export const batchCustomId = (slug: string) => /^[A-Za-z0-9_-]{1,64}$/.test(slug) ? slug : slug.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 51) + '-' + createHash('sha256').update(slug).digest('hex').slice(0, 12);
 export interface BatchInput<T> { slug: string; input: T; prompt: string; persona: { system: string }; item: AiItem; fallbackResult?: ClaudeResult<unknown> }
 export async function submitAiBatch<T>(type: AiPurpose, entries: BatchInput<T>[], schema: z.ZodType, now = new Date()) {
   const admitted: BatchInput<T>[] = [];
@@ -29,7 +31,7 @@ export async function submitAiBatch<T>(type: AiPurpose, entries: BatchInput<T>[]
   const format = zodOutputFormat(schema);
   let response: { id: string };
   try {
-    response = await client.messages.batches.create({ requests: entries.map(entry => ({ custom_id: entry.slug, params: {
+    response = await client.messages.batches.create({ requests: entries.map(entry => ({ custom_id: batchCustomId(entry.slug), params: {
       model: claudeModel('writer'), max_tokens: 16000,
       system: [{ type: 'text', text: entry.persona.system, cache_control: { type: 'ephemeral' } }],
       output_config: { effort: effort('writer'), format: { type: 'json_schema', schema: format.schema } },
@@ -96,8 +98,9 @@ export async function pollAiBatches<T, S extends z.ZodType>(type: AiPurpose, sch
     }
     let remaining = [...batch.slugs];
     for await (const response of await client.messages.batches.results(batch.id)) {
-      if (!remaining.includes(response.custom_id)) continue;
-      const entry = entries.find(e => e.slug === response.custom_id);
+      const slug = batch.slugs.find(s => batchCustomId(s) === response.custom_id);
+      if (!slug || !remaining.includes(slug)) continue;
+      const entry = entries.find(e => e.slug === slug);
       if (!entry) throw new Error('Resultado sem custom_id conhecido: ' + response.custom_id);
       let result = parseResult(response.result, schema);
       await recordAiUsage(entry.item, response.result.type === 'succeeded' ? response.result.message.model : claudeModel('writer'), result.usage, true, batch.id + ':' + entry.slug);
