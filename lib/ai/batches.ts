@@ -27,12 +27,27 @@ export async function submitAiBatch<T>(type: AiPurpose, entries: BatchInput<T>[]
   await prisma.aiBatch.create({ data: { id, type, slugs: entries.map(e => e.slug), payload, state: 'submitting', submittedAt: now } });
   const client = new Anthropic({ maxRetries: 0 });
   const format = zodOutputFormat(schema);
-  const response = await client.messages.batches.create({ requests: entries.map(entry => ({ custom_id: entry.slug, params: {
-    model: claudeModel('writer'), max_tokens: 16000,
-    system: [{ type: 'text', text: entry.persona.system, cache_control: { type: 'ephemeral' } }],
-    output_config: { effort: effort('writer'), format: { type: 'json_schema', schema: format.schema } },
-    messages: [{ role: 'user', content: entry.prompt }],
-  } })) });
+  let response: { id: string };
+  try {
+    response = await client.messages.batches.create({ requests: entries.map(entry => ({ custom_id: entry.slug, params: {
+      model: claudeModel('writer'), max_tokens: 16000,
+      system: [{ type: 'text', text: entry.persona.system, cache_control: { type: 'ephemeral' } }],
+      output_config: { effort: effort('writer'), format: { type: 'json_schema', schema: format.schema } },
+      messages: [{ role: 'user', content: entry.prompt }],
+    } })) });
+  } catch (error) {
+    // A API respondeu com erro 4xx ou 529: o lote não existe e as reservas voltam
+    // à cota. Sem resposta (rede, timeout, 5xx ambíguo) o lote pode existir e a
+    // intenção continua retida até o prazo de 24h.
+    const { status, error: body } = error as { status?: unknown; error?: { error?: { type?: string } } };
+    const definitive = typeof status === 'number' && (status >= 400 && status < 500 || status === 529);
+    console.log(JSON.stringify({ stage: 'ai_batch_submit_failed', type, items: entries.length, status: typeof status === 'number' ? status : null, errorType: body?.error?.type ?? null, released: definitive }));
+    if (definitive) {
+      await prisma.aiBatch.update({ where: { id }, data: { state: 'rejected', endedAt: new Date() } });
+      for (const entry of entries) await releaseAiItem(entry.item);
+    }
+    throw error;
+  }
   await prisma.aiBatch.update({ where: { id }, data: { id: response.id, state: 'pending' } });
   consumeTokens({ ...emptyUsage(), output_tokens: entries.reduce((sum, entry) => sum + batchTokenEstimate(entry.prompt, entry.persona.system, schema), 0) });
 }

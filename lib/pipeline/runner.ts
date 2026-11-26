@@ -111,7 +111,7 @@ export async function runUpdateWorker(db: PrismaClient, checkpointer: BaseCheckp
       },
       enrichNews: async () => {
         if (generationEnabled && options.enrichNews && remainingMs() > 120000) {
-          try { await options.enrichNews(); } catch { errors.push('news:enrichment_failed'); }
+          try { await options.enrichNews(); } catch (error) { errors.push('news:enrichment_failed:' + errorCode(error)); }
         }
         await save('verify');
       },

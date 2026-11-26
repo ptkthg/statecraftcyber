@@ -89,3 +89,15 @@ it('tentativa normal de recusa persistida não é repetida ao retomar o editor',
   expect(complete.mock.calls[0][1]).toMatchObject({ status: 'ok', data: { texto: 'A' } });
   expect(m.release).not.toHaveBeenCalled();
 });
+it('lote recusado pela API (4xx ou 529) devolve as reservas e não fica preso', async () => {
+  m.create.mockRejectedValueOnce(Object.assign(new Error('overloaded'), { status: 529, error: { error: { type: 'overloaded_error' } } }));
+  await expect(submitAiBatch('news', [item('a'), item('b')], schema, now)).rejects.toThrow('overloaded');
+  expect(m.update.mock.calls[0][0].data.state).toBe('rejected');
+  expect(m.release).toHaveBeenCalledTimes(2);
+});
+it('falha sem resposta da API mantém o lote em submitting, porque ele pode existir', async () => {
+  m.create.mockRejectedValueOnce(Object.assign(new Error('Connection error.'), { status: undefined }));
+  await expect(submitAiBatch('news', [item('a')], schema, now)).rejects.toThrow('Connection');
+  expect(m.update).not.toHaveBeenCalled();
+  expect(m.release).not.toHaveBeenCalled();
+});
