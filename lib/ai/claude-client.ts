@@ -16,11 +16,13 @@ export const createTokenBudget = (limit = positiveInteger(process.env.AI_RUN_TOK
 const budgets = new AsyncLocalStorage<ReturnType<typeof createTokenBudget>>();
 export const withTokenBudget = <T>(budget: ReturnType<typeof createTokenBudget>, fn: () => Promise<T>) => budgets.run(budget, fn);
 export type ClaudeResult<T> = { status: 'ok'; data: T; model: string; usage: TokenUsage } | { status: 'refused'; category: string | null; usage: TokenUsage } | { status: 'invalid' | 'deferred'; reason: string; usage: TokenUsage };
-export function effort(role: 'writer' | 'editor'): 'low' | 'medium' | 'high' | 'xhigh' | 'max' {
-  const value = process.env[role === 'writer' ? 'CLAUDE_WRITER_EFFORT' : 'CLAUDE_EDITOR_EFFORT'];
-  return value === 'low' || value === 'medium' || value === 'high' || value === 'xhigh' || value === 'max' ? value : role === 'writer' ? 'low' : 'medium';
+export type ClaudeRole = 'writer' | 'editor' | 'translator';
+const ROLE_ENV = { writer: 'WRITER', editor: 'EDITOR', translator: 'TRANSLATOR' } as const;
+export function effort(role: ClaudeRole): 'low' | 'medium' | 'high' | 'xhigh' | 'max' {
+  const value = process.env['CLAUDE_' + ROLE_ENV[role] + '_EFFORT'];
+  return value === 'low' || value === 'medium' || value === 'high' || value === 'xhigh' || value === 'max' ? value : role === 'editor' ? 'medium' : 'low';
 }
-export const claudeModel = (role: 'writer' | 'editor') => process.env[role === 'writer' ? 'CLAUDE_WRITER_MODEL' : 'CLAUDE_EDITOR_MODEL']?.trim() || (role === 'writer' ? 'claude-sonnet-5-5' : 'claude-haiku-5-5');
+export const claudeModel = (role: ClaudeRole) => process.env['CLAUDE_' + ROLE_ENV[role] + '_MODEL']?.trim() || (role === 'writer' ? 'claude-sonnet-5-5' : 'claude-haiku-5-5');
 export function consumeTokens(usage: TokenUsage) {
   const budget = budgets.getStore();
   if (budget) budget.used += totalTokens(usage);
@@ -30,7 +32,7 @@ export function tokensAvailable(estimate = 1) {
   const used = budget?.used ?? (metrics ? metrics.inputTokens + metrics.outputTokens + (metrics.cacheReadInputTokens ?? 0) + (metrics.cacheCreationInputTokens ?? 0) : 0);
   return used + estimate <= (budget?.limit ?? positiveInteger(process.env.AI_RUN_TOKEN_BUDGET, 2_000_000));
 }
-export async function claudeJson<S extends z.ZodType>({ schema, persona, prompt, role = 'writer' }: { schema: S; persona: Pick<Persona, 'system'>; prompt: string; role?: 'writer' | 'editor' }): Promise<ClaudeResult<z.infer<S>>> {
+export async function claudeJson<S extends z.ZodType>({ schema, persona, prompt, role = 'writer', maxTokens = 16000 }: { schema: S; persona: Pick<Persona, 'system'>; prompt: string; role?: ClaudeRole; maxTokens?: number }): Promise<ClaudeResult<z.infer<S>>> {
   const budget = budgets.getStore();
   const metrics = currentContext()?.metrics.ai;
   const used = budget?.used ?? (metrics ? metrics.inputTokens + metrics.outputTokens + (metrics.cacheReadInputTokens ?? 0) + (metrics.cacheCreationInputTokens ?? 0) : 0);
@@ -41,7 +43,7 @@ export async function claudeJson<S extends z.ZodType>({ schema, persona, prompt,
   const inherited = currentAiItem();
   const item = inherited ?? await reserveAiItem('news', 'call:' + crypto.randomUUID());
   if (!item) return { status: 'deferred', reason: 'period_budget', usage: emptyUsage() };
-  if (!await authorizeAiCall(item, maximumCallCost(model, persona.system + prompt + JSON.stringify(z.toJSONSchema(schema)), false))) {
+  if (!await authorizeAiCall(item, maximumCallCost(model, persona.system + prompt + JSON.stringify(z.toJSONSchema(schema)), false, maxTokens))) {
     if (!inherited) await releaseAiItem(item);
     return { status: 'deferred', reason: 'period_budget', usage: emptyUsage() };
   }
@@ -50,7 +52,7 @@ export async function claudeJson<S extends z.ZodType>({ schema, persona, prompt,
   try {
     const client = new Anthropic({ maxRetries: 2 });
     const params = {
-      model, max_tokens: 16000,
+      model, max_tokens: maxTokens,
       system: [{ type: 'text' as const, text: persona.system, cache_control: { type: 'ephemeral' as const } }],
       output_config: { effort: effort(role), format: { ...betaZodOutputFormat(schema), parse: (raw: string) => raw } },
       messages: [{ role: 'user' as const, content: prompt }],

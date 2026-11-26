@@ -4,6 +4,7 @@ import { runUpdateWorker } from '../lib/pipeline/runner';
 import { collectThreats } from '../lib/pipeline/collect';
 import { errorCode } from '../lib/pipeline/context';
 import { writeNewsBatch } from '../lib/news-writing';
+import { translateNewsBatch } from '../lib/news-translation';
 import { createTokenBudget, withTokenBudget } from '../lib/ai/claude-client';
 import { logAiBudget } from '../lib/ai/budget';
 async function main() {
@@ -15,7 +16,7 @@ async function main() {
   try {
     const result = await runUpdateWorker(prisma, checkpointer, {
       collect: collectThreats, autoPublish: true, max: 4,
-      enrichNews: async () => { await writeNewsBatch((await prisma.newsArticleRecord.findMany({orderBy:{publishedAt:'desc'}})).map(row => row.payload as unknown as import('../lib/news-feeds').NewsArticle)); },
+      enrichNews: async () => { const news = (await prisma.newsArticleRecord.findMany({orderBy:{publishedAt:'desc'}})).map(row => row.payload as unknown as import('../lib/news-feeds').NewsArticle); await translateNewsBatch(news); await writeNewsBatch(news); },
       verify: async () => {
         const origin = new URL(process.env.SITE_ORIGIN!);
         const response = await fetch(new URL('/api/admin/revalidate', origin), { method: 'POST', headers: { Authorization: 'Bearer ' + process.env.CRON_SECRET }, signal: AbortSignal.timeout(20000) });

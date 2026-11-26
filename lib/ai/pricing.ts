@@ -13,6 +13,6 @@ export function usageCost(model: string, usage: TokenUsage, batch: boolean): num
 }
 // Um byte de UTF-8 por token é um limite conservador para entrada textual.
 // Inclui sobrecarga de mensagens/esquema e criação do cache no preço mais alto.
-export function maximumCallCost(model: string, text: string, batch: boolean) {
-  return usageCost(model, { input_tokens: 0, output_tokens: 16000, cache_read_input_tokens: 0, cache_creation_input_tokens: Buffer.byteLength(text, 'utf8') + 4096 }, batch);
+export function maximumCallCost(model: string, text: string, batch: boolean, outputTokens = 16000) {
+  return usageCost(model, { input_tokens: 0, output_tokens: outputTokens, cache_read_input_tokens: 0, cache_creation_input_tokens: Buffer.byteLength(text, 'utf8') + 4096 }, batch);
 }

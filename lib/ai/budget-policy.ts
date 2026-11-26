@@ -1,4 +1,4 @@
-export type AiPurpose = 'news' | 'briefing' | 'cve';
+export type AiPurpose = 'news' | 'translation' | 'briefing' | 'cve';
 export interface BudgetConfig { usd: number; days: number; start?: string }
 export const saoPauloDay = (date = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 export function budgetConfig(): BudgetConfig {

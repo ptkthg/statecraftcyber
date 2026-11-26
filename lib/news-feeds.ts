@@ -21,7 +21,7 @@ export interface NewsArticle {
   summary: string;
   content?: string;
   /** Provenance of the published text, including title/summary enrichment. Absent in legacy snapshots. */
-  contentOrigin?: 'source' | 'automated';
+  contentOrigin?: 'source' | 'automated' | 'translated';
   porQueImporta?: string;
   persona?: string;
   desk?: string;

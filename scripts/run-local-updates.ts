@@ -4,6 +4,7 @@ import { runUpdateWorker } from '../lib/pipeline/runner';
 import { collectThreats } from '../lib/pipeline/collect';
 import { errorCode } from '../lib/pipeline/context';
 import { writeNewsBatch } from '../lib/news-writing';
+import { translateNewsBatch } from '../lib/news-translation';
 import { createTokenBudget, withTokenBudget } from '../lib/ai/claude-client';
 import { fetchCves } from '../lib/cves/fetch-cves';
 import { requireLocalDatabase } from '../lib/publication/local-database';
@@ -31,7 +32,7 @@ async function main() {
     const result=await runUpdateWorker(prisma,checkpointer,{
       collect: collectThreats, autoPublish: true, max: 4, generationEnabled: hasAI,
       ...(hasAI && {
-        enrichNews: async () => { await (await import('../lib/cves/fetch-cves')).enrichAndSave(cveEntries); await writeNewsBatch((await prisma.newsArticleRecord.findMany({orderBy:{publishedAt:'desc'}})).map(row => row.payload as unknown as import('../lib/news-feeds').NewsArticle)); },
+        enrichNews: async () => { await (await import('../lib/cves/fetch-cves')).enrichAndSave(cveEntries); const news = (await prisma.newsArticleRecord.findMany({orderBy:{publishedAt:'desc'}})).map(row => row.payload as unknown as import('../lib/news-feeds').NewsArticle); await translateNewsBatch(news); await writeNewsBatch(news); },
       }),
     });
     console.log(JSON.stringify(result));

@@ -18,7 +18,7 @@ async function main() {
       tx.ioc.findMany({where:PUBLIC_IOC_WHERE,orderBy:{createdAt:'desc'}}),
       tx.cveCache.findMany({orderBy:{published:'desc'}}),
       tx.newsArticleRecord.findMany({orderBy:{publishedAt:'desc'}}),
-      tx.newsCache.findMany({select:{slug:true,title:true,summary:true,content:true,originalUrl:true,source:true,sourceSnapshot:true,qualityReport:true,sourcePublishedAt:true,porQueImporta:true,persona:true,desk:true}}),
+      tx.newsCache.findMany({select:{slug:true,title:true,summary:true,content:true,originalUrl:true,source:true,sourceSnapshot:true,qualityReport:true,sourcePublishedAt:true,porQueImporta:true,persona:true,desk:true,translation:true}}),
       tx.updateHealth.findMany(),tx.cronLog.findFirst({orderBy:{runAt:'desc'}}),
     ]);
     const news=newsForPublication(rows.map(row=>row.payload as unknown as NewsArticle),cached);

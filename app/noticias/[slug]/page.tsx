@@ -134,6 +134,9 @@ async function EnrichedArticleBody({ article }: { article: NewsArticle }) {
         <div className="h-px flex-1 bg-white/[0.06]" />
       </div>
 
+      {origin === 'translated' && html && (
+        <p className="text-xs font-mono uppercase tracking-wider text-dim mb-4">Texto original da fonte, sem tradução</p>
+      )}
       {/* Corpo da notícia */}
       {html ? (
         <div className="article-content mb-12" dangerouslySetInnerHTML={{ __html: html }} />
@@ -484,7 +487,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: article.title,
     description: article.summary.slice(0, 160),
     alternates: { canonical: `/noticias/${slug}` },
-    openGraph: { type: "article", publishedTime: article.publishedAt, ...(article.contentOrigin ? { authors: [article.contentOrigin === 'source' ? article.source : 'Statecraft'] } : {}), images: [{ url: editorialImageForNews(article).src }] },
+    openGraph: { type: "article", publishedTime: article.publishedAt, ...(article.contentOrigin ? { authors: [article.contentOrigin === 'automated' ? 'Statecraft' : article.source] } : {}), images: [{ url: editorialImageForNews(article).src }] },
   };
   } catch {
     return { title: "Notícia indisponível", robots: { index: false } };

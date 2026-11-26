@@ -17,6 +17,7 @@ interface Props {
 }
 
 export default function JournalistByline({ contentOrigin, journalist, source, sourceUrl, compact = false }: Props) {
+  if (contentOrigin === 'translated') return <div className={`journalist-byline${compact ? ' journalist-byline--compact' : ''}`}><AutomationCredit contentOrigin={contentOrigin} source={source} sourceUrl={sourceUrl} /></div>;
   if (contentOrigin !== 'automated') return null;
   return <div className={`journalist-byline${compact ? ' journalist-byline--compact' : ''}`}>
     {journalist && <div className="journalist-identity">

@@ -35,6 +35,33 @@ const withoutHeadings = (text: string) => text.replace(/^###.*$/gm, '');
 const brazilianWord = /^(?:Brasil|brasileir[oa]s?)$/iu;
 // Termos institucionais em português que traduzem a fonte ("Federal Civilian Executive Branch" vira "Poder Executivo federal dos EUA").
 const institutionalWords = new Set(['eua', 'estados', 'unidos', 'poder', 'executivo', 'legislativo', 'judiciário', 'governo', 'federal', 'statecraft']);
+// Nome traduzido (país, bloco, sigla) é aceito quando um equivalente em inglês está na fonte: "Itália" exige "Italy".
+// Nomes compostos são conferidos palavra a palavra ("Coreia do Norte" exige "Korea" e "North").
+export const TRANSLATED_NAMES: Record<string, string[]> = {
+  ia: ['AI', 'artificial intelligence'], otan: ['NATO'], onu: ['UN', 'United Nations'], ue: ['EU', 'European Union'],
+  união: ['Union'], europeia: ['European', 'Europe'], europa: ['Europe', 'European'], ásia: ['Asia', 'Asian'], áfrica: ['Africa', 'African'],
+  américa: ['America', 'American'], latina: ['Latin'], oriente: ['East'], médio: ['Middle'], norte: ['North', 'Northern'], sul: ['South', 'Southern'],
+  coreia: ['Korea', 'Korean'], reino: ['Kingdom', 'UK', 'U.K.', 'Britain', 'British'], unido: ['Kingdom', 'UK', 'U.K.', 'Britain', 'British'],
+  itália: ['Italy', 'Italian'], suíça: ['Switzerland', 'Swiss'], alemanha: ['Germany', 'German'], frança: ['France', 'French'],
+  espanha: ['Spain', 'Spanish'], rússia: ['Russia', 'Russian'], china: ['China', 'Chinese'], irã: ['Iran', 'Iranian'], japão: ['Japan', 'Japanese'],
+  índia: ['India', 'Indian'], ucrânia: ['Ukraine', 'Ukrainian'], holanda: ['Netherlands', 'Dutch', 'Holland'], países: ['Netherlands', 'Countries'],
+  baixos: ['Netherlands', 'Low'], bélgica: ['Belgium', 'Belgian'], polônia: ['Poland', 'Polish'], suécia: ['Sweden', 'Swedish'],
+  noruega: ['Norway', 'Norwegian'], finlândia: ['Finland', 'Finnish'], dinamarca: ['Denmark', 'Danish'], áustria: ['Austria', 'Austrian'],
+  irlanda: ['Ireland', 'Irish'], grécia: ['Greece', 'Greek'], romênia: ['Romania', 'Romanian'], hungria: ['Hungary', 'Hungarian'],
+  tcheca: ['Czech'], república: ['Republic'], bielorrússia: ['Belarus', 'Belarusian'], turquia: ['Turkey', 'Türkiye', 'Turkish'],
+  canadá: ['Canada', 'Canadian'], méxico: ['Mexico', 'Mexican'], colômbia: ['Colombia', 'Colombian'], austrália: ['Australia', 'Australian'],
+  vietnã: ['Vietnam', 'Vietnamese'], paquistão: ['Pakistan', 'Pakistani'], arábia: ['Arabia', 'Saudi'], saudita: ['Saudi'],
+  emirados: ['Emirates', 'UAE'], árabes: ['Arab', 'UAE'], singapura: ['Singapore'], indonésia: ['Indonesia', 'Indonesian'],
+  filipinas: ['Philippines', 'Filipino'], tailândia: ['Thailand', 'Thai'], malásia: ['Malaysia', 'Malaysian'], egito: ['Egypt', 'Egyptian'],
+  nigéria: ['Nigeria', 'Nigerian'], israel: ['Israel', 'Israeli'], taiwan: ['Taiwan', 'Taiwanese'],
+  etiópia: ['Ethiopia', 'Ethiopian'], zâmbia: ['Zambia', 'Zambian'], gana: ['Ghana', 'Ghanaian'], chipre: ['Cyprus', 'Cypriot'],
+  quênia: ['Kenya', 'Kenyan'], marrocos: ['Morocco', 'Moroccan'], peru: ['Peru', 'Peruvian'], venezuela: ['Venezuela', 'Venezuelan'],
+  chile: ['Chile', 'Chilean'], argentina: ['Argentina', 'Argentine', 'Argentinian'], cuba: ['Cuba', 'Cuban'], síria: ['Syria', 'Syrian'],
+  tesouro: ['Treasury'], departamento: ['Department'], ministério: ['Ministry'], justiça: ['Justice'], defesa: ['Defense', 'Defence'],
+  segurança: ['Security'], nacional: ['National'], agência: ['Agency'], polícia: ['Police'], episódio: ['Episode'], porto: ['Port'],
+};
+const hasEquivalent = (source: string, name: string) => (TRANSLATED_NAMES[name.normalize('NFC').toLocaleLowerCase('pt-BR')] ?? [])
+  .some(word => new RegExp('(?<![\\p{L}\\d])' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\d])', 'iu').test(source));
 // Início de frase também é começo de linha, item de lista, negrito ou o que vem depois de dois-pontos.
 const sentenceStart = /(?:^|[.!?:\n])\s*(?:[-*•]\s+|\*\*|\d+[.)]\s+)?$/;
 export function checkEditorialFields(source: string, fields: Record<string, string>): EditorialReport['issues'] {
@@ -64,7 +91,7 @@ export function checkEditorialFields(source: string, fields: Record<string, stri
       const name = match[0];
       if (brazilianWord.test(name)) continue;
       const before = prose.slice(0, match.index);
-      if (commonWords.has(normalize(name)) || institutionalWords.has(normalize(name)) || sentenceStart.test(before)) continue;
+      if (commonWords.has(normalize(name)) || institutionalWords.has(normalize(name)) || sentenceStart.test(before) || hasEquivalent(source, name)) continue;
       if (!new RegExp('(?<![\\p{L}\\d])' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\d])', 'iu').test(source)) add('entity.name');
     }
   }

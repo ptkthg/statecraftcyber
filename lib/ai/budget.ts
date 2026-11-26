@@ -25,8 +25,10 @@ async function state(tx: Prisma.TransactionClient, now: Date) {
   const reserved = reservations.reduce((s, r) => s + r.reservedUsd, 0);
   const reservedToday = reservations.filter(r => r.day === today).reduce((s, r) => s + r.reservedUsd, 0);
   const quota = calculateQuota({ ...config, start }, today, sum(ledger), sum(spentTodayRows), reserved, reservedToday);
-  const auxiliarySpent = spentTodayRows.filter(r => r.purpose !== 'news').reduce((s, r) => s + r.costUsd, 0);
-  const auxiliaryReserved = reservations.filter(r => r.day === today && r.purpose !== 'news').reduce((s, r) => s + r.reservedUsd, 0);
+  // Tradução sai da parcela de notícias; briefings e CVEs usam a reserva auxiliar de 20%.
+  const auxiliary = (purpose: string) => purpose !== 'news' && purpose !== 'translation';
+  const auxiliarySpent = spentTodayRows.filter(r => auxiliary(r.purpose)).reduce((s, r) => s + r.costUsd, 0);
+  const auxiliaryReserved = reservations.filter(r => r.day === today && auxiliary(r.purpose)).reduce((s, r) => s + r.reservedUsd, 0);
   const newsSpent = sum(spentTodayRows) - auxiliarySpent;
   const newsReserved = reservedToday - auxiliaryReserved;
   return { ...quota, today, start, ledger, reservations, auxiliaryRemaining: Math.max(0, quota.allowance * .2 - auxiliarySpent - auxiliaryReserved), newsRemaining: Math.max(0, quota.allowance * .8 - newsSpent - newsReserved) };
@@ -45,9 +47,10 @@ export async function reserveAiItem(purpose: AiPurpose, itemKey: string, now = n
     }
     const estimate = costs.size ? Math.max(.001, [...costs.values()].reduce((a, b) => a + b, 0) / costs.size) : .012;
     // Briefings são maiores; sua estimativa também precisa caber na reserva.
-    const cost = estimate * (purpose === 'briefing' ? 2 : 1);
-    const count = purpose === 'news' ? 0 : await tx.aiReservation.count({ where: { purpose, day: current.today } });
-    if (current.remaining + 1e-10 < cost || (purpose === 'news' ? current.newsRemaining : current.auxiliaryRemaining) + 1e-10 < cost || purpose !== 'news' && count >= (purpose === 'briefing' ? 3 : 5)) {
+    // Tradução de chamada e resumo pelo Haiku custa frações de centavo; estimativa fixa e conservadora.
+    const cost = purpose === 'translation' ? .002 : estimate * (purpose === 'briefing' ? 2 : 1);
+    const count = purpose === 'news' || purpose === 'translation' ? 0 : await tx.aiReservation.count({ where: { purpose, day: current.today } });
+    if (current.remaining + 1e-10 < cost || (purpose === 'news' || purpose === 'translation' ? current.newsRemaining : current.auxiliaryRemaining) + 1e-10 < cost || (purpose === 'briefing' || purpose === 'cve') && count >= (purpose === 'briefing' ? 3 : 5)) {
       excluded++;
       if (current.exhausted) console.warn('orçamento do período esgotado');
       return null;
